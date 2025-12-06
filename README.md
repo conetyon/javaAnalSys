@@ -1,1 +1,1 @@
-For gradution-design-2026, BUPT
+For graduation-design-2026, BUPT
