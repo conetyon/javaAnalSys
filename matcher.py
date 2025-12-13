@@ -2,7 +2,7 @@ import pymysql
 import json
 # 假设 DB_CONFIG 在同一个包中可访问，或者需要在这里重新定义
 # 这里为了代码独立性，我们重新引用配置，实际项目中建议导入
-from db_manager import DB_CONFIG  # 假设上面的文件名为 db_manager.py
+from db_manager.database import DB_CONFIG
 
 
 class Matcher:

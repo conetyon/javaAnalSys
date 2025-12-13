@@ -1,70 +1,97 @@
-import pymysql
-import json
+# main.py
 import os
-from db_manager import init_db, insert_baseline_data, DB_NAME
-from analyzer import CodeAnalyzer
-from matcher import Matcher
+import json
+
+# 1. 从 db_manager 统一导入所有数据库操作函数
+from db_manager import (
+    init_db,
+    insert_knowledge_points,
+    insert_baseline_code_data,
+    save_analyzed_results,
+    display_knowledge_point_tree
+)
+from analyzer import CodeAnalyzer  # 假设存在
+from matcher import Matcher  # 假设存在
+
+
+def setup_sample_code_file():
+    """确保演示用的Java文件存在。"""
+    filepath = "sample_code.java"
+    if not os.path.exists(filepath):
+        print(f"'{filepath}' 不存在，创建一个用于演示。")
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("""
+public class SampleCode {
+    // 匹配 try-catch
+    public void processFile() {
+        try {
+            java.io.FileReader reader = new java.io.FileReader("file.txt");
+        } catch (java.io.FileNotFoundException e) {
+            System.err.println("File not found!");
+        }
+    }
+
+    // 简单方法
+    public int add(int a, int b) {
+        return a + b;
+    }
+}
+""")
+    return filepath
+
 
 def main():
-    # 1. 初始化数据库及基线数据
-    print("--- Step 1: Init Database ---")
-    conn = init_db()
-    insert_baseline_data(conn)
+    """主程序：初始化 -> 分析 -> 保存 -> 匹配"""
+    conn = None
+    try:
+        # --- 步骤 1: 初始化数据库和基线数据 ---
+        print("--- Step 1: Initialize Database & Baseline Data ---")
+        conn = init_db()
+        insert_knowledge_points(conn)  # 插入知识点
+        insert_baseline_code_data(conn)  # 插入基线代码
+        display_knowledge_point_tree(conn)  # 展示知识点树
 
-    # 2. 读取并解析 Java 长代码
-    print("\n--- Step 2: Extract Features from Sample Code ---")
-    # 为了演示不报错，这里如果没有文件会创建一个临时的
-    if not os.path.exists("sample_code.java"):
-        with open("sample_code.java", "w") as f:
-            f.write("public class Temp { public void test() { try{}catch(Exception e){} } }")
+        # --- 步骤 2: 分析新代码并存入数据库 ---
+        print("\n--- Step 2: Analyze New Code and Save to DB ---")
+        sample_file = setup_sample_code_file()
+        with open(sample_file, "r", encoding="utf-8") as f:
+            java_code = f.read()
 
-    with open("sample_code.java", "r", encoding="utf-8") as f:
-        java_code = f.read()
+        # 使用分析器提取特征
+        analyzer = CodeAnalyzer()
+        snippets = analyzer.analyze_file(java_code)
+        print(f"在 '{sample_file}' 中检测到 {len(snippets)} 个代码片段。")
 
-    # 保存文件记录 - 注意占位符改为 %s
-    c = conn.cursor()
-    c.execute("INSERT INTO code_files (filename, content) VALUES (%s, %s)", ("sample_code.java", java_code))
-    file_id = conn.insert_id() # MySQL 获取自增ID的方法
+        if snippets:
+            save_analyzed_results(conn, sample_file, java_code, snippets)
+            print(f"已将 '{sample_file}' 的分析结果存入数据库。")
 
-    # 解析提取 (这部分逻辑不变)
-    analyzer = CodeAnalyzer()
-    snippets = analyzer.analyze_file(java_code)
-    print(f"Detected {len(snippets)} snippets/methods in sample file.")
+        # --- 步骤 3: 执行匹配算法 ---
+        print("\n--- Step 3: Execute Matching Algorithm ---")
+        # 假设知识点 "数据类型" 的 ID 是 101, 用户期望难度是 0.6
+        kp_id = 101  # 这里应对应一个有意义的知识点ID，例如 "异常处理"
+        user_diff = 0.6
+        print(f"用户查询: 知识点 ID={kp_id}, 期望难度={user_diff}")
 
-    # 存入数据库 - 注意占位符改为 %s
-    for s in snippets:
-        print(f"  -> Processed Method (Line {s['start_line']}-{s['end_line']}), Difficulty: {s['difficulty']}")
-        c.execute("""
-                  INSERT INTO code_snippets
-                  (file_id, start_line, end_line, content, complexity_score, ast_features, keywords)
-                  VALUES (%s, %s, %s, %s, %s, %s, %s)
-                  """, (
-                      file_id,
-                      s['start_line'],
-                      s['end_line'],
-                      s['content'],
-                      s['difficulty'],
-                      json.dumps(s['ast_features']),
-                      json.dumps(s['keywords'])
-                  ))
-    conn.commit()
-    conn.close()
+        # 将已建立的连接注入 Matcher，而不是只传名字
+        matcher = Matcher(conn)
+        results = matcher.search(kp_id, user_diff)
 
-    # 3. 执行匹配
-    print("\n--- Step 3: Executing Matching Algorithm ---")
-    kp_id = 101
-    user_diff = 0.6
-    print(f"User Query: Knowledge Point ID={kp_id} (Try-Catch), Difficulty={user_diff}")
+        print(f"\n找到 {len(results)} 个匹配结果:")
+        for rank, res in enumerate(results, 1):
+            print(f"\n[Rank {rank}] 综合得分: {res['score']:.4f} ({res['details']})")
+            print("-" * 40)
+            preview = res['content'].strip().split('\n')[0] + " ..."
+            print(f"代码片段: {preview}")
 
-    matcher = Matcher(DB_NAME)
-    results = matcher.search(kp_id, user_diff)
+    except Exception as e:
+        print(f"\n[CRITICAL ERROR] 程序执行中断: {e}")
+    finally:
+        # --- 步骤 4: 清理 ---
+        if conn:
+            conn.close()
+            print("\n[Main] 数据库连接已关闭。")
 
-    print(f"\nFound {len(results)} matches:")
-    for rank, res in enumerate(results, 1):
-        print(f"\n[Rank {rank}] Score: {res['score']} ({res['details']})")
-        print("-" * 40)
-        preview = res['content'].strip().split('\n')[0] + "..."
-        print(f"Code: {preview}")
 
 if __name__ == "__main__":
     main()
