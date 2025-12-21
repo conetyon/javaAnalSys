@@ -1,0 +1,72 @@
+logger:                      # ← 顶层键必须叫 “logger”
+  version: 1                 # logging.config.dictConfig 需要
+
+  disable_existing_loggers: false
+
+  # ---------- 格式器 ----------
+  formatters:
+    plain:
+      format: "[%(asctime)s] %(levelname)s [%(name)s] %(message)s"
+
+  # ---------- 处理器 ----------
+  handlers:
+    # —— API 日志：多进程安全写入 ——
+    api_file:
+      # 【修改点 1】 使用支持多进程并发写入的 Handler
+      class: concurrent_log_handler.ConcurrentRotatingFileHandler
+      filename: logs/api.log
+      mode: a
+      # 【修改点 2】 该库不支持按时间轮转，改为按大小轮转 (例如 10MB)
+      maxBytes: 10485760
+      backupCount: 7
+      encoding: utf-8
+      level: INFO
+      formatter: plain
+
+    # —— Web 日志：多进程安全写入 ——
+    web_file:
+      # 【修改点 1】 使用支持多进程并发写入的 Handler
+      class: concurrent_log_handler.ConcurrentRotatingFileHandler
+      filename: logs/web.log
+      mode: a
+      # 【修改点 2】 按大小轮转 (例如 10MB)
+      maxBytes: 10485760
+      backupCount: 14
+      encoding: utf-8
+      level: DEBUG
+      formatter: plain
+
+    # —— Core 日志：多进程安全写入 ——
+    core_file:
+      # 【修改点 1】 使用支持多进程并发写入的 Handler
+      class: concurrent_log_handler.ConcurrentRotatingFileHandler
+      filename: logs/core.log
+      mode: a
+      # 【修改点 2】 按大小轮转 (例如 10MB)
+      maxBytes: 10485760
+      backupCount: 14
+      encoding: utf-8
+      level: DEBUG
+      formatter: plain
+
+  # ---------- 类别（逻辑模块） ----------
+  loggers:
+    api:                                  # logger = logging.getLogger("api")
+      handlers: [api_file]
+      level: INFO
+      propagate: false
+
+    web:                                  # logger = logging.getLogger("web")
+      handlers: [web_file]
+      level: DEBUG
+      propagate: false
+
+    core: # logger = logging.getLogger("core")
+      handlers: [ core_file ]
+      level: INFO
+      propagate: false
+
+  # ---------- root ----------
+  root:
+    handlers: []          # 不让 root 写文件，防止所有日志都落两份
+    level: WARNING

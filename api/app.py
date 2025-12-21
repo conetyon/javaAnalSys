@@ -2,6 +2,7 @@ import pymysql
 from pymysql.cursors import DictCursor
 from flask import Flask, jsonify
 from flask_cors import CORS
+import config
 
 # --- 引入项目现有的工具类 ---
 from lib.client.db import MySQLClient  # 数据库工具
@@ -10,7 +11,6 @@ from lib.globals import api_logger as log  # API 专用日志
 app = Flask(__name__)
 # 允许跨域
 CORS(app)
-DB_NAME = "javalearningsys"
 
 
 def list_to_tree(data):
@@ -51,7 +51,7 @@ def get_knowledge_tree():
     log.info("[GET] /api/knowledge-tree - 开始获取知识点树结构")
 
     try:
-        with MySQLClient(db=DB_NAME) as client:
+        with MySQLClient(db=config.DB_NAME) as client:
             sql = """
                   WITH RECURSIVE KnowledgeHierarchy \
                                      AS (SELECT id, name, parent_id, level, CAST(id AS CHAR(1000)) AS sort_path \

@@ -1,7 +1,8 @@
 # db_manager/base.py
 from lib.client.db import MySQLClient
+import config
 
-DEFAULT_DB_NAME = "javalearningsys"
+DEFAULT_DB_NAME = config.DB_NAME
 
 class BaseManager:
     """
