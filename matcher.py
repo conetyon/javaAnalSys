@@ -1,47 +1,49 @@
-import pymysql
+# matcher.py
 import json
-# 假设 DB_CONFIG 在同一个包中可访问，或者需要在这里重新定义
-# 这里为了代码独立性，我们重新引用配置，实际项目中建议导入
-from db_manager.database import DB_CONFIG
+from db_manager import KnowledgePointManager, CodeLibraryManager
 
 
 class Matcher:
     def __init__(self, db_name=None):
-        # db_name 参数保留以兼容接口，但实际连接使用 DB_CONFIG
-        pass
+        """
+        初始化匹配器。
+        它不直接操作 SQL，而是通过 Managers 获取数据。
+        """
+        # 初始化 Managers
+        self.kp_mgr = KnowledgePointManager(db_name)
+        self.code_mgr = CodeLibraryManager(db_name)
 
     def search(self, knowledge_point_id, target_difficulty=0.5):
-        # 使用 DictCursor 以便像字典一样访问结果 (row['field'])
-        conn = pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
-        c = conn.cursor()
-
-        # 1. 获取知识点详情 (使用 %s)
-        c.execute("SELECT * FROM knowledge_points WHERE id=%s", (knowledge_point_id,))
-        kp = c.fetchone()
+        # 1. 通过 Manager 获取知识点
+        kp = self.kp_mgr.get_by_id(knowledge_point_id)
 
         if not kp:
-            print("Knowledge point not found.")
-            conn.close()
+            print(f"Knowledge point {knowledge_point_id} not found.")
             return []
 
+        # 解析知识点数据
         kp_ast_tpl = json.loads(kp['ast_template'])
         kp_keywords = set(json.loads(kp['keywords']))
         required_nodes = set(kp_ast_tpl.get("required_nodes", []))
 
-        # 2. 获取所有代码片段
-        c.execute("SELECT * FROM code_snippets")
-        snippets = c.fetchall()
-
-        conn.close()
+        # 2. 通过 Manager 获取所有代码片段
+        snippets = self.code_mgr.get_all_snippets()
 
         results = []
 
+        # --- 算法核心部分 (保持不变) ---
         for snip in snippets:
-            snip_ast_features = set(json.loads(snip['ast_features']))
-            snip_keywords = set(json.loads(snip['keywords']))
-            snip_diff = snip['complexity_score']
+            # 数据清洗：处理可能的类型差异
+            ast_feat_raw = snip['ast_features']
+            keywords_raw = snip['keywords']
 
-            # --- 算法核心部分 (未变动) ---
+            # 兼容 bytes 类型 (blob) 或 str
+            if isinstance(ast_feat_raw, bytes): ast_feat_raw = ast_feat_raw.decode('utf-8')
+            if isinstance(keywords_raw, bytes): keywords_raw = keywords_raw.decode('utf-8')
+
+            snip_ast_features = set(json.loads(ast_feat_raw))
+            snip_keywords = set(json.loads(keywords_raw))
+            snip_diff = snip['complexity_score']
 
             # A. AST 结构匹配得分
             if required_nodes.issubset(snip_ast_features):
