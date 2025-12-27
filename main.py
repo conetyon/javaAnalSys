@@ -16,7 +16,7 @@ from src.services.search_service import SearchService
 SAMPLE_FILE_PATH = "./sample_code.java"
 
 # 直接指定检索参数（无需环境变量）
-KP_IDS = [10010]            # 例如 10010, 10031
+KP_IDS = [10083]            # 例如 10010, 10011, 10031, 10034, 10083
 TARGET_DIFFICULTY = 0.6     # 0~1
 TOP_K = 5                   # 返回前K条
 AST_MIN_RATIO = 0.5         # AST结构匹配阈值
