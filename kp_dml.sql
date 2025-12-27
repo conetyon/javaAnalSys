@@ -1,3 +1,4 @@
+-- kp_dml.sql
 -- Java Knowledge Points DML (hierarchical: domain -> module -> atomic points)
 -- Idempotent: uses INSERT ... ON DUPLICATE KEY UPDATE (MySQL 5.7/8.0 compatible).
 -- Re-running this script will upsert by primary key (id). semantic_vec is preserved on duplicates.

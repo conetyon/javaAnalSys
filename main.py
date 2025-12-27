@@ -1,157 +1,135 @@
 # main.py
 import os
-import json
 import traceback
 import config
 from lib.globals import core_logger as log
 
 from src.db_manager import (
     DatabaseInitializer,
-    CodeLibraryManager,
-    KnowledgePointManager
+    KnowledgePointManager,
+    CodeLibraryManager
 )
 from src.java_analyzer import JavaAnalyzer
 from src.services.search_service import SearchService
 
-SAMPLE_FILE_PATH = "sample_code.java"
+# 指定样本路径（确保存在）
+SAMPLE_FILE_PATH = "./sample_code.java"
 
-SAMPLE_JAVA_CONTENT = """// 这是一个模拟的长文件 content
-import java.io.*;
-
-public class DataProcessor {
-    // Snippet 1: 简单的Getter，不应该匹配 Try-Catch
-    public String getName() {
-        return "Processor";
-    }
-
-    // Snippet 2: 包含 Try-Catch 的 IO 操作，应该匹配
-    public void processFile(String path) {
-        System.out.println("Starting...");
-        try {
-            BufferedReader reader = new BufferedReader(new FileReader(path));
-            String line = reader.readLine();
-            while (line != null) {
-                System.out.println(line);
-                line = reader.readLine();
-            }
-        } catch (FileNotFoundException e) {
-            System.err.println("File missing");
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            System.out.println("Done.");
-        }
-    }
-
-    // Snippet 3: 复杂的逻辑但没有 Try-Catch
-    public int calculate(int n) {
-        if (n < 0) return 0;
-        int sum = 0;
-        for (int i=0; i<n; i++) {
-            sum += i;
-        }
-        return sum;
-    }
-}
-"""
-
-
-def ensure_sample_file(filepath: str, content: str, overwrite: bool = True):
-    """确保 sample.java 存在（默认覆盖写入，以便分析器产生片段）"""
-    if overwrite or not os.path.exists(filepath):
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(content)
-        print(f"[INFO] 写入示例文件: {filepath}")
-    else:
-        print(f"[INFO] 保留现有示例文件: {filepath}")
-    return filepath
-
-
-def ensure_kp_try_catch(kp_mgr: KnowledgePointManager, kp_id: int = 10001):
-    """
-    确保知识点 10001 为 Try-Catch IO 基础操作，
-    以便与包含 try/catch/finally 的代码片段稳定匹配。
-    """
-    kp_name = "Try-Catch IO 基础操作"
-    required_nodes = [
-        "method_declaration", "try_statement", "catch_clause",
-        "finally_block", "method_invocation"
-    ]
-    kp_keywords = [
-        "try", "catch", "finally", "IOException",
-        "FileNotFoundException", "read"
-    ]
-    ast_template_json = json.dumps({"required_nodes": required_nodes}, ensure_ascii=False)
-    keywords_json = json.dumps(kp_keywords, ensure_ascii=False)
-
-    sql = """
-    INSERT INTO knowledge_points (id, name, ast_template, keywords)
-    VALUES (%s, %s, %s, %s)
-    ON DUPLICATE KEY UPDATE
-      name = VALUES(name),
-      ast_template = VALUES(ast_template),
-      keywords = VALUES(keywords)
-    """
-    params = (kp_id, kp_name, ast_template_json, keywords_json)
-
-    client = kp_mgr._get_client()
-    client.execute(sql, params)
-    print(f"[Knowledge Manager] 已确保 KP {kp_id} = '{kp_name}' 配置为 Try-Catch IO。")
+# 直接指定检索参数（无需环境变量）
+KP_IDS = [10010]            # 例如 10010, 10031
+TARGET_DIFFICULTY = 0.6     # 0~1
+TOP_K = 5                   # 返回前K条
+AST_MIN_RATIO = 0.5         # AST结构匹配阈值
+KEYWORD_MIN_SCORE = 0.6     # 关键词匹配阈值
+DIFFICULTY_MODE = "relaxed" # strict / relaxed
 
 
 def main():
     try:
         DB_NAME = config.DB_NAME
 
-        # 默认演示参数
-        DEFAULT_KP_ID = 10001
-        DEFAULT_DIFFICULTY = 0.6
-
-        # --- 阶段 1: 基础设施初始化 ---
+        # --- Step 1: 初始化数据库（不改动知识点） ---
         print("\n=== Step 1: Init Database ===")
         db_init = DatabaseInitializer(db_name=DB_NAME)
-        kb_mgr = KnowledgePointManager(db_name=DB_NAME)
         code_mgr = CodeLibraryManager(db_name=DB_NAME)
+        kp_mgr = KnowledgePointManager(db_name=DB_NAME)
         db_init.init_db()
-        kb_mgr.insert_baseline_data()
-        ensure_kp_try_catch(kb_mgr, kp_id=DEFAULT_KP_ID)
+        kp_mgr.insert_baseline_data()
+        print("[INFO] 数据库初始化完成")
 
-        # --- 阶段 2: 代码分析与入库（幂等） ---
+        # --- Step 2: 代码分析与入库（幂等） ---
         print("\n=== Step 2: Analyze & Ingest Code ===")
-        # 1) 基线片段：幂等 Upsert，不会重复插入，不会推动自增主键
-        code_mgr.insert_baseline_code_data()
+        if not os.path.exists(SAMPLE_FILE_PATH):
+            raise FileNotFoundError(f"未找到样本文件: {SAMPLE_FILE_PATH}，请确认路径是否正确")
 
-        # 2) 写入/更新示例 Java 文件，并分析入库；内容不变则跳过保存（幂等）
-        sample_path = ensure_sample_file(SAMPLE_FILE_PATH, SAMPLE_JAVA_CONTENT, overwrite=True)
-        with open(sample_path, "r", encoding="utf-8") as f:
+        with open(SAMPLE_FILE_PATH, "r", encoding="utf-8") as f:
             code_content = f.read()
+
+        # 简单诊断：是否包含 break/continue（针对 KP 10012）
+        print(f"[DIAG] 'break' 出现次数: {code_content.count('break')}, "
+              f"'continue' 出现次数: {code_content.count('continue')}")
+
         analyzer = JavaAnalyzer()
         snippets = analyzer.analyze_file(code_content)
-        print(f"-> Detected {len(snippets)} snippets in {sample_path}")
+        print(f"-> Detected {len(snippets)} snippets in {SAMPLE_FILE_PATH}")
         if snippets:
-            code_mgr.save_analyzed_results(sample_path, code_content, snippets)
+            code_mgr.save_analyzed_results(SAMPLE_FILE_PATH, code_content, snippets)
+            print("[INFO] 分析结果已入库（幂等保存）")
+        else:
+            print("[WARN] 未检测到可用片段，后续匹配可能为空")
 
-        # --- 阶段 3: 执行智能匹配 ---
+        # --- Step 3: 搜索匹配 ---
         print("\n=== Step 3: Matching Execution ===")
         search_service = SearchService(db_name=DB_NAME)
 
-        print(f"-> Query: KP_ID={DEFAULT_KP_ID}, Target_Diff={DEFAULT_DIFFICULTY}")
-        results = search_service.search(
-            kp_id=DEFAULT_KP_ID,
-            target_difficulty=DEFAULT_DIFFICULTY,
-            top_k=5,
-            ast_min_ratio=0.4,
-            keyword_min_score=0.4,
-            difficulty_mode="relaxed"
-        )
+        if not KP_IDS:
+            print("[WARN] 未指定知识点ID（KP_IDS 为空），请在文件顶部修改 KP_IDS 列表后重试。")
+            return
 
-        # --- 阶段 4: 结果展示 ---
-        print(f"\n-> Top {len(results)} Matches:")
-        for rank, res in enumerate(results, 1):
-            print(f"\n[#{rank}] Score: {res['score']} | {res['details']}")
-            print("-" * 40)
-            preview = res['content'].strip()[:160].replace('\n', ' ')
-            print(f"Code: {preview}...")
+        for kp_id in KP_IDS:
+            print(f"\n-> Query: KP_ID={kp_id}, Target_Diff={TARGET_DIFFICULTY}, "
+                  f"AST_Min={AST_MIN_RATIO}, KW_Min={KEYWORD_MIN_SCORE}, Mode={DIFFICULTY_MODE}, TopK={TOP_K}")
+            try:
+                results = search_service.search(
+                    kp_id=kp_id,
+                    target_difficulty=TARGET_DIFFICULTY,
+                    top_k=TOP_K,
+                    ast_min_ratio=AST_MIN_RATIO,
+                    keyword_min_score=KEYWORD_MIN_SCORE,
+                    difficulty_mode=DIFFICULTY_MODE
+                )
+            except Exception as e:
+                print(f"[ERROR] 搜索失败: KP_ID={kp_id} | {e}")
+                continue
+
+            # 若无结果，自动降阈值重试一次，便于定位问题（可注释掉）
+            if not results:
+                print("[INFO] 无匹配结果，尝试降阈值重试：AST_Min=0.3, KW_Min=0.3")
+                try:
+                    results = search_service.search(
+                        kp_id=kp_id,
+                        target_difficulty=TARGET_DIFFICULTY,
+                        top_k=TOP_K,
+                        ast_min_ratio=0.3,
+                        keyword_min_score=0.3,
+                        difficulty_mode=DIFFICULTY_MODE
+                    )
+                except Exception as e:
+                    print(f"[ERROR] 降阈值重试失败: KP_ID={kp_id} | {e}")
+
+            # 去重输出
+            seen = set()
+            dedup_results = []
+            for r in results or []:
+                preview_key = (r.get('content') or '').strip()
+                if preview_key and preview_key not in seen:
+                    dedup_results.append(r)
+                    seen.add(preview_key)
+
+            print(f"\n-> Top {len(dedup_results)} Matches for KP {kp_id}:")
+            if not dedup_results:
+                print("   [EMPTY] 可能原因：1) 样例代码不包含该知识点关键结构；"
+                      "2) 阈值过高；3) 知识点定义与分析器AST节点命名不一致；"
+                      "4) 知识点被其他初始化逻辑覆盖。")
+                print("   建议：a) 在样例中加入对应代码片段；b) 暂时降低阈值；"
+                      "c) 改查更通用的KP（如 10010 for loop 或 10031 try-catch）以验证链路。")
+            for rank, res in enumerate(dedup_results, 1):
+                score = res.get('score')
+                details = res.get('details')
+                ast_ratio = res.get('ast_ratio')
+                kw_score = res.get('keyword_score')
+                difficulty = res.get('difficulty')
+                file_path = res.get('file_path') or res.get('source_path')
+
+                print(f"\n[#{rank}] Score: {score} | AST: {ast_ratio} | KW: {kw_score} | Diff: {difficulty}")
+                if details:
+                    print(f"Details: {details}")
+                if file_path:
+                    print(f"File: {file_path}")
+                print("-" * 40)
+                preview = (res.get('content') or '').strip()[:240].replace('\n', ' ')
+                print(f"Code: {preview}...")
+
     except Exception as e:
         traceback.print_exc()
         print(f"\n[CRITICAL ERROR] {e}")
