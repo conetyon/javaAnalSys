@@ -1,4 +1,4 @@
-# db_manager/database.py
+# src/db_manager/database.py
 import mysql.connector
 from lib.globals import Cfg
 from lib.client.db import MySQLClient

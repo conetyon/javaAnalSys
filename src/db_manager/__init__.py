@@ -1,4 +1,4 @@
-# db_manager/__init__.py
+# src/db_manager/__init__.py
 
 from .database import init_db, DatabaseInitializer
 from .code_library_manager import CodeLibraryManager

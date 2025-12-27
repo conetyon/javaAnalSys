@@ -1,4 +1,4 @@
-# analyzers/java_analyzer.py
+# src/java_analyzer/java_analyzer.py
 # 说明：
 # - 基于 AST 精准抽取三类关键词：语言保留字、API/方法调用（含可控前缀链）、类型与异常名
 # - 引入别名归一化（CANONICAL_ALIASES）与短方法白名单（SHORT_METHOD_WHITELIST）

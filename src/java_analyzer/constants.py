@@ -1,4 +1,4 @@
-# analyzers/constants.py
+# src/java_analyzer/constants.py
 # 目标：
 # 1) 精简语言级关键词，强调结构与异常控制流，减少噪声
 # 2) 明确保留的调用前缀白名单，降低变量前缀带来的噪音

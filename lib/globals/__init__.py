@@ -1,3 +1,4 @@
+# lib/globals/__init__.py
 from __future__ import annotations
 import logging
 from lib.utils.settings import init_settings, AppConfig

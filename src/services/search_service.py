@@ -14,9 +14,9 @@ from src.matching.strategies import (
     WEIGHT_DEFAULTS,
 )
 
-# 优先从 analyzers.constants 导入别名表；若不可用，使用内置最小表
+# 优先从 java_analyzer.constants 导入别名表；若不可用，使用内置最小表
 try:
-    from analyzers.constants import CANONICAL_ALIASES as _CANONICAL_ALIASES
+    from src.java_analyzer.constants import CANONICAL_ALIASES as _CANONICAL_ALIASES
 except Exception:
     _CANONICAL_ALIASES = {
         "system.out.println": "println",

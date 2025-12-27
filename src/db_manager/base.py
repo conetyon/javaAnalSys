@@ -1,4 +1,4 @@
-# db_manager/base.py
+# src/db_manager/base.py
 from lib.client.db import MySQLClient
 import config
 

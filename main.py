@@ -16,11 +16,11 @@ from src.services.search_service import SearchService
 SAMPLE_FILE_PATH = "./sample_code.java"
 
 # 直接指定检索参数（无需环境变量）
-KP_IDS = [10083]            # 例如 10010, 10011, 10031, 10034, 10083
+KP_IDS = [10011]            # 例如 print 相关知识点 10010, 10011, 10031, 10034, 10083
 TARGET_DIFFICULTY = 0.6     # 0~1
 TOP_K = 5                   # 返回前K条
 AST_MIN_RATIO = 0.5         # AST结构匹配阈值
-KEYWORD_MIN_SCORE = 0.6     # 关键词匹配阈值
+KEYWORD_MIN_SCORE = 0.3     # 关键词匹配阈值
 DIFFICULTY_MODE = "relaxed" # strict / relaxed
 
 
@@ -84,14 +84,14 @@ def main():
 
             # 若无结果，自动降阈值重试一次，便于定位问题（可注释掉）
             if not results:
-                print("[INFO] 无匹配结果，尝试降阈值重试：AST_Min=0.3, KW_Min=0.3")
+                print("[INFO] 无匹配结果，尝试降阈值重试")       # 或更严格 AST_Min=0.3, KW_Min=0.3
                 try:
                     results = search_service.search(
                         kp_id=kp_id,
                         target_difficulty=TARGET_DIFFICULTY,
-                        top_k=TOP_K,
-                        ast_min_ratio=0.3,
-                        keyword_min_score=0.3,
+                        top_k=2,
+                        ast_min_ratio=0,
+                        keyword_min_score=0,
                         difficulty_mode=DIFFICULTY_MODE
                     )
                 except Exception as e:
