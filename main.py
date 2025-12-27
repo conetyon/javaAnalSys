@@ -27,7 +27,7 @@ def main():
         DB_NAME = config.DB_NAME
         SAMPLE_FILE_PATH = "sample_code.java"
         # 默认演示参数
-        DEFAULT_KP_ID = 202
+        DEFAULT_KP_ID = 10001
         DEFAULT_DIFFICULTY = 0.6
         # --- 阶段 1: 基础设施初始化 ---
         print("\n=== Step 1: Init Database ===")

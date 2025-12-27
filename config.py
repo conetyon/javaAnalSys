@@ -3,8 +3,12 @@ import os
 import yaml
 
 # 定位 yaml 文件路径
+# 1. 获取当前文件(config.py)所在的目录
+# 结果应该是: D:\bupt-codes\graduation-design\java-ana-mvp
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-YAML_PATH = os.path.join(BASE_DIR, 'db.yaml')
+# 2. 拼接相对路径
+# os.path.join 会自动根据操作系统处理斜杠
+YAML_PATH = os.path.join(BASE_DIR, 'config', 'db.yaml')
 
 
 def load_db_name():

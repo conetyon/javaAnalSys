@@ -25,7 +25,15 @@ class CodeLibraryManager(BaseManager):
 
             ("INSERT IGNORE INTO code_snippets (file_id, content, complexity_score, ast_features, keywords) VALUES (%s, %s, %s, %s, %s)",
              (1, 'public int add(int a, int b) { return a + b; }', 0.1, json.dumps(["return_statement"]),
-              json.dumps(["return"])))
+              json.dumps(["return"]))),
+
+            ("INSERT IGNORE INTO code_snippets (file_id, content, complexity_score, ast_features, keywords) VALUES (%s, %s, %s, %s, %s)",
+             (1, 'set', 0.1, json.dumps(["set"]),
+              json.dumps(["set"]))),
+
+            ("INSERT IGNORE INTO code_snippets (file_id, content, complexity_score, ast_features, keywords) VALUES (%s, %s, %s, %s, %s)",
+             (1, 'set int', 0.8, json.dumps(["set"]),
+              json.dumps(["set"])))
         ]
 
         client = self._get_client()

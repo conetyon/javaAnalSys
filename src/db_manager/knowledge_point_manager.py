@@ -7,26 +7,51 @@ class KnowledgePointManager(BaseManager):
     """
 
     def insert_baseline_data(self):
-        """插入预置知识点。"""
-        points = [
-            (1, "Java", None, 0, '{}', '["java"]'),
-            (10, "Java 基础", 1, 1, '{}', '["basics"]'),
-            (20, "集合框架", 1, 1, '{}', '["jcf", "java collection framework", "data structures"]'),
-            (101, "数据类型", 10, 2, '{"template": "PrimitiveType", "details": ["int", "double", "boolean"]}',
-             '["primitive types", "variables", "int", "char"]'),
-            (102, "流程控制", 10, 2, '{}', '["control flow", "if", "else", "switch"]'),
-            (1021, "条件语句", 102, 3, '{"template": "IfStatement"}', '["if-else", "conditional"]'),
-            (1022, "循环语句", 102, 3, '{"template": "ForStatement"}', '["for", "while", "loop", "iteration"]'),
-            (201, "List", 20, 2, '{"template": "Declare<List>"}', '["list", "arraylist", "linkedlist", "ordered"]'),
-            (202, "Set", 20, 2, '{"template": "Declare<Set>"}', '["set"]')
-        ]
-        sql = "INSERT IGNORE INTO knowledge_points (id, name, parent_id, level, ast_template, keywords) VALUES (%s, %s, %s, %s, %s, %s)"
+        """插入预置知识点（从外部 SQL DML 文件执行）。"""
+        # 使用 db util 执行 SQL 文件：D:\bupt-codes\graduation-design\java-ana-mvp\kp_dml.sql
+        sql_file = r"D:\bupt-codes\graduation-design\java-ana-mvp\kp_dml.sql"
 
+        try:
+            # 兼容 UTF-8 BOM
+            with open(sql_file, "r", encoding="utf-8-sig") as f:
+                script = f.read()
+        except FileNotFoundError:
+            print(f"[Knowledge Manager] 未找到 SQL 文件: {sql_file}")
+            return
+        except Exception as e:
+            print(f"[Knowledge Manager] 读取 SQL 文件失败: {e}")
+            return
+
+        # 清理注释并拆分语句（避免 multi=True 不可用的问题）
+        import re
+        # 去掉块注释 /* ... */
+        script = re.sub(r"/\*.*?\*/", "", script, flags=re.S)
+        # 去掉行注释 --
+        lines = []
+        for line in script.splitlines():
+            s = line.strip()
+            if not s or s.startswith("--"):
+                continue
+            lines.append(line)
+        cleaned = "\n".join(lines)
+
+        # 以分号拆分为独立语句
+        statements = [stmt.strip() for stmt in cleaned.split(";") if stmt.strip()]
+        if not statements:
+            print("[Knowledge Manager] SQL 文件为空或仅包含注释。")
+            return
+
+        # 事务执行所有语句
         with self._get_client(autocommit=False) as tx:
-            cursor = tx._conn.cursor()
-            cursor.executemany(sql, points)
-            cursor.close()
-        print("[Knowledge Manager] 预置知识点数据已插入。")
+            try:
+                for stmt in statements:
+                    tx.execute(stmt)
+            except Exception as e:
+                # 出错后由 __exit__ 自动回滚
+                print(f"[Knowledge Manager] 执行 SQL 脚本失败，将回滚。错误: {e}")
+                raise
+
+        print("[Knowledge Manager] 预置知识点 SQL 脚本执行成功并已提交。")
 
     def get_tree_structure(self) -> list:
         """
