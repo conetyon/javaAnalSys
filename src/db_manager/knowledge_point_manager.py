@@ -3,7 +3,7 @@ from .base import BaseManager
 
 class KnowledgePointManager(BaseManager):
     """
-    负责知识点(knowledge_points)的数据库操作。
+    负责知识点(knowledge_points)的数据库操作与模板解析。
     """
 
     def insert_baseline_data(self):
@@ -103,3 +103,65 @@ class KnowledgePointManager(BaseManager):
         for node in nodes:
             indent = "    " * node['depth']
             print(f"{indent}- {node['name']} (ID: {node['id']})")
+
+    # === 新增：解析知识点配置（安全读取 JSON 字段） ===
+    def parse_kp_config(self, kp_row: dict) -> dict:
+        """
+        将 knowledge_points 数据行解析为匹配需要的配置结构。
+
+        预期字段：
+            - name: 知识点名称
+            - ast_template: JSON 字符串，包含 { template, required_nodes, details }
+            - keywords: JSON 字符串或逗号/空格分隔字符串
+            - difficulty 或 target_difficulty: 目标难度（可选）
+
+        返回：
+            {
+                "name": str,
+                "ast": dict,               # 原始 AST 模板字典
+                "required_nodes": list,    # 解析后的 AST 节点（小写）
+                "details": list,           # 解析后的补充节点（小写）
+                "keywords": list,          # 解析后的关键词（小写）
+                "target_difficulty": float 或 None,
+            }
+        """
+        from src.matching.utils import safe_read_json
+        import re
+
+        name = (kp_row or {}).get("name") or ""
+
+        # 解析 ast_template
+        raw_ast = (kp_row or {}).get("ast_template")
+        ast_tpl = safe_read_json(raw_ast, default={})
+        required_nodes = ast_tpl.get("required_nodes") or ast_tpl.get("template_nodes") or []
+        details = ast_tpl.get("details") or []
+
+        # 解析 keywords（支持 JSON 或简单字符串）
+        raw_kws = (kp_row or {}).get("keywords")
+        kws = []
+        parsed_kws = safe_read_json(raw_kws, default=None) if isinstance(raw_kws, (str, bytes, bytearray)) else None
+        if isinstance(parsed_kws, list):
+            kws = parsed_kws
+        elif isinstance(raw_kws, str):
+            # 尝试按非字母数字分隔符切分
+            kws = re.findall(r"[A-Za-z_][A-Za-z0-9_]*", raw_kws)
+        elif isinstance(raw_kws, (list, set, tuple)):
+            kws = list(raw_kws)
+
+        # 解析难度（可选列名兼容）
+        target_diff = kp_row.get("target_difficulty")
+        if target_diff is None:
+            target_diff = kp_row.get("difficulty")
+
+        # 统一为小写、去重
+        def _norm_list(x):
+            return sorted({str(t).strip().lower() for t in (x or []) if str(t).strip()})
+
+        return {
+            "name": name,
+            "ast": ast_tpl,
+            "required_nodes": _norm_list(required_nodes),
+            "details": _norm_list(details),
+            "keywords": _norm_list(kws),
+            "target_difficulty": float(target_diff) if target_diff is not None else None,
+        }

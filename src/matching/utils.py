@@ -18,6 +18,12 @@ def safe_read_json(raw, default=None):
     try:
         if isinstance(raw, (bytes, bytearray)):
             raw = raw.decode("utf-8", errors="ignore")
+        if isinstance(raw, str):
+            s = raw.strip()
+            # 简单纠错：去掉末尾多余分号
+            if s.endswith(";"):
+                s = s[:-1]
+            raw = s
         return json.loads(raw)
     except Exception:
         return default
@@ -62,6 +68,25 @@ def tokenize_to_set(tokens):
         if s:
             out.add(s)
     return out
+
+
+def split_string_to_tokens(s: str) -> list:
+    """
+    将字符串按非字母数字分隔符拆分为若干语义 token。
+    例如：'int double boolean primitive type' 或 '["int","double"]'
+    """
+    if not isinstance(s, str):
+        return []
+    s = s.strip()
+    # 如果是 JSON 列表，交给 safe_read_json
+    if s.startswith("[") and s.endswith("]"):
+        try:
+            data = json.loads(s)
+            if isinstance(data, list):
+                return [str(x) for x in data]
+        except Exception:
+            pass
+    return re.findall(r"[A-Za-z_][A-Za-z0-9_]*", s)
 
 
 # 低价值/符号类 AST token（在 AST 匹配中剔除）
