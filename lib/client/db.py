@@ -6,7 +6,7 @@ from typing import Dict, Optional, Any, List, Tuple
 from mysql.connector import pooling as mysql_pooling, MySQLConnection
 from mysql.connector.pooling import PooledMySQLConnection
 
-from lib.globals import Cfg
+from lib.globals import Cfg, core_logger as log
 from lib.utils.settings import DbConfig
 
 __all__ = ["MySQLClient"]
@@ -40,13 +40,16 @@ class MySQLClient:
     def __init__(self, db: str = 'videoWdb', autocommit: bool = True) -> None:
         cfg = Cfg.db.get(db)
         if cfg is None:
+            log.error("[MySQLClient] 数据库配置不存在: db=%s", db)
             raise ValueError(f"DB config '{db}' not found in settings.db")
         if cfg.db is None:
+            log.error("[MySQLClient] 数据库配置缺少 'db' 字段: db=%s", db)
             raise ValueError(f"DB config '{db}' is missing field 'db'")
 
         self._cfg: DbConfig = cfg
         self._autocommit = autocommit
         self._conn: Optional[MySQLConnection] = None
+        log.debug("[MySQLClient] 初始化: db=%s, autocommit=%s", db, autocommit)
 
     def __enter__(self) -> MySQLClient:
         # 事务模式：保留连接直到 __exit__
@@ -130,25 +133,39 @@ class MySQLClient:
         """
         执行查询，返回单行结果或 None。
         """
+        log.debug("[MySQLClient.fetch_one] SQL: %s, params: %s", sql[:200], params)
         conn = self._get_conn()
         cur = conn.cursor(dictionary=True)
-        cur.execute(sql, params)
-        row = cur.fetchone()
-        cur.close()
-        self._release_conn(conn)
-        return row
+        try:
+            cur.execute(sql, params)
+            row = cur.fetchone()
+            log.debug("[MySQLClient.fetch_one] 结果: %s", "找到" if row else "无")
+            return row
+        except Exception as e:
+            log.error("[MySQLClient.fetch_one] 执行失败: %s", e)
+            raise
+        finally:
+            cur.close()
+            self._release_conn(conn)
 
     def fetch_all(self, sql: str, params: Tuple[Any, ...] = ()) -> List:
         """
         执行查询，返回多行结果列表。
         """
+        log.debug("[MySQLClient.fetch_all] SQL: %s, params: %s", sql[:200], params)
         conn = self._get_conn()
         cur = conn.cursor(dictionary=True)
-        cur.execute(sql, params)
-        rows = cur.fetchall()
-        cur.close()
-        self._release_conn(conn)
-        return rows
+        try:
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            log.debug("[MySQLClient.fetch_all] 返回 %d 行", len(rows) if rows else 0)
+            return rows
+        except Exception as e:
+            log.error("[MySQLClient.fetch_all] 执行失败: %s", e)
+            raise
+        finally:
+            cur.close()
+            self._release_conn(conn)
 
     def update(self, sql: str, params: Tuple[Any, ...] = ()) -> None:
         """
@@ -165,16 +182,20 @@ class MySQLClient:
 
         :param statements: List of (sql, params) tuples
         """
+        log.debug("[MySQLClient.execute_transaction] 开始执行事务, 语句数=%d", len(statements))
         pool = self._get_pool(self._cfg)
         conn = pool.get_connection()
         cur = None
         try:
             conn.autocommit = False
             cur = conn.cursor()
-            for sql, params in statements:
+            for idx, (sql, params) in enumerate(statements):
+                log.debug("[MySQLClient.execute_transaction] 执行语句 #%d: %s", idx, sql[:100])
                 cur.execute(sql, params)
             conn.commit()
-        except Exception:
+            log.info("[MySQLClient.execute_transaction] 事务提交成功, 语句数=%d", len(statements))
+        except Exception as e:
+            log.error("[MySQLClient.execute_transaction] 事务失败，回滚: %s", e)
             conn.rollback()
             raise
         finally:

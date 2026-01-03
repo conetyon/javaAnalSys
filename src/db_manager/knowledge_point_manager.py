@@ -89,10 +89,16 @@ class KnowledgePointManager(BaseManager):
         根据 ID 获取单个知识点详情
         供 Matcher 使用
         """
+        log.debug("[KnowledgePointManager.get_by_id] 查询知识点: kp_id=%d", kp_id)
         sql = "SELECT * FROM knowledge_points WHERE id=%s"
         client = self._get_client()
-        # client.fetch_one 返回字典
-        return client.fetch_one(sql, (kp_id,))
+        result = client.fetch_one(sql, (kp_id,))
+        if result:
+            log.debug("[KnowledgePointManager.get_by_id] 找到知识点: id=%d, name=%s", 
+                      kp_id, result.get("name", "N/A"))
+        else:
+            log.warning("[KnowledgePointManager.get_by_id] 知识点不存在: kp_id=%d", kp_id)
+        return result
 
     def display_tree(self):
         """辅助打印方法"""
@@ -129,16 +135,21 @@ class KnowledgePointManager(BaseManager):
         from src.matching.utils import safe_read_json
         import re
 
+        kp_id = (kp_row or {}).get("id", "N/A")
         name = (kp_row or {}).get("name") or ""
+        
+        log.debug("[KnowledgePointManager.parse_kp_config] 开始解析知识点配置: id=%s, name=%s", kp_id, name)
 
         # 解析 ast_template
         raw_ast = (kp_row or {}).get("ast_template")
+        log.debug("[KnowledgePointManager.parse_kp_config] 原始 ast_template: %s", raw_ast)
         ast_tpl = safe_read_json(raw_ast, default={})
         required_nodes = ast_tpl.get("required_nodes") or ast_tpl.get("template_nodes") or []
         details = ast_tpl.get("details") or []
 
         # 解析 keywords（支持 JSON 或简单字符串）
         raw_kws = (kp_row or {}).get("keywords")
+        log.debug("[KnowledgePointManager.parse_kp_config] 原始 keywords: %s", raw_kws)
         kws = []
         parsed_kws = safe_read_json(raw_kws, default=None) if isinstance(raw_kws, (str, bytes, bytearray)) else None
         if isinstance(parsed_kws, list):
@@ -158,7 +169,7 @@ class KnowledgePointManager(BaseManager):
         def _norm_list(x):
             return sorted({str(t).strip().lower() for t in (x or []) if str(t).strip()})
 
-        return {
+        result = {
             "name": name,
             "ast": ast_tpl,
             "required_nodes": _norm_list(required_nodes),
@@ -166,3 +177,8 @@ class KnowledgePointManager(BaseManager):
             "keywords": _norm_list(kws),
             "target_difficulty": float(target_diff) if target_diff is not None else None,
         }
+        
+        log.info("[KnowledgePointManager.parse_kp_config] 解析完成: name=%s, required_nodes=%s, keywords=%s, target_diff=%s",
+                 name, result["required_nodes"], result["keywords"], result["target_difficulty"])
+        
+        return result

@@ -7,6 +7,7 @@ from typing import List, Dict, Any, Optional
 
 from src.db_manager import KnowledgePointManager
 from lib.client.db import MySQLClient
+from lib.globals import core_logger as log
 import config
 
 
@@ -16,12 +17,15 @@ class KnowledgeService:
     def __init__(self, db_name: str = None):
         self.db_name = db_name or config.DB_NAME
         self.kp_mgr = KnowledgePointManager(self.db_name)
+        log.info("[KnowledgeService] 初始化完成, db=%s", self.db_name)
 
     def get_tree(self) -> List[Dict[str, Any]]:
         """
         获取知识点树状结构
         :return: 树状结构列表
         """
+        log.info("[KnowledgeService.get_tree] 开始获取知识点树状结构")
+        
         # 使用递归 CTE 查询获取层级数据
         sql = """
             WITH RECURSIVE KnowledgeHierarchy AS (
@@ -55,15 +59,21 @@ class KnowledgeService:
                     flat_list.append(dict(zip(columns, row)))
 
             cursor.close()
+        
+        log.info("[KnowledgeService.get_tree] 查询到 %d 条知识点记录", len(flat_list))
 
         # 转换为树状结构
-        return self._list_to_tree(flat_list)
+        tree = self._list_to_tree(flat_list)
+        log.info("[KnowledgeService.get_tree] 转换为树状结构完成, 根节点数=%d", len(tree))
+        return tree
 
     def get_flat_list(self) -> List[Dict[str, Any]]:
         """
         获取知识点扁平列表
         :return: 扁平列表
         """
+        log.info("[KnowledgeService.get_flat_list] 开始获取知识点扁平列表")
+        
         sql = """
             SELECT id, name, parent_id, level, keywords, ast_template
             FROM knowledge_points
@@ -85,7 +95,8 @@ class KnowledgeService:
                     result.append(dict(zip(columns, row)))
 
             cursor.close()
-
+        
+        log.info("[KnowledgeService.get_flat_list] 获取到 %d 条知识点", len(result))
         return result
 
     def get_by_id(self, kp_id: int) -> Optional[Dict[str, Any]]:
@@ -94,7 +105,13 @@ class KnowledgeService:
         :param kp_id: 知识点 ID
         :return: 知识点详情或 None
         """
-        return self.kp_mgr.get_by_id(kp_id)
+        log.debug("[KnowledgeService.get_by_id] 查询知识点: kp_id=%d", kp_id)
+        result = self.kp_mgr.get_by_id(kp_id)
+        if result:
+            log.debug("[KnowledgeService.get_by_id] 找到知识点: name=%s", result.get("name"))
+        else:
+            log.warning("[KnowledgeService.get_by_id] 知识点不存在: kp_id=%d", kp_id)
+        return result
 
     def get_children(self, parent_id: int) -> List[Dict[str, Any]]:
         """
@@ -102,6 +119,8 @@ class KnowledgeService:
         :param parent_id: 父节点 ID
         :return: 子节点列表
         """
+        log.debug("[KnowledgeService.get_children] 查询子节点: parent_id=%d", parent_id)
+        
         sql = """
             SELECT id, name, parent_id, level, keywords
             FROM knowledge_points
@@ -124,7 +143,8 @@ class KnowledgeService:
                     result.append(dict(zip(columns, row)))
 
             cursor.close()
-
+        
+        log.debug("[KnowledgeService.get_children] 找到 %d 个子节点", len(result))
         return result
 
     @staticmethod

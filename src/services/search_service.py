@@ -67,6 +67,7 @@ class SearchService:
         self.kp_mgr = KnowledgePointManager(db_name)
         self.code_mgr = CodeLibraryManager(db_name)
         self.candidate_limit = int(candidate_limit)
+        log.info("[SearchService] 初始化完成, db=%s, candidate_limit=%d", db_name, self.candidate_limit)
 
     def search(
         self,
@@ -84,11 +85,16 @@ class SearchService:
           - 关键词归一化：统一大小写与别名
           - 候选检索：若底层支持则避免全库遍历
         """
+        log.info("[SearchService.search] 开始搜索: kp_id=%d, target_diff=%.2f, top_k=%d, ast_min=%.2f, kw_min=%.2f, diff_mode=%s",
+                 kp_id, target_difficulty, top_k, ast_min_ratio, keyword_min_score, difficulty_mode)
+        
         # 1. 获取知识点
         kp_row = self.kp_mgr.get_by_id(kp_id)
         if not kp_row:
-            log.warning(f"Knowledge point {kp_id} not found.")
+            log.warning("[SearchService.search] 知识点不存在: kp_id=%d", kp_id)
             return []
+        
+        log.debug("[SearchService.search] 知识点原始数据: %s", kp_row)
 
         # 2. 解析知识点配置
         kp_cfg = self.kp_mgr.parse_kp_config(kp_row)
@@ -98,12 +104,19 @@ class SearchService:
 
         # 归一化知识点关键词
         kp_keywords_norm = normalize_keywords_list(kp_cfg.get("keywords", []))
+        
+        log.info("[SearchService.search] 知识点配置: name=%s, need_nodes=%s, keywords=%s",
+                 kp_cfg.get("name"), need_nodes, kp_keywords_norm)
 
         # 3. 候选检索（如不可用则回退到全表）
         candidates = self._fetch_candidates(kp_keywords_norm, need_nodes, limit=self.candidate_limit)
+        log.info("[SearchService.search] 获取候选片段数量: %d", len(candidates))
 
         results = []
-        for snip in candidates:
+        filtered_count = 0
+        for idx, snip in enumerate(candidates):
+            snip_id = snip.get("id", idx)
+            
             # AST
             ast_raw = snip.get("ast_features")
             if isinstance(ast_raw, (str, bytes, bytearray)):
@@ -119,6 +132,9 @@ class SearchService:
             snip_difficulty = snip.get("complexity_score")
             if snip_difficulty is None:
                 snip_difficulty = snip.get("difficulty")
+            
+            log.debug("[SearchService.search] 处理片段 #%s: ast=%s, kw=%s, diff=%s",
+                      snip_id, snip_ast_nodes, snip_keywords_norm, snip_difficulty)
 
             # 4. 打分（将归一化关键词传入策略）
             r = calculate_match_score(
@@ -137,7 +153,11 @@ class SearchService:
 
             # 过滤不合格候选
             if r.get("filtered"):
+                filtered_count += 1
+                log.debug("[SearchService.search] 片段 #%s 被过滤", snip_id)
                 continue
+            
+            log.debug("[SearchService.search] 片段 #%s 通过, score=%.3f", snip_id, r["final_score"])
 
             results.append({
                 "id": snip.get("id"),
@@ -169,7 +189,16 @@ class SearchService:
             })
 
         results.sort(key=lambda x: x["score"], reverse=True)
-        return results[:max(1, int(top_k))]
+        final_results = results[:max(1, int(top_k))]
+        
+        log.info("[SearchService.search] 搜索完成: 候选=%d, 过滤=%d, 通过=%d, 返回=%d",
+                 len(candidates), filtered_count, len(results), len(final_results))
+        
+        if final_results:
+            log.info("[SearchService.search] Top结果: %s",
+                     [(r["id"], r["score"]) for r in final_results[:3]])
+        
+        return final_results
 
     # ---------------- internal helpers ----------------
 
@@ -181,16 +210,30 @@ class SearchService:
           - CodeLibraryManager.find_by_keywords_or_ast(keywords, ast_nodes, limit)
           - CodeLibraryManager.get_all_snippets()
         """
+        log.debug("[SearchService._fetch_candidates] 开始检索候选, keywords=%s, nodes=%s, limit=%d",
+                  kp_keywords_norm, need_nodes, limit)
+        
         # 优先使用索引检索（如已实现）
         if hasattr(self.code_mgr, "find_snippet_candidates"):
             try:
-                return self.code_mgr.find_snippet_candidates(kp_keywords_norm, list(need_nodes or []), limit=limit)
-            except Exception:
-                pass
+                log.debug("[SearchService._fetch_candidates] 尝试 find_snippet_candidates")
+                result = self.code_mgr.find_snippet_candidates(kp_keywords_norm, list(need_nodes or []), limit=limit)
+                log.info("[SearchService._fetch_candidates] 使用 find_snippet_candidates, 获取 %d 条", len(result))
+                return result
+            except Exception as e:
+                log.warning("[SearchService._fetch_candidates] find_snippet_candidates 失败: %s", e)
+        
         if hasattr(self.code_mgr, "find_by_keywords_or_ast"):
             try:
-                return self.code_mgr.find_by_keywords_or_ast(kp_keywords_norm, list(need_nodes or []), limit=limit)
-            except Exception:
-                pass
+                log.debug("[SearchService._fetch_candidates] 尝试 find_by_keywords_or_ast")
+                result = self.code_mgr.find_by_keywords_or_ast(kp_keywords_norm, list(need_nodes or []), limit=limit)
+                log.info("[SearchService._fetch_candidates] 使用 find_by_keywords_or_ast, 获取 %d 条", len(result))
+                return result
+            except Exception as e:
+                log.warning("[SearchService._fetch_candidates] find_by_keywords_or_ast 失败: %s", e)
+        
         # 回退：全量（注意：大库会较慢，建议尽快实现索引检索）
-        return self.code_mgr.get_all_snippets()
+        log.info("[SearchService._fetch_candidates] 回退到全量检索 get_all_snippets")
+        result = self.code_mgr.get_all_snippets()
+        log.info("[SearchService._fetch_candidates] 全量检索获取 %d 条", len(result))
+        return result

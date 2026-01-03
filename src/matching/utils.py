@@ -1,6 +1,7 @@
 # src/matching/utils.py
 import json
 import re
+from lib.globals import core_logger as log
 
 
 def safe_read_json(raw, default=None):
@@ -24,8 +25,14 @@ def safe_read_json(raw, default=None):
             if s.endswith(";"):
                 s = s[:-1]
             raw = s
-        return json.loads(raw)
-    except Exception:
+        result = json.loads(raw)
+        log.debug("[safe_read_json] 解析成功: %s -> %s", str(raw)[:100], type(result).__name__)
+        return result
+    except Exception as e:
+        # 只有当 raw 看起来像 JSON 时才记录警告
+        raw_str = str(raw)[:100] if raw else ""
+        if raw_str.strip().startswith(("{", "[")):
+            log.warning("[safe_read_json] JSON 解析失败: %s, 错误: %s", raw_str, e)
         return default
 
 

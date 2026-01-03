@@ -209,6 +209,9 @@ class CodeLibraryManager(BaseManager):
         获取数据库中所有的代码片段
         供 Matcher 使用
         """
+        log.debug("[CodeLibraryManager.get_all_snippets] 开始获取所有代码片段")
         sql = "SELECT * FROM code_snippets"
         client = self._get_client()
-        return client.fetch_all(sql)
+        result = client.fetch_all(sql)
+        log.info("[CodeLibraryManager.get_all_snippets] 获取到 %d 条代码片段", len(result) if result else 0)
+        return result

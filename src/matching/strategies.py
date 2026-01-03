@@ -15,6 +15,7 @@ import re
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from .utils import tokenize_to_set, sanitize_ast_nodes, safe_read_json, split_string_to_tokens
+from lib.globals import core_logger as log
 
 # 节点映射表：根据知识点模板名称，映射到 tree-sitter-java 的若干节点/标识符
 NODE_MAPPING = {
@@ -158,7 +159,7 @@ def calculate_ast_score(need_nodes: Iterable[str], have_nodes: Iterable[str], mi
     参数:
         need_nodes: 知识点要求的 AST 节点集合（set / list / 其他可迭代）
         have_nodes: 代码片段包含的 AST 节点集合（set / list / 其他可迭代）
-        min_ratio: 视为“结构类似”的最低覆盖率，低于此值得分很低（默认 0.4）
+        min_ratio: 视为"结构类似"的最低覆盖率，低于此值得分很低（默认 0.4）
         no_need_default: 知识点未定义 AST 模板时的默认得分（默认 0.3）
 
     返回:
@@ -174,39 +175,53 @@ def calculate_ast_score(need_nodes: Iterable[str], have_nodes: Iterable[str], mi
     need = tokenize_to_set(need_nodes)
     if not need:
         # 知识点未显式给 AST 模板，给一个更低的中性分
+        log.debug("[AST] 知识点未定义 AST 模板，返回默认分 %.2f", no_need_default)
         return float(no_need_default), 0.0
 
     have = sanitize_ast_nodes(have_nodes)
+    log.debug("[AST] need_nodes=%s, have_nodes=%s", need, have)
+    
     if not have:
+        log.debug("[AST] 片段无 AST 节点，得分=0")
         return 0.0, 0.0
 
     # 领域锚点约束：如果模板包含锚点，则必须至少命中一个
     anchors = need.intersection(DOMAIN_ANCHORS)
     if anchors and not have.intersection(anchors):
+        log.debug("[AST] 锚点约束未满足: 需要锚点=%s, 片段无命中", anchors)
         return 0.0, 0.0
 
     inter = need.intersection(have)
     if not inter:
+        log.debug("[AST] 无交集，得分=0")
         return 0.0, 0.0
 
     coverage = len(inter) / len(need)
+    log.debug("[AST] 交集=%s, 覆盖率=%.2f (%d/%d)", inter, coverage, len(inter), len(need))
 
     # 覆盖率过低，视作结构不相似
     if coverage < min_ratio:
-        return 0.2 * coverage, coverage
+        score = 0.2 * coverage
+        log.debug("[AST] 覆盖率过低(< %.2f)，得分=%.3f", min_ratio, score)
+        return score, coverage
 
     # 完全覆盖
     if coverage >= 0.99:
+        log.debug("[AST] 完全覆盖，得分=1.0")
         return 1.0, coverage
 
     # 大部分覆盖：score ∈ [0.7, 0.9]
     if coverage >= 0.7:
         score = 0.7 + (coverage - 0.7) * (0.2 / 0.29)
-        return max(0.0, min(1.0, score)), coverage
+        score = max(0.0, min(1.0, score))
+        log.debug("[AST] 大部分覆盖(>=0.7)，得分=%.3f", score)
+        return score, coverage
 
     # 一般覆盖：score ∈ [0.5, 0.7)
     score = 0.5 + (coverage - min_ratio) * (0.2 / (0.7 - min_ratio))
-    return max(0.0, min(1.0, score)), coverage
+    score = max(0.0, min(1.0, score))
+    log.debug("[AST] 一般覆盖，得分=%.3f", score)
+    return score, coverage
 
 
 def calculate_keyword_score(kp_kws: Any, snip_kws: Any, kp_name: Optional[str] = None) -> Tuple[float, int, int]:
@@ -234,13 +249,17 @@ def calculate_keyword_score(kp_kws: Any, snip_kws: Any, kp_name: Optional[str] =
     base_tokens = kp_tokens.union(name_tokens)
 
     snip_tokens = _normalize_input_tokens(snip_kws)
+    
+    log.debug("[KW] kp_tokens=%s, name_tokens=%s, snip_tokens=%s", kp_tokens, name_tokens, snip_tokens)
 
     if not base_tokens:
         # 知识点没有定义关键词，给一个中性分（降低到 0.5）
+        log.debug("[KW] 知识点无关键词定义，返回默认分 0.5")
         return 0.5, 0, 0
 
     weighted_total = 0.0
     weighted_hit = 0.0
+    hit_details = []
 
     for token in base_tokens:
         if token in JAVA_CORE_KEYWORDS:
@@ -255,6 +274,7 @@ def calculate_keyword_score(kp_kws: Any, snip_kws: Any, kp_name: Optional[str] =
         weighted_total += w
         if token in snip_tokens:
             weighted_hit += w
+            hit_details.append(f"{token}(w={w})")
 
     # 未命中 -> 0 分
     if weighted_hit <= 0.0 or weighted_total <= 0.0:
@@ -264,6 +284,9 @@ def calculate_keyword_score(kp_kws: Any, snip_kws: Any, kp_name: Optional[str] =
 
     plain_inter = len(base_tokens.intersection(snip_tokens))
     plain_total = len(base_tokens)
+
+    log.debug("[KW] 命中详情: %s, 加权得分=%.3f (%.2f/%.2f), 简单命中=%d/%d",
+              hit_details, score, weighted_hit, weighted_total, plain_inter, plain_total)
 
     return max(0.0, min(1.0, score)), plain_inter, plain_total
 
@@ -320,7 +343,7 @@ def calculate_match_score(
     keyword_min_score: float = 0.4,
 ) -> Dict[str, Any]:
     """
-    综合计算“知识点-代码片段”的最终匹配得分。
+    综合计算"知识点-代码片段"的最终匹配得分。
 
     多阶段机制：
         1. AST 快速过滤（结构不相似直接淘汰；当模板含锚点时必须命中锚点）
@@ -355,6 +378,11 @@ def calculate_match_score(
             "filtered": bool,   # True 表示在某一阶段被过滤
         }
     """
+    log.debug("[MATCH] === 开始匹配计算 === kp_name=%s", kp_name)
+    log.debug("[MATCH] 输入: kp_ast=%s, snip_ast=%s", kp_ast_nodes, snip_ast_nodes)
+    log.debug("[MATCH] 输入: kp_kw=%s, snip_kw=%s", kp_keywords, snip_keywords)
+    log.debug("[MATCH] 输入: snip_diff=%s, target_diff=%s, mode=%s", snip_difficulty, target_difficulty, difficulty_mode)
+    
     # 权重
     weights = weights or WEIGHT_DEFAULTS
     w_ast = float(weights.get("ast", WEIGHT_DEFAULTS["ast"]))
@@ -368,20 +396,26 @@ def calculate_match_score(
         w_ast /= total_w
         w_kw /= total_w
         w_diff /= total_w
+    
+    log.debug("[MATCH] 归一化权重: ast=%.2f, kw=%.2f, diff=%.2f", w_ast, w_kw, w_diff)
 
     # 1. AST 结构匹配（兼容 JSON/字符串）
     need_empty = (len(tokenize_to_set(kp_ast_nodes)) == 0)
     ast_score, ast_cov = calculate_ast_score(kp_ast_nodes, snip_ast_nodes, min_ratio=ast_min_ratio)
 
     filtered = False
+    filter_reason = []
+    
     # 当存在 AST 模板时才启用 AST 覆盖率过滤
     if not need_empty and ast_cov < ast_min_ratio:
         filtered = True
+        filter_reason.append(f"AST覆盖率过低({ast_cov:.2f}<{ast_min_ratio})")
 
     # 2. 关键词验证（兼容 JSON/字符串）
     kw_score, kw_hit, kw_total = calculate_keyword_score(kp_keywords, snip_keywords, kp_name=kp_name)
     if kw_total > 0 and kw_score < keyword_min_score:
         filtered = True
+        filter_reason.append(f"关键词得分过低({kw_score:.2f}<{keyword_min_score})")
 
     # 3. 难度过滤
     diff_score = calculate_difficulty_score(
@@ -391,16 +425,21 @@ def calculate_match_score(
     )
     if difficulty_mode == "strict" and diff_score <= 0.0:
         filtered = True
+        filter_reason.append("难度严格模式不匹配")
 
     # 4. 加权融合
     if filtered:
         final_score = 0.0
+        log.debug("[MATCH] 被过滤: %s", "; ".join(filter_reason))
     else:
         final_score = w_ast * ast_score + w_kw * kw_score + w_diff * diff_score
         if final_score < 0.0:
             final_score = 0.0
         if final_score > 1.0:
             final_score = 1.0
+
+    log.debug("[MATCH] 结果: final=%.3f, ast=%.3f(cov=%.2f), kw=%.3f(%d/%d), diff=%.3f, filtered=%s",
+              final_score, ast_score, ast_cov, kw_score, kw_hit, kw_total, diff_score, filtered)
 
     return {
         "final_score": final_score,
