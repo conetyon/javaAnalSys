@@ -1,0 +1,133 @@
+# api/middleware/error_handler.py
+"""
+统一异常处理中间件
+"""
+from flask import Flask, jsonify, request
+from pydantic import ValidationError
+from lib.globals import api_logger as log
+
+
+class ApiException(Exception):
+    """自定义 API 异常"""
+
+    def __init__(self, message: str, code: int = 400, error: str = None):
+        super().__init__(message)
+        self.message = message
+        self.code = code
+        self.error = error
+
+
+class NotFoundException(ApiException):
+    """资源未找到异常"""
+
+    def __init__(self, message: str = "资源未找到", error: str = None):
+        super().__init__(message, code=404, error=error)
+
+
+class BadRequestException(ApiException):
+    """请求参数错误异常"""
+
+    def __init__(self, message: str = "请求参数错误", error: str = None):
+        super().__init__(message, code=400, error=error)
+
+
+class InternalServerException(ApiException):
+    """服务器内部错误异常"""
+
+    def __init__(self, message: str = "服务器内部错误", error: str = None):
+        super().__init__(message, code=500, error=error)
+
+
+def register_error_handlers(app: Flask):
+    """
+    注册全局异常处理器
+    :param app: Flask 应用实例
+    """
+
+    @app.errorhandler(ApiException)
+    def handle_api_exception(e: ApiException):
+        """处理自定义 API 异常"""
+        log.warning(f"[{request.method}] {request.path} - ApiException: {e.message}")
+        response = {
+            "code": e.code,
+            "message": e.message,
+        }
+        if e.error:
+            response["error"] = e.error
+        return jsonify(response), e.code
+
+    @app.errorhandler(ValidationError)
+    def handle_validation_error(e: ValidationError):
+        """处理 Pydantic 校验异常"""
+        log.warning(f"[{request.method}] {request.path} - ValidationError: {str(e)}")
+        errors = []
+        for error in e.errors():
+            field = ".".join(str(loc) for loc in error["loc"])
+            errors.append(f"{field}: {error['msg']}")
+        return jsonify({
+            "code": 422,
+            "message": "请求参数校验失败",
+            "error": "; ".join(errors)
+        }), 422
+
+    @app.errorhandler(400)
+    def handle_bad_request(e):
+        """处理 400 错误"""
+        log.warning(f"[{request.method}] {request.path} - Bad Request: {str(e)}")
+        return jsonify({
+            "code": 400,
+            "message": "请求格式错误",
+            "error": str(e)
+        }), 400
+
+    @app.errorhandler(404)
+    def handle_not_found(e):
+        """处理 404 错误"""
+        log.info(f"[{request.method}] {request.path} - Not Found")
+        return jsonify({
+            "code": 404,
+            "message": "接口不存在",
+            "error": f"路径 {request.path} 未找到"
+        }), 404
+
+    @app.errorhandler(405)
+    def handle_method_not_allowed(e):
+        """处理 405 错误"""
+        log.warning(f"[{request.method}] {request.path} - Method Not Allowed")
+        return jsonify({
+            "code": 405,
+            "message": "请求方法不允许",
+            "error": f"路径 {request.path} 不支持 {request.method} 方法"
+        }), 405
+
+    @app.errorhandler(500)
+    def handle_internal_error(e):
+        """处理 500 错误"""
+        log.error(f"[{request.method}] {request.path} - Internal Error: {str(e)}", exc_info=True)
+        return jsonify({
+            "code": 500,
+            "message": "服务器内部错误",
+            "error": str(e)
+        }), 500
+
+    @app.errorhandler(Exception)
+    def handle_generic_exception(e):
+        """处理未捕获的异常"""
+        log.error(f"[{request.method}] {request.path} - Unhandled Exception: {str(e)}", exc_info=True)
+        return jsonify({
+            "code": 500,
+            "message": "服务器内部错误",
+            "error": str(e)
+        }), 500
+
+    # 请求日志中间件
+    @app.before_request
+    def log_request():
+        """记录请求日志"""
+        log.debug(f"[{request.method}] {request.path} - Request started")
+
+    @app.after_request
+    def log_response(response):
+        """记录响应日志"""
+        log.debug(f"[{request.method}] {request.path} - Response: {response.status_code}")
+        return response

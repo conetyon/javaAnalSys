@@ -1,0 +1,81 @@
+# api/schemas/match.py
+"""
+匹配相关的请求/响应模型
+"""
+from typing import List, Optional
+from pydantic import BaseModel, Field
+
+
+class MatchRequest(BaseModel):
+    """匹配请求参数"""
+    kp_id: int = Field(description="知识点 ID")
+    target_difficulty: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="目标难度 (0-1)"
+    )
+    top_k: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        description="返回结果数量"
+    )
+    ast_min_ratio: float = Field(
+        default=0.4,
+        ge=0.0,
+        le=1.0,
+        description="AST 结构匹配最低阈值"
+    )
+    keyword_min_score: float = Field(
+        default=0.4,
+        ge=0.0,
+        le=1.0,
+        description="关键词匹配最低得分"
+    )
+    difficulty_mode: str = Field(
+        default="relaxed",
+        description="难度匹配模式: strict / relaxed"
+    )
+
+
+class MatchResultItem(BaseModel):
+    """单个匹配结果"""
+    id: Optional[int] = Field(default=None, description="代码片段 ID")
+    content: str = Field(default="", description="代码内容")
+    score: float = Field(description="综合得分")
+    ast_ratio: float = Field(description="AST 匹配率")
+    ast_coverage: float = Field(description="AST 覆盖率")
+    keyword_score: float = Field(description="关键词得分")
+    keyword_hit: int = Field(default=0, description="命中关键词数")
+    keyword_total: int = Field(default=0, description="总关键词数")
+    difficulty: float = Field(description="难度得分")
+    details: Optional[str] = Field(default=None, description="详情文本")
+    details_md: Optional[str] = Field(default=None, description="详情 Markdown")
+    file_path: Optional[str] = Field(default=None, description="源文件路径")
+
+
+class MatchResponse(BaseModel):
+    """匹配响应"""
+    code: int = Field(default=200, description="状态码")
+    message: str = Field(default="success", description="响应消息")
+    data: List[MatchResultItem] = Field(default_factory=list, description="匹配结果列表")
+    kp_id: int = Field(description="查询的知识点 ID")
+    total: int = Field(default=0, description="结果总数")
+
+
+class BatchMatchRequest(BaseModel):
+    """批量匹配请求"""
+    kp_ids: List[int] = Field(description="知识点 ID 列表")
+    target_difficulty: float = Field(default=0.5, ge=0.0, le=1.0)
+    top_k: int = Field(default=5, ge=1, le=50)
+    ast_min_ratio: float = Field(default=0.4, ge=0.0, le=1.0)
+    keyword_min_score: float = Field(default=0.4, ge=0.0, le=1.0)
+    difficulty_mode: str = Field(default="relaxed")
+
+
+class BatchMatchResponse(BaseModel):
+    """批量匹配响应"""
+    code: int = Field(default=200, description="状态码")
+    message: str = Field(default="success", description="响应消息")
+    data: dict = Field(default_factory=dict, description="按 kp_id 分组的匹配结果")

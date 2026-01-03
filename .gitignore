@@ -17,6 +17,7 @@ Thumbs.db
 
 # 任何不应该提交的临时文件
 *.log
+*.lock
 
 # 配置文件
 config/
