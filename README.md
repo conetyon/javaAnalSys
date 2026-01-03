@@ -325,37 +325,6 @@ curl http://localhost:5000/api/knowledge/tree
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 改动说明
-
-### 新增文件
-
-| 文件 | 说明 |
-|------|------|
-| `api/__init__.py` | Flask App 工厂函数 |
-| `api/routes/__init__.py` | 路由蓝图注册 |
-| `api/routes/knowledge.py` | 知识点路由 |
-| `api/routes/match.py` | 匹配路由 |
-| `api/schemas/*.py` | Pydantic 数据模型 |
-| `api/middleware/error_handler.py` | 统一异常处理 |
-| `src/services/knowledge_service.py` | 知识点服务 |
-| `scripts/offline_tasks.py` | 离线任务函数 |
-| `run_api.py` | API 启动入口 |
-
-### 修改文件
-
-| 文件 | 说明 |
-|------|------|
-| `main.py` | 重构为命令行工具，调用 `scripts/offline_tasks.py` |
-| `src/services/__init__.py` | 导出新增的 `KnowledgeService` |
-
-### 保留文件（未修改）
-
-- `src/db_manager/*` - 数据库管理
-- `src/java_analyzer/*` - Java 分析器
-- `src/matching/*` - 匹配策略
-- `lib/*` - 基础设施
-- `config.py` - 全局配置
-
 ## 开发指南
 
 ### 添加新接口
