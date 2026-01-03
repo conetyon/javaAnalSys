@@ -232,31 +232,31 @@ def run_full_pipeline(
     }
 
     # Step 1: 初始化数据库
-    print("\n=== Step 1: Init Database ===")
+    log.info("=== Step 1: Init Database ===")
     result["db_init"] = init_database(db_name=db_name)
     if result["db_init"]:
-        print("[INFO] 数据库初始化完成")
+        log.info("数据库初始化完成")
     else:
-        print("[ERROR] 数据库初始化失败")
+        log.error("数据库初始化失败")
         return result
 
     # Step 2: 代码分析
-    print("\n=== Step 2: Analyze & Ingest Code ===")
+    log.info("=== Step 2: Analyze & Ingest Code ===")
     try:
         snippets = analyze_code_file(sample_file, db_name=db_name)
         result["code_analysis"]["snippets"] = len(snippets)
-        print(f"[INFO] 检测到 {len(snippets)} 个代码片段")
+        log.info(f"检测到 {len(snippets)} 个代码片段")
     except FileNotFoundError as e:
-        print(f"[ERROR] {e}")
+        log.error(f"文件未找到: {e}")
         return result
     except Exception as e:
-        print(f"[ERROR] 代码分析失败: {e}")
+        log.error(f"代码分析失败: {e}")
         return result
 
     # Step 3: 匹配测试
-    print("\n=== Step 3: Matching Execution ===")
+    log.info("=== Step 3: Matching Execution ===")
     if not kp_ids:
-        print("[WARN] 未指定知识点 ID，跳过匹配测试")
+        log.warning("未指定知识点 ID，跳过匹配测试")
     else:
         matching_results = run_matching_test(
             kp_ids=kp_ids,
@@ -268,21 +268,20 @@ def run_full_pipeline(
 
         # 打印匹配结果
         for kp_id, matches in matching_results.items():
-            print(f"\n-> Top {len(matches)} Matches for KP {kp_id}:")
+            log.info(f"-> Top {len(matches)} Matches for KP {kp_id}:")
             if not matches:
-                print("   [EMPTY] 无匹配结果")
+                log.info("   [EMPTY] 无匹配结果")
             for rank, match in enumerate(matches, 1):
-                print(f"\n[#{rank}] Score: {match.get('score')} | "
-                      f"AST: {match.get('ast_ratio')} | "
-                      f"KW: {match.get('keyword_score')} | "
-                      f"Diff: {match.get('difficulty')}")
+                log.info(f"[#{rank}] Score: {match.get('score')} | "
+                         f"AST: {match.get('ast_ratio')} | "
+                         f"KW: {match.get('keyword_score')} | "
+                         f"Diff: {match.get('difficulty')}")
                 if match.get('details'):
-                    print(f"Details: {match.get('details')}")
+                    log.debug(f"Details: {match.get('details')}")
                 if match.get('file_path'):
-                    print(f"File: {match.get('file_path')}")
-                print("-" * 40)
+                    log.debug(f"File: {match.get('file_path')}")
                 preview = (match.get('content') or '').strip()[:240].replace('\n', ' ')
-                print(f"Code: {preview}...")
+                log.debug(f"Code: {preview}...")
 
     log.info("[离线任务] 完整处理流程结束")
     return result

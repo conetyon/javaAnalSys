@@ -1,6 +1,7 @@
 # src/db_manager/code_library_manager.py
 import json
 from .base import BaseManager
+from lib.globals import core_logger as log
 
 
 class CodeLibraryManager(BaseManager):
@@ -125,10 +126,10 @@ class CodeLibraryManager(BaseManager):
                         )
 
                 tx._conn.commit()
-                print("[Code Library Manager] 预置代码数据已幂等处理完成。")
+                log.info("预置代码数据已幂等处理完成")
 
             except Exception as e:
-                print(f"[Error] 预置代码数据写入失败: {e}")
+                log.error(f"预置代码数据写入失败: {e}")
                 tx._conn.rollback()
                 raise
             finally:
@@ -142,7 +143,7 @@ class CodeLibraryManager(BaseManager):
         3. 若内容变更或文件不存在，更新/插入片段。
         """
         if not snippets:
-            print(f"[Code Library Manager] 文件 '{filename}' 中未检测到可保存的片段，跳过保存。")
+            log.debug(f"文件 '{filename}' 中未检测到可保存的片段，跳过保存")
             return
 
         with self._get_client(autocommit=False) as tx:
@@ -163,7 +164,7 @@ class CodeLibraryManager(BaseManager):
                         return
 
                     file_id = db_id
-                    print(f"[Code Library Manager] 检测到 '{filename}' 内容变更，正在更新数据库...")
+                    log.info(f"检测到 '{filename}' 内容变更，正在更新数据库...")
                     cursor.execute(
                         "UPDATE code_files SET content = %s WHERE id = %s",
                         (file_content, file_id)
@@ -193,11 +194,11 @@ class CodeLibraryManager(BaseManager):
                       VALUES (%s, %s, %s, %s, %s, %s, %s)
                       """
                 cursor.executemany(sql, snippets_to_insert)
-                print(f"[Code Library Manager] 已保存 '{filename}' (ID: {file_id})，更新 {len(snippets)} 个片段。")
+                log.info(f"已保存 '{filename}' (ID: {file_id})，更新 {len(snippets)} 个片段")
 
                 tx._conn.commit()
             except Exception as e:
-                print(f"[Error] 保存分析结果失败: {e}")
+                log.error(f"保存分析结果失败: {e}")
                 tx._conn.rollback()
                 raise
             finally:

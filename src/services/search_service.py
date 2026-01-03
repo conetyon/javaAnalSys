@@ -8,6 +8,7 @@ from typing import List, Dict, Any
 
 from src.db_manager import KnowledgePointManager, CodeLibraryManager
 from src.matching.utils import safe_read_json
+from lib.globals import core_logger as log
 from src.matching.strategies import (
     extract_required_nodes,
     calculate_match_score,
@@ -86,7 +87,7 @@ class SearchService:
         # 1. 获取知识点
         kp_row = self.kp_mgr.get_by_id(kp_id)
         if not kp_row:
-            print(f"Knowledge point {kp_id} not found.")
+            log.warning(f"Knowledge point {kp_id} not found.")
             return []
 
         # 2. 解析知识点配置

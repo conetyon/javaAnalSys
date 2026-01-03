@@ -1,5 +1,6 @@
 # db_manager/knowledge_point_manager.py
 from .base import BaseManager
+from lib.globals import core_logger as log
 
 class KnowledgePointManager(BaseManager):
     """
@@ -16,10 +17,10 @@ class KnowledgePointManager(BaseManager):
             with open(sql_file, "r", encoding="utf-8-sig") as f:
                 script = f.read()
         except FileNotFoundError:
-            print(f"[Knowledge Manager] 未找到 SQL 文件: {sql_file}")
+            log.error(f"未找到 SQL 文件: {sql_file}")
             return
         except Exception as e:
-            print(f"[Knowledge Manager] 读取 SQL 文件失败: {e}")
+            log.error(f"读取 SQL 文件失败: {e}")
             return
 
         # 清理注释并拆分语句（避免 multi=True 不可用的问题）
@@ -38,7 +39,7 @@ class KnowledgePointManager(BaseManager):
         # 以分号拆分为独立语句
         statements = [stmt.strip() for stmt in cleaned.split(";") if stmt.strip()]
         if not statements:
-            print("[Knowledge Manager] SQL 文件为空或仅包含注释。")
+            log.warning("SQL 文件为空或仅包含注释")
             return
 
         # 事务执行所有语句
@@ -48,10 +49,10 @@ class KnowledgePointManager(BaseManager):
                     tx.execute(stmt)
             except Exception as e:
                 # 出错后由 __exit__ 自动回滚
-                print(f"[Knowledge Manager] 执行 SQL 脚本失败，将回滚。错误: {e}")
+                log.error(f"执行 SQL 脚本失败，将回滚。错误: {e}")
                 raise
 
-        print("[Knowledge Manager] 预置知识点 SQL 脚本执行成功并已提交。")
+        log.info("预置知识点 SQL 脚本执行成功并已提交")
 
     def get_tree_structure(self) -> list:
         """
@@ -75,13 +76,13 @@ class KnowledgePointManager(BaseManager):
         """在控制台打印知识点树（辅助功能）。"""
         nodes = self.get_tree_structure()
         if not nodes:
-            print("数据库中没有知识点数据。")
+            log.info("数据库中没有知识点数据")
             return
 
-        print("\n--- 知识点层级结构 ---")
+        log.info("--- 知识点层级结构 ---")
         for node in nodes:
             indent = "    " * node['depth']
-            print(f"{indent}- {node['name']} (ID: {node['id']}, Level: {node['level']})")
+            log.info(f"{indent}- {node['name']} (ID: {node['id']}, Level: {node['level']})")
 
     def get_by_id(self, kp_id: int):
         """
@@ -94,15 +95,15 @@ class KnowledgePointManager(BaseManager):
         return client.fetch_one(sql, (kp_id,))
 
     def display_tree(self):
-        # 辅助打印方法
+        """辅助打印方法"""
         nodes = self.get_tree_structure()
         if not nodes:
-            print("数据库中没有知识点数据。")
+            log.info("数据库中没有知识点数据")
             return
-        print("\n--- 知识点层级结构 ---")
+        log.info("--- 知识点层级结构 ---")
         for node in nodes:
             indent = "    " * node['depth']
-            print(f"{indent}- {node['name']} (ID: {node['id']})")
+            log.info(f"{indent}- {node['name']} (ID: {node['id']})")
 
     # === 新增：解析知识点配置（安全读取 JSON 字段） ===
     def parse_kp_config(self, kp_row: dict) -> dict:
