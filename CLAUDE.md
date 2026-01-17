@@ -26,11 +26,30 @@ pip install -r requirements.txt
 ### Database Management
 
 ```bash
-# Initialize database (creates tables and structure)
-python main.py --init-db
-
-# Note: Pre-populate knowledge points by importing kp_dml.sql manually
+# Database and code analysis are automatically handled when running main.py
+python main.py
 ```
+
+**Automated Process**:
+1. Database initialization (creates tables, inserts knowledge points)
+2. Code analysis (extracts features from `sample_code.java` and saves to DB)
+3. Both are idempotent - safe to run multiple times
+
+**Manual operations** (if needed):
+```python
+from scripts.offline_tasks import init_database, analyze_code_file
+
+# Initialize database only
+init_database()
+
+# Analyze a specific file
+analyze_code_file("path/to/file.java", save_to_db=True)
+```
+
+**Note**:
+- All operations use `CREATE TABLE IF NOT EXISTS` (safe to re-run)
+- Knowledge points are automatically inserted by `init_database()`
+- If baseline data is missing, manually import `kp_dml.sql`
 
 ### API Service
 
@@ -47,27 +66,39 @@ python run_api.py --port 8080 --host 0.0.0.0 --debug
 **Test by commenting/uncommenting scenarios (no CLI arguments needed)**
 
 ```bash
-# Run directly
+# Run directly (complete automation pipeline)
 python main.py
 ```
 
+**Automated Pipeline** (runs automatically on every execution):
+1. **Initialize Database** - Create table schema and insert preset knowledge points
+2. **Analyze Sample Code** - Extract code snippet features from `sample_code.java` and save to database
+3. **Run Test Scenario** - Execute selected matching test
+
 **How to use**:
 1. Open `main.py`
-2. Find the `run_test()` function
+2. Find the scenario selection area in Step 3 of `if __name__ == "__main__":`
 3. Uncomment the desired scenario (remove `#`)
-4. Modify `kp_ids` to test different knowledge points
+4. Modify `kp_ids` within scenario functions to test different knowledge points
 5. Run `python main.py`
 
 **Available scenarios**:
-- **Scenario 1**: Single knowledge point matching
-- **Scenario 2**: Composite knowledge point matching (find code involving multiple KPs)
+- **Scenario 1**: `run_single_test()` - Single knowledge point matching
+- **Scenario 2**: `run_multiple_test()` - Composite knowledge point matching (find code involving multiple KPs)
+- **Utility Functions**: `run_utility_functions()` - View KP hierarchy, analyze other code files
+
+**Features**:
+- All steps are idempotent (safe to run multiple times)
+- Fully automated pipeline, no manual initialization needed
+- Analyzes `./sample_code.java` by default (can be replaced)
+- Configuration: `config/db.yaml`
 
 **Example knowledge point IDs**: `10010, 10011, 10031, 10034, 10083` (print-related)
 
 **Utility functions** (can be imported from `scripts.offline_tasks`):
-- `init_database()` - Initialize database
-- `analyze_code_file(path)` - Analyze Java file
-- `print_knowledge_tree()` - View KP hierarchy
+- `init_database()` - Initialize database (called automatically in Step 1)
+- `analyze_code_file(path)` - Analyze Java file (called automatically for sample_code.java in Step 2)
+- `print_knowledge_tree()` - View KP hierarchy (included in utility scenario)
 - `run_matching_test(kp_ids)` - Single/batch matching
 - `run_composite_matching_test(kp_ids)` - Composite matching
 
@@ -359,7 +390,7 @@ curl -X POST http://localhost:5000/api/match/composite \
 
 1. Modify table definitions in `src/db_manager/database.py` (`_init_tables()`)
 2. Update manager classes in `src/db_manager/` for new fields
-3. Run `init_database()` from `scripts.offline_tasks` (uses `CREATE TABLE IF NOT EXISTS`, safe to re-run)
+3. Run `python main.py` (database auto-initialization uses `CREATE TABLE IF NOT EXISTS`, safe to re-run)
 4. For destructive changes, manually drop tables first or write migration script
 
 ## Files NOT to Edit
