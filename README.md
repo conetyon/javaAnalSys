@@ -168,27 +168,27 @@ python run_api.py --debug
 python run_api.py --host 0.0.0.0
 ```
 
-### 离线任务 (`main.py`)
+### 离线任务测试 (`main.py`)
+
+**测试方式**：通过注释/取消注释选择测试场景（无需命令行参数）
 
 ```bash
-# 运行完整流程（初始化 + 分析 + 匹配）
+# 直接运行
 python main.py
-
-# 仅初始化数据库
-python main.py --init-db
-
-# 分析指定 Java 文件
-python main.py --analyze path/to/file.java
-
-# 对指定知识点运行匹配测试
-python main.py --match 10011,10012
-
-# 打印知识点树结构
-python main.py --tree
-
-# 指定参数
-python main.py --sample sample.java --difficulty 0.5 --top-k 10
 ```
+
+**使用步骤**：
+1. 打开 `main.py` 文件
+2. 找到 `run_test()` 函数中的测试场景
+3. 取消注释想要运行的场景（删除 `#` 号）
+4. 修改 `kp_ids` 参数测试不同知识点
+5. 运行 `python main.py`
+
+**可用场景**：
+- **场景 1**: 单个知识点匹配 - 为单个知识点查找最匹配的代码片段
+- **场景 2**: 综合知识点匹配 - 查找同时涉及多个知识点的代码片段
+
+**示例知识点 ID**：`10010, 10011, 10031, 10034, 10083`（print 相关）
 
 ## API 接口
 
@@ -205,13 +205,14 @@ python main.py --sample sample.java --difficulty 0.5 --top-k 10
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/match` | 知识点匹配 |
-| POST | `/api/match/batch` | 批量匹配 |
+| POST | `/api/match` | 单个知识点匹配 |
+| POST | `/api/match/batch` | 批量知识点匹配（独立） |
+| POST | `/api/match/composite` | 综合知识点匹配 |
 | GET | `/api/match/health` | 匹配服务健康检查 |
 
 ### 请求示例
 
-#### 知识点匹配
+#### 单个知识点匹配
 
 ```bash
 curl -X POST http://localhost:5000/api/match \
@@ -251,6 +252,63 @@ curl -X POST http://localhost:5000/api/match \
   ]
 }
 ```
+
+#### 综合知识点匹配
+
+```bash
+curl -X POST http://localhost:5000/api/match/composite \
+  -H "Content-Type: application/json" \
+  -d '{
+    "kp_ids": [10011, 10012, 10034],
+    "target_difficulty": 0.5,
+    "top_k": 5,
+    "ast_min_ratio": 0.3,
+    "keyword_min_score": 0.3,
+    "score_aggregation": "average"
+  }'
+```
+
+响应：
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "kp_ids": [10011, 10012, 10034],
+  "total": 3,
+  "data": [
+    {
+      "id": 1,
+      "content": "...",
+      "composite_score": 0.75,
+      "kp_count": 3,
+      "kp_details": [
+        {
+          "kp_id": 10011,
+          "kp_name": "循环语句",
+          "score": 0.8,
+          "ast_ratio": 0.9,
+          "keyword_score": 0.7
+        },
+        {
+          "kp_id": 10012,
+          "kp_name": "条件语句",
+          "score": 0.75,
+          "ast_ratio": 0.85,
+          "keyword_score": 0.65
+        }
+      ],
+      "score_aggregation": "average",
+      "file_path": "./sample_code.java"
+    }
+  ]
+}
+```
+
+**score_aggregation 聚合方式**：
+- `average`: 平均得分（推荐，均衡包含各知识点）
+- `min`: 最小得分（必须同时满足所有知识点）
+- `sum`: 求和得分（偏好覆盖更多知识点）
 
 #### 获取知识点树
 

@@ -19,6 +19,27 @@ from src.java_analyzer import JavaAnalyzer
 from src.services import SearchService
 
 
+# 模块级单例缓存（避免大批量文件处理时重复创建实例）
+_search_service_cache: Dict[str, SearchService] = {}
+
+
+def _get_search_service(db_name: str = None) -> SearchService:
+    """
+    获取 SearchService 实例（单例模式）
+    避免在批量处理时重复创建实例，提升性能
+
+    :param db_name: 数据库名称
+    :return: SearchService 实例
+    """
+    db_name = db_name or config.DB_NAME
+
+    if db_name not in _search_service_cache:
+        log.info(f"[离线任务] 创建 SearchService 实例: db={db_name}")
+        _search_service_cache[db_name] = SearchService(db_name=db_name)
+
+    return _search_service_cache[db_name]
+
+
 def init_database(db_name: str = None, insert_baseline: bool = True) -> bool:
     """
     初始化数据库
@@ -163,7 +184,8 @@ def run_matching_test(
     db_name = db_name or config.DB_NAME
     log.info(f"[离线任务] 开始匹配测试: kp_ids={kp_ids}")
 
-    search_service = SearchService(db_name=db_name)
+    # 使用单例模式获取服务实例
+    search_service = _get_search_service(db_name=db_name)
     results = {}
 
     for kp_id in kp_ids:
@@ -285,6 +307,79 @@ def run_full_pipeline(
 
     log.info("[离线任务] 完整处理流程结束")
     return result
+
+
+def run_composite_matching_test(
+    kp_ids: List[int],
+    target_difficulty: float = 0.5,
+    top_k: int = 5,
+    ast_min_ratio: float = 0.3,
+    keyword_min_score: float = 0.3,
+    difficulty_mode: str = "relaxed",
+    score_aggregation: str = "average",
+    db_name: str = None
+) -> List[Dict[str, Any]]:
+    """
+    运行综合知识点匹配测试
+    找到同时涉及多个知识点的代码片段
+
+    :param kp_ids: 知识点 ID 列表（例如：[10011, 10012, 10034]）
+    :param target_difficulty: 目标难度
+    :param top_k: 返回结果数量
+    :param ast_min_ratio: AST 最低匹配率（放宽）
+    :param keyword_min_score: 关键词最低得分（放宽）
+    :param difficulty_mode: 难度模式
+    :param score_aggregation: 得分聚合方式 (average/min/sum)
+    :param db_name: 数据库名称
+    :return: 综合匹配结果列表
+    """
+    db_name = db_name or config.DB_NAME
+    log.info(f"[离线任务] 开始综合匹配测试: kp_ids={kp_ids}, aggregation={score_aggregation}")
+
+    # 使用单例模式获取服务实例
+    search_service = _get_search_service(db_name=db_name)
+
+    try:
+        results = search_service.composite_search(
+            kp_ids=kp_ids,
+            target_difficulty=target_difficulty,
+            top_k=top_k,
+            ast_min_ratio=ast_min_ratio,
+            keyword_min_score=keyword_min_score,
+            difficulty_mode=difficulty_mode,
+            score_aggregation=score_aggregation
+        )
+
+        log.info(f"[离线任务] 综合匹配完成，获得 {len(results)} 条结果")
+
+        # 打印匹配结果
+        log.info(f"-> Top {len(results)} Composite Matches for KPs {kp_ids}:")
+        if not results:
+            log.info("   [EMPTY] 无匹配结果")
+        else:
+            for rank, match in enumerate(results, 1):
+                log.info(f"[#{rank}] Composite Score: {match.get('composite_score'):.3f} | "
+                         f"KP Count: {match.get('kp_count')} | "
+                         f"Aggregation: {match.get('score_aggregation')}")
+
+                # 打印各知识点详细得分
+                for kp_detail in match.get('kp_details', []):
+                    log.info(f"    -> KP {kp_detail.get('kp_id')} ({kp_detail.get('kp_name')}): "
+                             f"score={kp_detail.get('score'):.3f}, "
+                             f"ast={kp_detail.get('ast_ratio'):.2f}, "
+                             f"kw={kp_detail.get('keyword_score'):.2f}")
+
+                if match.get('file_path'):
+                    log.debug(f"File: {match.get('file_path')}")
+
+                preview = (match.get('content') or '').strip()[:240].replace('\n', ' ')
+                log.debug(f"Code Preview: {preview}...")
+
+        return results
+
+    except Exception as e:
+        log.error(f"[离线任务] 综合匹配失败: {e}", exc_info=True)
+        return []
 
 
 def print_knowledge_tree(db_name: str = None):

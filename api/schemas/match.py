@@ -79,3 +79,38 @@ class BatchMatchResponse(BaseModel):
     code: int = Field(default=200, description="状态码")
     message: str = Field(default="success", description="响应消息")
     data: dict = Field(default_factory=dict, description="按 kp_id 分组的匹配结果")
+
+
+class CompositeMatchRequest(BaseModel):
+    """综合知识点匹配请求"""
+    kp_ids: List[int] = Field(description="知识点 ID 列表（例如：[10011, 10012]）")
+    target_difficulty: float = Field(default=0.5, ge=0.0, le=1.0, description="目标难度")
+    top_k: int = Field(default=5, ge=1, le=50, description="返回结果数量")
+    ast_min_ratio: float = Field(default=0.3, ge=0.0, le=1.0, description="AST 最低阈值（放宽）")
+    keyword_min_score: float = Field(default=0.3, ge=0.0, le=1.0, description="关键词最低得分（放宽）")
+    difficulty_mode: str = Field(default="relaxed", description="难度模式")
+    score_aggregation: str = Field(
+        default="average",
+        description="得分聚合方式: average=平均, min=最小值, sum=求和"
+    )
+
+
+class CompositeMatchResultItem(BaseModel):
+    """综合匹配单个结果"""
+    id: Optional[int] = Field(default=None, description="代码片段 ID")
+    content: str = Field(default="", description="代码内容")
+    composite_score: float = Field(description="综合得分")
+    kp_count: int = Field(description="涉及的知识点数量")
+    kp_details: List[dict] = Field(default_factory=list, description="各知识点详细得分")
+    score_aggregation: str = Field(description="使用的聚合方式")
+    file_path: Optional[str] = Field(default=None, description="源文件路径")
+
+
+class CompositeMatchResponse(BaseModel):
+    """综合匹配响应"""
+    code: int = Field(default=200, description="状态码")
+    message: str = Field(default="success", description="响应消息")
+    kp_ids: List[int] = Field(default_factory=list, description="查询的知识点 ID 列表")
+    total: int = Field(default=0, description="结果总数")
+    data: List[CompositeMatchResultItem] = Field(default_factory=list, description="匹配结果列表")
+

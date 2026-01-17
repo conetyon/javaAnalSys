@@ -200,6 +200,169 @@ class SearchService:
         
         return final_results
 
+    def composite_search(
+        self,
+        kp_ids: List[int],
+        target_difficulty: float = 0.5,
+        top_k: int = 5,
+        ast_min_ratio: float = 0.3,
+        keyword_min_score: float = 0.3,
+        difficulty_mode: str = "relaxed",
+        score_aggregation: str = "average"
+    ) -> List[Dict[str, Any]]:
+        """
+        综合知识点匹配：计算代码片段与多个知识点的综合匹配度
+
+        策略：
+        1. 获取所有选中知识点的模板和关键词
+        2. 获取候选代码片段（合并所有知识点的候选集）
+        3. 对每个片段，计算它与每个知识点的匹配分数
+        4. 综合得分 = 聚合所有知识点的分数（平均值/最小值/加权和）
+        5. 返回综合得分最高的 top-k 片段
+
+        :param kp_ids: 知识点 ID 列表（例如：[10011, 10012, 10034]）
+        :param target_difficulty: 目标难度
+        :param top_k: 返回结果数量
+        :param ast_min_ratio: AST 最低匹配率（放宽，因为要综合多个KP）
+        :param keyword_min_score: 关键词最低得分（放宽）
+        :param difficulty_mode: 难度模式
+        :param score_aggregation: 得分聚合方式 ('average'=平均, 'min'=最小值, 'sum'=求和)
+        :return: 匹配结果列表
+        """
+        log.info("[SearchService.composite_search] 开始综合匹配: kp_ids=%s, agg=%s, top_k=%d",
+                 kp_ids, score_aggregation, top_k)
+
+        if not kp_ids:
+            log.warning("[SearchService.composite_search] 知识点列表为空")
+            return []
+
+        # 1. 获取所有知识点的配置
+        kp_configs = []
+        all_kp_keywords = set()
+        all_kp_nodes = set()
+
+        for kp_id in kp_ids:
+            kp_row = self.kp_mgr.get_by_id(kp_id)
+            if not kp_row:
+                log.warning("[SearchService.composite_search] 知识点不存在: kp_id=%d", kp_id)
+                continue
+
+            kp_cfg = self.kp_mgr.parse_kp_config(kp_row)
+            need_nodes = extract_required_nodes(kp_cfg.get("ast"))
+            if not need_nodes and kp_cfg.get("required_nodes"):
+                need_nodes = set(kp_cfg["required_nodes"])
+
+            kp_keywords_norm = normalize_keywords_list(kp_cfg.get("keywords", []))
+
+            kp_configs.append({
+                "id": kp_id,
+                "name": kp_cfg.get("name"),
+                "nodes": need_nodes,
+                "keywords": kp_keywords_norm
+            })
+
+            all_kp_keywords.update(kp_keywords_norm)
+            all_kp_nodes.update(need_nodes)
+
+            log.info("[SearchService.composite_search] KP %d: name=%s, nodes=%s, keywords=%s",
+                     kp_id, kp_cfg.get("name"), need_nodes, kp_keywords_norm)
+
+        if not kp_configs:
+            log.warning("[SearchService.composite_search] 没有有效的知识点配置")
+            return []
+
+        # 2. 获取候选片段（合并所有知识点的候选集）
+        candidates = self._fetch_candidates(list(all_kp_keywords), all_kp_nodes, limit=self.candidate_limit)
+        log.info("[SearchService.composite_search] 获取候选片段数量: %d", len(candidates))
+
+        # 3. 计算每个片段的综合得分
+        results = []
+        for idx, snip in enumerate(candidates):
+            snip_id = snip.get("id", idx)
+
+            # 解析片段特征
+            ast_raw = snip.get("ast_features")
+            if isinstance(ast_raw, (str, bytes, bytearray)):
+                snip_ast_nodes = safe_read_json(ast_raw, default=[])
+            else:
+                snip_ast_nodes = ast_raw or []
+
+            snip_keywords_norm = normalize_keywords_list(snip.get("keywords"))
+            snip_difficulty = snip.get("complexity_score") or snip.get("difficulty")
+
+            # 计算片段与每个知识点的匹配分数
+            kp_scores = []
+            kp_details = []
+
+            for kp_cfg in kp_configs:
+                r = calculate_match_score(
+                    kp_ast_nodes=kp_cfg["nodes"],
+                    snip_ast_nodes=snip_ast_nodes,
+                    kp_keywords=kp_cfg["keywords"],
+                    snip_keywords=snip_keywords_norm,
+                    kp_name=kp_cfg["name"],
+                    snip_difficulty=snip_difficulty,
+                    target_difficulty=target_difficulty,
+                    difficulty_mode=difficulty_mode,
+                    weights=WEIGHT_DEFAULTS,
+                    ast_min_ratio=ast_min_ratio,
+                    keyword_min_score=keyword_min_score,
+                )
+
+                # 如果被过滤，记录为0分（而不是跳过）
+                if r.get("filtered"):
+                    kp_scores.append(0.0)
+                else:
+                    kp_scores.append(r["final_score"])
+
+                kp_details.append({
+                    "kp_id": kp_cfg["id"],
+                    "kp_name": kp_cfg["name"],
+                    "score": round(kp_scores[-1], 3),
+                    "ast_ratio": round(r.get("ast_score", 0), 2),
+                    "keyword_score": round(r.get("keyword_score", 0), 2),
+                })
+
+            # 聚合得分
+            if score_aggregation == "average":
+                composite_score = sum(kp_scores) / len(kp_scores) if kp_scores else 0
+            elif score_aggregation == "min":
+                composite_score = min(kp_scores) if kp_scores else 0
+            elif score_aggregation == "sum":
+                composite_score = sum(kp_scores)
+            else:
+                composite_score = sum(kp_scores) / len(kp_scores) if kp_scores else 0
+
+            # 过滤：如果综合得分过低，跳过
+            if composite_score < 0.1:
+                continue
+
+            log.debug("[SearchService.composite_search] 片段 #%s: composite=%.3f, kp_scores=%s",
+                      snip_id, composite_score, [round(s, 2) for s in kp_scores])
+
+            results.append({
+                "id": snip.get("id"),
+                "content": snip.get("content", ""),
+                "composite_score": round(composite_score, 3),
+                "kp_count": len(kp_configs),
+                "kp_details": kp_details,
+                "score_aggregation": score_aggregation,
+                "file_path": snip.get("file_path") or snip.get("source_path"),
+            })
+
+        # 排序并返回 top-k
+        results.sort(key=lambda x: x["composite_score"], reverse=True)
+        final_results = results[:max(1, int(top_k))]
+
+        log.info("[SearchService.composite_search] 综合匹配完成: 候选=%d, 通过=%d, 返回=%d",
+                 len(candidates), len(results), len(final_results))
+
+        if final_results:
+            log.info("[SearchService.composite_search] Top结果: %s",
+                     [(r["id"], r["composite_score"]) for r in final_results[:3]])
+
+        return final_results
+
     # ---------------- internal helpers ----------------
 
     def _fetch_candidates(self, kp_keywords_norm, need_nodes, *, limit: int):
