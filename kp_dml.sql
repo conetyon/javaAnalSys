@@ -95,25 +95,26 @@ ON DUPLICATE KEY UPDATE
 -- ============================================
 
 -- Domain 1: Core Syntax & Types (Modules: 101, 102) [6 items]
+-- 修正说明：required_nodes 仅保留 AST 节点类型，具体关键字移到 keywords
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
 (10001, 'Primitive types: int/double/boolean', 101, 3,
-  '{"template":"PrimitiveType","required_nodes":["integral_type","floating_point_type","boolean_type","int","double"]}',
-  '["int","double","boolean","primitive","type"]', NULL),
+  '{"template":"PrimitiveType","required_nodes":["integral_type","floating_point_type","boolean_type"]}',
+  '["int","double","boolean","long","short","byte","char","float","primitive","type"]', NULL),
 (10002, 'Type casting and promotion', 102, 3,
-  '{"template":"PrimitiveType","required_nodes":["cast_expression","primitive_type"]}',
-  '["cast","type_cast","primitive","conversion"]', NULL),
+  '{"template":"PrimitiveType","required_nodes":["cast_expression"]}',
+  '["cast","type_cast","primitive","conversion","int","double","float"]', NULL),
 (10003, 'String operations basics', 101, 3,
   '{"template":"Class","required_nodes":["type_identifier","method_invocation"]}',
-  '["string","substring","indexof","length","java.lang.string"]', NULL),
+  '["string","substring","indexof","length","java.lang.string","charat"]', NULL),
 (10004, 'StringBuilder and StringBuffer', 101, 3,
   '{"template":"Class","required_nodes":["object_creation_expression","method_invocation","type_identifier"]}',
-  '["stringbuilder","stringbuffer","append","tostring","java.lang"]', NULL),
+  '["stringbuilder","stringbuffer","append","tostring","java.lang","new"]', NULL),
 (10005, 'Arrays basics', 102, 3,
-  '{"template":"Class","required_nodes":["array_creation_expression","array_type","type_identifier","new"]}',
-  '["array","new","length","index"]', NULL),
+  '{"template":"Class","required_nodes":["array_creation_expression","array_type"]}',
+  '["array","new","length","index","element"]', NULL),
 (10006, 'var and local type inference', 102, 3,
   '{"template":"Class","required_nodes":["local_variable_declaration"]}',
-  '["var","type_inference","local_variable"]', NULL)
+  '["var","type_inference","local_variable","java10"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
   parent_id=VALUES(parent_id),
@@ -263,14 +264,15 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Domain 7: Collections (Modules: 701, 702, 703, 704) [16 items]
+-- 修正说明：增强 keywords，确保锚点词汇完整（list/arraylist/hashset等）
 -- List
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
 (10037, 'ArrayList basics', 701, 3,
   '{"template":"Declare<List>","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
-  '["java.util.list","arraylist","add","get","remove"]', NULL),
+  '["java.util.list","arraylist","add","get","remove","list","new"]', NULL),
 (10038, 'LinkedList basics', 701, 3,
   '{"template":"Declare<List>","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
-  '["java.util.list","linkedlist","add","remove","get"]', NULL),
+  '["java.util.list","linkedlist","add","remove","get","list","new"]', NULL),
 (10039, 'List add/remove/get', 701, 3,
   '{"template":"Declare<List>","required_nodes":["method_invocation"]}',
   '["java.util.list","add","remove","get","list"]', NULL),
@@ -289,16 +291,16 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
 (10041, 'HashSet basics', 702, 3,
   '{"template":"Declare<Set>","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
-  '["java.util.set","hashset","add","contains","remove"]', NULL),
+  '["java.util.set","hashset","add","contains","remove","set","new"]', NULL),
 (10042, 'TreeSet basics', 702, 3,
   '{"template":"Declare<Set>","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
-  '["java.util.set","treeset","comparator","add","remove"]', NULL),
+  '["java.util.set","treeset","comparator","add","remove","set","new"]', NULL),
 (10043, 'Set add/remove/contains', 702, 3,
   '{"template":"Declare<Set>","required_nodes":["method_invocation"]}',
   '["java.util.set","add","remove","contains","set"]', NULL),
 (10044, 'LinkedHashSet basics', 702, 3,
   '{"template":"Declare<Set>","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
-  '["java.util.set","linkedhashset","order","add"]', NULL)
+  '["java.util.set","linkedhashset","order","add","set","new"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
   parent_id=VALUES(parent_id),
@@ -311,16 +313,16 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
 (10045, 'HashMap basics', 703, 3,
   '{"template":"Class","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
-  '["java.util.map","hashmap","put","get","containskey"]', NULL),
+  '["java.util.map","hashmap","put","get","containskey","map","new"]', NULL),
 (10046, 'LinkedHashMap basics', 703, 3,
   '{"template":"Class","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
-  '["java.util.map","linkedhashmap","order","put","get"]', NULL),
+  '["java.util.map","linkedhashmap","order","put","get","map","new"]', NULL),
 (10047, 'TreeMap basics', 703, 3,
   '{"template":"Class","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
-  '["java.util.map","treemap","comparator","put","get"]', NULL),
+  '["java.util.map","treemap","comparator","put","get","map","new"]', NULL),
 (10048, 'Map entrySet iteration', 703, 3,
   '{"template":"Class","required_nodes":["method_invocation","enhanced_for_statement"]}',
-  '["java.util.map","entryset","iterator","foreach"]', NULL)
+  '["java.util.map","entryset","iterator","foreach","map"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
   parent_id=VALUES(parent_id),
@@ -333,16 +335,16 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
 (10049, 'ArrayDeque basics', 704, 3,
   '{"template":"Class","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
-  '["java.util.deque","arraydeque","push","pop","peek"]', NULL),
+  '["java.util.deque","arraydeque","push","pop","peek","deque","new"]', NULL),
 (10050, 'PriorityQueue basics', 704, 3,
   '{"template":"Class","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
-  '["java.util.queue","priorityqueue","offer","poll","peek"]', NULL),
+  '["java.util.queue","priorityqueue","offer","poll","peek","queue","new"]', NULL),
 (10051, 'Queue offer/poll/peek', 704, 3,
   '{"template":"Class","required_nodes":["method_invocation"]}',
-  '["java.util.queue","offer","poll","peek"]', NULL),
+  '["java.util.queue","offer","poll","peek","queue"]', NULL),
 (10052, 'Deque push/pop', 704, 3,
   '{"template":"Class","required_nodes":["method_invocation"]}',
-  '["java.util.deque","push","pop","peek"]', NULL)
+  '["java.util.deque","push","pop","peek","deque"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
   parent_id=VALUES(parent_id),

@@ -17,29 +17,36 @@ from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from .utils import tokenize_to_set, sanitize_ast_nodes, safe_read_json, split_string_to_tokens
 from lib.globals import core_logger as log
 
-# 节点映射表：根据知识点模板名称，映射到 tree-sitter-java 的若干节点/标识符
+# 节点映射表：根据知识点模板名称，映射到 tree-sitter-java 的真实 AST 节点类型
+# 注意：此表用于补充 required_nodes，不应包含具体类名（如 arraylist），具体类名属于 keywords
 NODE_MAPPING = {
-    # === 原有映射 ===
-    "primitivetype": {"integral_type", "floating_point_type", "boolean_type", "int", "double"},
+    # 基本结构
+    "primitivetype": {"integral_type", "floating_point_type", "boolean_type"},
     "ifstatement": {"if_statement"},
-    "forstatement": {"for_statement"},
+    "forstatement": {"for_statement", "enhanced_for_statement"},
     "whilestatement": {"while_statement"},
     "trycatch": {"try_statement", "catch_clause"},
-    # 保留原 List 映射（可根据需求改为更严格的领域词）
-    "declare<list>": {"type_identifier", "object_creation_expression", "new", "arraylist", "list"},
 
-    # === Java 相关扩展映射（示例，可根据知识点体系扩展或覆盖） ===
-    "class": {"class_declaration", "normal_class_declaration", "class"},
-    "interface": {"interface_declaration", "interface"},
-    "enum": {"enum_declaration", "enum"},
-    "inheritance": {"extends_clause", "superclass", "extends"},
-    "polymorphism": {"method_declaration", "override", "@override"},
-    "exception": {"try_statement", "catch_clause", "throw_statement", "throws"},
+    # 类和接口
+    "class": {"class_declaration", "type_identifier", "method_declaration"},
+    "interface": {"interface_declaration"},
+    "enum": {"enum_declaration"},
+
+    # 继承和多态
+    "inheritance": {"extends_clause", "superclass"},
+    "polymorphism": {"method_declaration", "annotation"},
+
+    # 异常处理
+    "exception": {"try_statement", "catch_clause", "throw_statement", "throws", "finally_clause"},
+
+    # 函数式编程
     "lambda": {"lambda_expression"},
-    "stream": {"method_invocation", "stream"},
+    "stream": {"method_invocation", "method_reference"},
 
-    # === 新增：Set 的声明/使用（仅保留领域锚点，避免通用节点导致误匹配） ===
-    "declare<set>": {"set", "hashset", "treeset", "linkedhashset"},
+    # 集合声明（仅结构性节点，具体类名在keywords中）
+    "declare<list>": {"type_identifier", "object_creation_expression", "method_invocation"},
+    "declare<set>": {"type_identifier", "object_creation_expression", "method_invocation"},
+    "declare<map>": {"type_identifier", "object_creation_expression", "method_invocation"},
 }
 
 # 领域锚点：当模板包含这些词时，必须至少命中一个
@@ -128,33 +135,40 @@ def extract_required_nodes(ast_tpl: Any) -> Set[str]:
     """
     从知识点 AST 模板配置中提取需要匹配的节点集合（全部小写）。
 
-    优先级：
-        1. ast_tpl["required_nodes"]
-        2. ast_tpl["template_nodes"]（兼容旧数据）
-        3. 根据 ast_tpl["template"] 名称在 NODE_MAPPING 中查找
-           并合并 ast_tpl["details"] 作为补充节点
+    策略（改进版，合并模式）：
+        1. 从 required_nodes 或 template_nodes 获取显式节点
+        2. 根据 template 名称从 NODE_MAPPING 获取标准节点（补充）
+        3. 合并两者，确保既有显式定义，又有标准结构节点
+
+    这样可以弥补 kp_dml.sql 中 required_nodes 的不完整性。
     """
     if not isinstance(ast_tpl, dict):
         return set()
 
-    # 1. 显式节点列表（最高优先级）
+    # 1. 显式节点列表
     nodes = ast_tpl.get("required_nodes") or ast_tpl.get("template_nodes")
-    required = _normalize_input_tokens(nodes)
-    if required:
-        return required
+    explicit_nodes = _normalize_input_tokens(nodes)
 
-    # 2. 基于模板名称的节点映射
-    name = (ast_tpl.get("template") or "").strip().lower()
-    base = NODE_MAPPING.get(name, set())
+    # 2. 基于模板名称的标准节点映射
+    template_name = (ast_tpl.get("template") or "").strip().lower()
+    standard_nodes = set(NODE_MAPPING.get(template_name, set()))
 
-    # 3. 结合 details 作为补充约束
+    # 3. 合并（而不是替代）
+    all_nodes = explicit_nodes.union(standard_nodes)
+
+    # 4. 可选：合并 details 作为额外约束
     details = _normalize_input_tokens(ast_tpl.get("details"))
-    return set(base).union(details)
+    all_nodes = all_nodes.union(details)
+
+    return all_nodes
 
 
 def calculate_ast_score(need_nodes: Iterable[str], have_nodes: Iterable[str], min_ratio: float = 0.4, no_need_default: float = 0.3) -> Tuple[float, float]:
     """
-    计算 AST 模式匹配得分（带领域锚点约束）。
+    计算 AST 模式匹配得分（纯结构匹配，不含领域锚点）。
+
+    注意：领域锚点检查已移至 calculate_keyword_score，因为锚点是领域特定词（如arraylist、hashset），
+    属于关键词范畴，不是AST节点类型。
 
     参数:
         need_nodes: 知识点要求的 AST 节点集合（set / list / 其他可迭代）
@@ -169,7 +183,6 @@ def calculate_ast_score(need_nodes: Iterable[str], have_nodes: Iterable[str], mi
 
     规则：
         - 若 need 为空：返回较低的默认分（0.3）
-        - 若 need 包含领域锚点，但 have 未命中任一锚点：score=0.0
         - 覆盖率过低：score 近 0；覆盖率 >= 0.99：score=1.0
     """
     need = tokenize_to_set(need_nodes)
@@ -179,16 +192,10 @@ def calculate_ast_score(need_nodes: Iterable[str], have_nodes: Iterable[str], mi
         return float(no_need_default), 0.0
 
     have = sanitize_ast_nodes(have_nodes)
-    log.debug("[AST] need_nodes=%s, have_nodes=%s", need, have)
-    
+    log.debug("[AST] 需求节点=%s, 片段节点=%s", need, have)
+
     if not have:
         log.debug("[AST] 片段无 AST 节点，得分=0")
-        return 0.0, 0.0
-
-    # 领域锚点约束：如果模板包含锚点，则必须至少命中一个
-    anchors = need.intersection(DOMAIN_ANCHORS)
-    if anchors and not have.intersection(anchors):
-        log.debug("[AST] 锚点约束未满足: 需要锚点=%s, 片段无命中", anchors)
         return 0.0, 0.0
 
     inter = need.intersection(have)
@@ -197,7 +204,7 @@ def calculate_ast_score(need_nodes: Iterable[str], have_nodes: Iterable[str], mi
         return 0.0, 0.0
 
     coverage = len(inter) / len(need)
-    log.debug("[AST] 交集=%s, 覆盖率=%.2f (%d/%d)", inter, coverage, len(inter), len(need))
+    log.debug("[AST] 匹配节点=%s, 覆盖率=%.2f (%d/%d)", inter, coverage, len(inter), len(need))
 
     # 覆盖率过低，视作结构不相似
     if coverage < min_ratio:
@@ -226,9 +233,11 @@ def calculate_ast_score(need_nodes: Iterable[str], have_nodes: Iterable[str], mi
 
 def calculate_keyword_score(kp_kws: Any, snip_kws: Any, kp_name: Optional[str] = None) -> Tuple[float, int, int]:
     """
-    计算关键词匹配得分（支持核心关键字/歧义词加权）。
+    计算关键词匹配得分（支持核心关键字/歧义词加权 + 领域锚点约束）。
 
-    改动：
+    改动（v2优化）：
+        - **领域锚点约束**：当知识点关键词包含领域锚点（如arraylist、hashset）时，
+          代码片段必须命中至少一个锚点，否则得分=0（防止误匹配）
         - 去掉平滑项：未命中关键词 -> 0 分，提升区分度
         - 对歧义词（如 set/get）降低权重，减少伪命中影响
         - 兼容：当 kp_kws/snip_kws 为 JSON 字符串或普通字符串时可自动解析
@@ -249,13 +258,27 @@ def calculate_keyword_score(kp_kws: Any, snip_kws: Any, kp_name: Optional[str] =
     base_tokens = kp_tokens.union(name_tokens)
 
     snip_tokens = _normalize_input_tokens(snip_kws)
-    
+
     log.debug("[KW] kp_tokens=%s, name_tokens=%s, snip_tokens=%s", kp_tokens, name_tokens, snip_tokens)
 
     if not base_tokens:
         # 知识点没有定义关键词，给一个中性分（降低到 0.5）
         log.debug("[KW] 知识点无关键词定义，返回默认分 0.5")
         return 0.5, 0, 0
+
+    # === 领域锚点约束（从AST阶段迁移至此）===
+    # 当知识点关键词包含领域特定词（如arraylist, hashset）时，代码片段必须至少命中一个锚点
+    kp_anchors = base_tokens.intersection(DOMAIN_ANCHORS)
+    if kp_anchors:
+        snip_anchors = snip_tokens.intersection(kp_anchors)
+        if not snip_anchors:
+            log.info("[KW] 领域锚点约束未满足: 需要锚点=%s, 片段关键词无命中 -> 得分=0", kp_anchors)
+            # 返回0分，但保留统计信息
+            plain_inter = len(base_tokens.intersection(snip_tokens))
+            plain_total = len(base_tokens)
+            return 0.0, plain_inter, plain_total
+        else:
+            log.debug("[KW] 领域锚点约束满足: 需要锚点=%s, 命中锚点=%s ✓", kp_anchors, snip_anchors)
 
     weighted_total = 0.0
     weighted_hit = 0.0
@@ -339,32 +362,30 @@ def calculate_match_score(
     target_difficulty: Any = None,
     difficulty_mode: str = "relaxed",
     weights: Optional[Dict[str, float]] = None,
-    ast_min_ratio: float = 0.4,
-    keyword_min_score: float = 0.4,
+    ast_min_ratio: float = 0.3,  # 降低到 0.3（原 0.4），确保更多结果通过
+    keyword_min_score: float = 0.2,  # 降低到 0.2（原 0.4），避免过度过滤
 ) -> Dict[str, Any]:
     """
     综合计算"知识点-代码片段"的最终匹配得分。
 
     多阶段机制：
-        1. AST 快速过滤（结构不相似直接淘汰；当模板含锚点时必须命中锚点）
-        2. 关键词验证（控制最低关键词得分）
+        1. AST 快速过滤（结构不相似直接淘汰）
+        2. 关键词验证（含领域锚点约束）
         3. 难度过滤（严格/宽松）
         4. 加权融合打分
 
     参数:
-        kp_ast_nodes: 知识点 AST 模板节点集合（list / set / 字符串 / 其他可迭代）
-                      若为字符串且看似是 JSON 列表，将自动解析。
+        kp_ast_nodes: 知识点 AST 模板节点集合
         snip_ast_nodes: 代码片段 AST 节点集合
         kp_keywords: 知识点关键词列表/集合/字符串
         snip_keywords: 代码片段关键词集合/字符串
         kp_name: 知识点名称
-        snip_difficulty: 代码片段难度（数值或档位）
+        snip_difficulty: 代码片段难度
         target_difficulty: 用户期望难度
         difficulty_mode: "strict" / "relaxed"
-        weights: dict，可覆盖默认权重，例如：
-                 {"ast": 0.6, "keyword": 0.3, "difficulty": 0.1}
-        ast_min_ratio: AST 覆盖率低于此值时，视作结构不匹配（默认 0.4）
-        keyword_min_score: 关键词得分低于此值时视作弱相关（默认 0.4）
+        weights: dict，可覆盖默认权重
+        ast_min_ratio: AST 覆盖率低于此值时视作结构不匹配（默认 0.3，降低以增加召回率）
+        keyword_min_score: 关键词得分低于此值时视作弱相关（默认 0.2，降低以增加召回率）
 
     返回:
         {
@@ -375,14 +396,18 @@ def calculate_match_score(
             "keyword_hit": int,
             "keyword_total": int,
             "difficulty_score": float,
-            "filtered": bool,   # True 表示在某一阶段被过滤
+            "filtered": bool,
         }
     """
-    log.debug("[MATCH] === 开始匹配计算 === kp_name=%s", kp_name)
-    log.debug("[MATCH] 输入: kp_ast=%s, snip_ast=%s", kp_ast_nodes, snip_ast_nodes)
-    log.debug("[MATCH] 输入: kp_kw=%s, snip_kw=%s", kp_keywords, snip_keywords)
-    log.debug("[MATCH] 输入: snip_diff=%s, target_diff=%s, mode=%s", snip_difficulty, target_difficulty, difficulty_mode)
-    
+    log.debug("[MATCH] ===== 开始匹配计算 =====")
+    log.info("[MATCH] 知识点: %s", kp_name)
+    log.debug("[MATCH] AST节点: KP=%s, Snippet=%s", kp_ast_nodes, snip_ast_nodes)
+    log.debug("[MATCH] 关键词: KP=%s, Snippet=%s", kp_keywords, snip_keywords)
+    log.debug("[MATCH] 难度: Snippet=%.2f, Target=%.2f, Mode=%s",
+              float(snip_difficulty) if snip_difficulty else 0,
+              float(target_difficulty) if target_difficulty else 0,
+              difficulty_mode)
+
     # 权重
     weights = weights or WEIGHT_DEFAULTS
     w_ast = float(weights.get("ast", WEIGHT_DEFAULTS["ast"]))
@@ -396,8 +421,9 @@ def calculate_match_score(
         w_ast /= total_w
         w_kw /= total_w
         w_diff /= total_w
-    
-    log.debug("[MATCH] 归一化权重: ast=%.2f, kw=%.2f, diff=%.2f", w_ast, w_kw, w_diff)
+
+    log.info("[MATCH] 权重配置: AST=%.1f%%, 关键词=%.1f%%, 难度=%.1f%%",
+             w_ast*100, w_kw*100, w_diff*100)
 
     # 1. AST 结构匹配（兼容 JSON/字符串）
     need_empty = (len(tokenize_to_set(kp_ast_nodes)) == 0)
@@ -409,13 +435,13 @@ def calculate_match_score(
     # 当存在 AST 模板时才启用 AST 覆盖率过滤
     if not need_empty and ast_cov < ast_min_ratio:
         filtered = True
-        filter_reason.append(f"AST覆盖率过低({ast_cov:.2f}<{ast_min_ratio})")
+        filter_reason.append(f"AST覆盖率过低({ast_cov:.2f} < {ast_min_ratio})")
 
     # 2. 关键词验证（兼容 JSON/字符串）
     kw_score, kw_hit, kw_total = calculate_keyword_score(kp_keywords, snip_keywords, kp_name=kp_name)
     if kw_total > 0 and kw_score < keyword_min_score:
         filtered = True
-        filter_reason.append(f"关键词得分过低({kw_score:.2f}<{keyword_min_score})")
+        filter_reason.append(f"关键词得分过低({kw_score:.2f} < {keyword_min_score})")
 
     # 3. 难度过滤
     diff_score = calculate_difficulty_score(
@@ -427,19 +453,22 @@ def calculate_match_score(
         filtered = True
         filter_reason.append("难度严格模式不匹配")
 
+    # === 日志：各维度得分 ===
+    log.info("[MATCH] 得分明细: AST=%.2f(覆盖%.2f) | 关键词=%.2f(%d/%d) | 难度=%.2f",
+             ast_score, ast_cov, kw_score, kw_hit, kw_total, diff_score)
+
     # 4. 加权融合
     if filtered:
         final_score = 0.0
-        log.debug("[MATCH] 被过滤: %s", "; ".join(filter_reason))
+        log.warning("[MATCH] ❌ 被过滤: %s", " | ".join(filter_reason))
     else:
         final_score = w_ast * ast_score + w_kw * kw_score + w_diff * diff_score
         if final_score < 0.0:
             final_score = 0.0
         if final_score > 1.0:
             final_score = 1.0
-
-    log.debug("[MATCH] 结果: final=%.3f, ast=%.3f(cov=%.2f), kw=%.3f(%d/%d), diff=%.3f, filtered=%s",
-              final_score, ast_score, ast_cov, kw_score, kw_hit, kw_total, diff_score, filtered)
+        log.info("[MATCH] ✓ 最终得分: %.3f (%.0f%% x %.2f + %.0f%% x %.2f + %.0f%% x %.2f)",
+                 final_score, w_ast*100, ast_score, w_kw*100, kw_score, w_diff*100, diff_score)
 
     return {
         "final_score": final_score,
