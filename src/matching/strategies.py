@@ -26,6 +26,7 @@ NODE_MAPPING = {
     "forstatement": {"for_statement", "enhanced_for_statement"},
     "whilestatement": {"while_statement"},
     "trycatch": {"try_statement", "catch_clause"},
+    "controlflow": {"if_statement", "switch_statement", "switch_expression", "break_statement", "continue_statement"},
 
     # 类和接口
     "class": {"class_declaration", "type_identifier", "method_declaration"},
@@ -47,15 +48,92 @@ NODE_MAPPING = {
     "declare<list>": {"type_identifier", "object_creation_expression", "method_invocation"},
     "declare<set>": {"type_identifier", "object_creation_expression", "method_invocation"},
     "declare<map>": {"type_identifier", "object_creation_expression", "method_invocation"},
+
+    # === 新增：泛型相关 ===
+    "generic": {"type_arguments", "type_parameter", "wildcard", "type_bound"},
+    "genericclass": {"type_parameter", "class_declaration"},
+    "genericmethod": {"type_parameter", "method_declaration"},
+    "wildcard": {"wildcard", "type_argument"},
+    "typebound": {"type_bound", "extends_clause", "super"},  # extends T 或 super T
+
+    # === 新增：注解相关 ===
+    "annotation": {"annotation", "marker_annotation", "annotation_type_declaration"},
+    "annotationdeclaration": {"annotation_type_declaration", "annotation_type_body"},
+
+    # === 新增：构造器和初始化 ===
+    "constructor": {"constructor_declaration", "constructor_body"},
+    "staticinitializer": {"static_initializer"},
+
+    # === 新增：字符串和字面量 ===
+    "string": {"string_literal", "text_block"},  # text_block 是 Java 15+ 的多行字符串
+
+    # === 新增：访问操作 ===
+    "access": {"field_access", "array_access", "method_invocation"},
+    "fieldaccess": {"field_access"},
+    "arrayaccess": {"array_access"},
+
+    # === 新增：内部类和匿名类 ===
+    "innerclass": {"class_declaration", "class_body"},
+    "anonymousclass": {"anonymous_class_declaration", "object_creation_expression"},
+
+    # === 新增：同步和并发 ===
+    "synchronized": {"synchronized_statement"},
+    "volatile": {"field_declaration", "modifiers"},
+
+    # === 新增：模块系统 (Java 9+) ===
+    "module": {"module_declaration", "requires_directive", "exports_directive"},
+
+    # === 新增：switch 表达式 (Java 14+) ===
+    "switchexpression": {"switch_expression", "switch_block", "switch_rule"},
 }
 
-# 领域锚点：当模板包含这些词时，必须至少命中一个
+# 领域锚点：当模板包含这些词时，必须至少命中一个（或其父类型/子类型）
 DOMAIN_ANCHORS = {
     # 集合
     "list", "arraylist", "linkedlist",
     "set", "hashset", "treeset", "linkedhashset",
     "map", "hashmap", "treemap", "linkedhashmap",
-    "queue", "deque",
+    "queue", "deque", "arraydeque", "priorityqueue",
+}
+
+# 类型层级图：支持继承关系的松弛匹配
+# 格式：子类型 -> [父类型列表]
+# 用于锚点匹配时，允许父类型匹配子类型（如：要求 "list"，代码用 "arraylist" 也可以）
+TYPE_HIERARCHY = {
+    # List 层级
+    "arraylist": ["list", "collection"],
+    "linkedlist": ["list", "collection", "deque", "queue"],
+    "copyonwritearraylist": ["list", "collection"],
+    "vector": ["list", "collection"],
+    "stack": ["vector", "list", "collection"],
+
+    # Set 层级
+    "hashset": ["set", "collection"],
+    "linkedhashset": ["set", "collection"],
+    "treeset": ["set", "sortedset", "navigableset", "collection"],
+    "concurrentskiplistset": ["set", "sortedset", "navigableset", "collection"],
+    "enumset": ["set", "collection"],
+
+    # Map 层级
+    "hashmap": ["map"],
+    "linkedhashmap": ["map"],
+    "treemap": ["map", "sortedmap", "navigablemap"],
+    "concurrenthashmap": ["map", "concurrentmap"],
+    "hashtable": ["map"],
+    "weakhashmap": ["map"],
+    "identityhashmap": ["map"],
+
+    # Queue/Deque 层级
+    "arraydeque": ["deque", "queue", "collection"],
+    "priorityqueue": ["queue", "collection"],
+    "linkedblockingqueue": ["blockingqueue", "queue", "collection"],
+    "concurrentlinkedqueue": ["queue", "collection"],
+
+    # 其他容器
+    "list": ["collection"],
+    "set": ["collection"],
+    "queue": ["collection"],
+    "deque": ["queue", "collection"],
 }
 
 # Java 核心关键字（权重大），用于关键词匹配加权
@@ -129,6 +207,74 @@ def _normalize_input_tokens(tokens: Any) -> Set[str]:
         else:
             tokens = split_string_to_tokens(s)
     return {str(t).strip().lower() for t in (tokens if isinstance(tokens, (list, set, tuple)) else [tokens]) if str(t).strip()}
+
+
+def _is_type_compatible(required_type: str, provided_type: str) -> bool:
+    """
+    检查 provided_type 是否与 required_type 兼容（考虑继承关系）。
+
+    规则：
+    1. 精确匹配：required_type == provided_type → True
+    2. 子类型匹配：provided_type 是 required_type 的子类 → True
+       例如：required="list", provided="arraylist" → True（因为 ArrayList extends List）
+    3. 父类型匹配：provided_type 是 required_type 的父类 → True
+       例如：required="arraylist", provided="list" → True（反向匹配，宽松策略）
+
+    参数:
+        required_type: 知识点要求的类型（锚点）
+        provided_type: 代码片段中提供的类型
+
+    返回:
+        bool: 是否兼容
+    """
+    # 1. 精确匹配
+    if required_type == provided_type:
+        return True
+
+    # 2. provided_type 是 required_type 的子类
+    # 例如：required="list", provided="arraylist"
+    if provided_type in TYPE_HIERARCHY:
+        parents = TYPE_HIERARCHY[provided_type]
+        if required_type in parents:
+            log.debug(f"[Type Hierarchy] {provided_type} 是 {required_type} 的子类 ✓")
+            return True
+
+    # 3. required_type 是 provided_type 的子类（反向匹配）
+    # 例如：required="arraylist", provided="list"
+    if required_type in TYPE_HIERARCHY:
+        parents = TYPE_HIERARCHY[required_type]
+        if provided_type in parents:
+            log.debug(f"[Type Hierarchy] {required_type} 是 {provided_type} 的子类（反向匹配）✓")
+            return True
+
+    return False
+
+
+def _check_domain_anchors_relaxed(required_anchors: Set[str], provided_tokens: Set[str]) -> bool:
+    """
+    松弛的领域锚点检查（支持类型层级匹配）。
+
+    当知识点要求某个领域锚点时，代码片段可以使用该类型或其父类型/子类型。
+
+    例如：
+    - 知识点要求 "arraylist"，代码使用 "list" → 匹配（ArrayList 实现 List）
+    - 知识点要求 "list"，代码使用 "arraylist" → 匹配（ArrayList 是 List 的实现）
+    - 知识点要求 "hashset"，代码使用 "set" → 匹配
+
+    参数:
+        required_anchors: 知识点要求的锚点集合（可能包含多个）
+        provided_tokens: 代码片段的关键词集合
+
+    返回:
+        bool: 是否至少命中一个锚点（考虑类型层级）
+    """
+    for req_anchor in required_anchors:
+        for prov_token in provided_tokens:
+            if _is_type_compatible(req_anchor, prov_token):
+                log.debug(f"[Domain Anchor] 松弛匹配成功: 要求={req_anchor}, 提供={prov_token} ✓")
+                return True
+
+    return False
 
 
 def extract_required_nodes(ast_tpl: Any) -> Set[str]:
@@ -266,19 +412,19 @@ def calculate_keyword_score(kp_kws: Any, snip_kws: Any, kp_name: Optional[str] =
         log.debug("[KW] 知识点无关键词定义，返回默认分 0.5")
         return 0.5, 0, 0
 
-    # === 领域锚点约束（从AST阶段迁移至此）===
-    # 当知识点关键词包含领域特定词（如arraylist, hashset）时，代码片段必须至少命中一个锚点
+    # === 领域锚点约束（松弛版本：支持类型层级匹配）===
+    # 当知识点关键词包含领域特定词（如arraylist, hashset）时，代码片段必须至少命中一个锚点（或其兼容类型）
     kp_anchors = base_tokens.intersection(DOMAIN_ANCHORS)
     if kp_anchors:
-        snip_anchors = snip_tokens.intersection(kp_anchors)
-        if not snip_anchors:
-            log.info("[KW] 领域锚点约束未满足: 需要锚点=%s, 片段关键词无命中 -> 得分=0", kp_anchors)
+        # 使用松弛检查：支持类型层级匹配（ArrayList → List, HashSet → Set）
+        if not _check_domain_anchors_relaxed(kp_anchors, snip_tokens):
+            log.info("[KW] 领域锚点约束未满足（松弛模式）: 需要锚点=%s, 片段关键词无兼容匹配 -> 得分=0", kp_anchors)
             # 返回0分，但保留统计信息
             plain_inter = len(base_tokens.intersection(snip_tokens))
             plain_total = len(base_tokens)
             return 0.0, plain_inter, plain_total
         else:
-            log.debug("[KW] 领域锚点约束满足: 需要锚点=%s, 命中锚点=%s ✓", kp_anchors, snip_anchors)
+            log.debug("[KW] 领域锚点约束满足（松弛模式）: 需要锚点=%s ✓", kp_anchors)
 
     weighted_total = 0.0
     weighted_hit = 0.0

@@ -204,14 +204,79 @@ class CodeLibraryManager(BaseManager):
             finally:
                 cursor.close()
 
-    def get_all_snippets(self):
+    def get_all_snippets(self, limit: int = None):
         """
         获取数据库中所有的代码片段
         供 Matcher 使用
+
+        Args:
+            limit: 可选，限制返回的最大记录数（安全网，防止大表导致 OOM）
         """
         log.debug("[CodeLibraryManager.get_all_snippets] 开始获取所有代码片段")
         sql = "SELECT * FROM code_snippets"
+        if limit and limit > 0:
+            sql += f" LIMIT {limit}"
+            log.warning("[CodeLibraryManager.get_all_snippets] 使用 LIMIT %d 限制结果集", limit)
         client = self._get_client()
         result = client.fetch_all(sql)
         log.info("[CodeLibraryManager.get_all_snippets] 获取到 %d 条代码片段", len(result) if result else 0)
         return result
+
+    def find_snippet_candidates(self, keywords: list, ast_nodes: list, limit: int = 1000):
+        """
+        根据关键词和 AST 节点预筛选候选代码片段（性能优化）
+
+        策略：
+        1. 如果提供了关键词，在 keywords 字段中 LIKE 匹配（JSON 字符串模糊匹配）
+        2. 如果提供了 AST 节点，在 ast_features 字段中 LIKE 匹配
+        3. 使用 OR 连接，满足任一条件即可（高召回）
+        4. LIMIT 限制结果集大小
+
+        Args:
+            keywords: 关键词列表（已规范化）
+            ast_nodes: AST 节点类型列表
+            limit: 最大返回记录数（默认 1000）
+
+        Returns:
+            List[Dict]: 匹配的代码片段列表
+        """
+        log.debug("[CodeLibraryManager.find_snippet_candidates] keywords=%s, ast_nodes=%s, limit=%d",
+                  keywords[:3] if keywords else [], ast_nodes[:3] if ast_nodes else [], limit)
+
+        where_conditions = []
+        params = []
+
+        # 关键词匹配：在 keywords JSON 字符串中模糊查找
+        if keywords:
+            # 对每个关键词生成 LIKE 条件（OR 连接）
+            keyword_conditions = []
+            for kw in keywords[:10]:  # 限制前10个关键词，避免 SQL 过长
+                keyword_conditions.append("keywords LIKE %s")
+                params.append(f'%"{kw}"%')  # JSON 中关键词以 "keyword" 形式存在
+
+            if keyword_conditions:
+                where_conditions.append("(" + " OR ".join(keyword_conditions) + ")")
+
+        # AST 节点匹配：在 ast_features JSON 字符串中模糊查找
+        if ast_nodes:
+            ast_conditions = []
+            for node in ast_nodes[:10]:  # 限制前10个节点
+                ast_conditions.append("ast_features LIKE %s")
+                params.append(f'%"{node}"%')
+
+            if ast_conditions:
+                where_conditions.append("(" + " OR ".join(ast_conditions) + ")")
+
+        # 如果没有任何过滤条件，回退到 get_all_snippets
+        if not where_conditions:
+            log.warning("[CodeLibraryManager.find_snippet_candidates] 无过滤条件，回退到 get_all_snippets")
+            return self.get_all_snippets(limit=limit)
+
+        # 构建 SQL
+        sql = "SELECT * FROM code_snippets WHERE " + " OR ".join(where_conditions)
+        sql += f" LIMIT {limit}"
+
+        client = self._get_client()
+        result = client.fetch_all(sql, params)
+        log.info("[CodeLibraryManager.find_snippet_candidates] 预筛选获取 %d 条候选", len(result) if result else 0)
+        return result if result else []

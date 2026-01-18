@@ -44,19 +44,128 @@ SHORT_METHOD_WHITELIST = {
 }
 
 # ============ 别名归一化（统一到小写规范形式） ============
+# 目的：将 API 全限定调用（如 System.out.println）归一化为短名称（println）
+# 支持静态导入后的匹配，提高关键词匹配准确性
 CANONICAL_ALIASES = {
-    # 输出与日志
+    # === 输出与日志 ===
     "system.out.println": "println",
     "system.err.println": "println",
+    "system.out.print": "print",
+    "system.out.printf": "printf",
     "printstacktrace": "printstacktrace",
     "logger.info": "log.info",
     "logger.error": "log.error",
     "logger.debug": "log.debug",
     "logger.warn": "log.warn",
-    # 集合/数组工具
+    "log.info": "log.info",
+    "log.error": "log.error",
+    "log.debug": "log.debug",
+    "log.warn": "log.warn",
+
+    # === 包装类型解析 ===
+    "integer.parseint": "parseint",
+    "integer.valueof": "valueof",
+    "integer.tostring": "tostring",
+    "double.parsedouble": "parsedouble",
+    "double.valueof": "valueof",
+    "long.parselong": "parselong",
+    "long.valueof": "valueof",
+    "float.parsefloat": "parsefloat",
+    "boolean.parseboolean": "parseboolean",
+
+    # === 数学方法 ===
+    "math.max": "max",
+    "math.min": "min",
+    "math.abs": "abs",
+    "math.pow": "pow",
+    "math.sqrt": "sqrt",
+    "math.floor": "floor",
+    "math.ceil": "ceil",
+    "math.round": "round",
+    "math.random": "random",
+
+    # === StringBuilder/StringBuffer ===
+    "stringbuilder.append": "append",
+    "stringbuffer.append": "append",
+    "stringbuilder.tostring": "tostring",
+    "stringbuffer.tostring": "tostring",
+    "stringbuilder.insert": "insert",
+    "stringbuilder.delete": "delete",
+
+    # === String 方法 ===
+    "string.valueof": "valueof",
+    "string.format": "format",
+    "string.join": "join",
+
+    # === Objects 工具 ===
+    "objects.equals": "equals",
+    "objects.requirenonnull": "requirenonnull",
+    "objects.hash": "hash",
+    "objects.isnull": "isnull",
+    "objects.nonNull": "nonnull",
+    "objects.tostring": "tostring",
+
+    # === Optional 方法 ===
+    "optional.of": "of",
+    "optional.ofnullable": "ofnullable",
+    "optional.empty": "empty",
+    "optional.get": "get",
+    "optional.orelse": "orelse",
+    "optional.orelseget": "orelseget",
+
+    # === 集合/数组工具 ===
     "arrays.aslist": "aslist",
+    "arrays.sort": "sort",
+    "arrays.copyof": "copyof",
+    "arrays.fill": "fill",
+    "arrays.equals": "equals",
+    "arrays.tostring": "tostring",
     "collections.sort": "sort",
-    # IO/文件
+    "collections.reverse": "reverse",
+    "collections.shuffle": "shuffle",
+    "collections.unmodifiablelist": "unmodifiablelist",
+    "collections.emptylist": "emptylist",
+    "collections.singletonlist": "singletonlist",
+
+    # === Stream 操作 ===
+    "stream.of": "of",
+    "stream.empty": "empty",
+    "collectors.tolist": "tolist",
+    "collectors.toset": "toset",
+    "collectors.tomap": "tomap",
+    "collectors.joining": "joining",
+    "collectors.groupingby": "groupingby",
+
+    # === IO/文件操作 ===
     "files.readalllines": "readalllines",
     "files.lines": "lines",
+    "files.exists": "exists",
+    "files.write": "write",
+    "files.createfile": "createfile",
+    "files.createdirectories": "createdirectories",
+    "files.delete": "delete",
+    "paths.get": "get",
+    "path.tostring": "tostring",
+
+    # === Pattern/Matcher (正则) ===
+    "pattern.compile": "compile",
+    "matcher.matches": "matches",
+    "matcher.find": "find",
+    "matcher.group": "group",
+
+    # === 并发工具 ===
+    "thread.sleep": "sleep",
+    "thread.start": "start",
+    "thread.join": "join",
+    "executors.newfixedthreadpool": "newfixedthreadpool",
+    "executors.newcachedthreadpool": "newcachedthreadpool",
+    "future.get": "get",
+
+    # === 时间日期 (Java 8+) ===
+    "localdate.now": "now",
+    "localdate.of": "of",
+    "localdatetime.now": "now",
+    "localdatetime.of": "of",
+    "instant.now": "now",
+    "datetimeformatter.ofpattern": "ofpattern",
 }

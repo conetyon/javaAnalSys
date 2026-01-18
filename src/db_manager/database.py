@@ -34,7 +34,7 @@ class DatabaseInitializer(BaseManager):
             print(f"[DB Init-Warning] 检查/创建数据库时出现问题: {e}")
 
     def _init_tables(self):
-        """在指定数据库中创建所有必要的数据表。"""
+        """在指定数据库中创建所有必要的数据表和索引。"""
         print(f"[DB Init] 开始初始化数据表 ({self.db_name})...")
         statements = [
             ('''CREATE TABLE IF NOT EXISTS knowledge_points
@@ -71,11 +71,44 @@ class DatabaseInitializer(BaseManager):
                 )''', ())
         ]
 
+        # 索引创建语句（性能优化）
+        # 注意：使用单独的 ALTER TABLE 语句，避免重复索引错误
+        index_statements = [
+            # FULLTEXT 索引：用于 keywords 字段的全文搜索
+            # 注意：FULLTEXT 索引需要 InnoDB 引擎（MySQL 5.6+）
+            ('''CREATE FULLTEXT INDEX idx_snippets_keywords
+                ON code_snippets(keywords)''', 'idx_snippets_keywords'),
+
+            # 普通索引：file_id 外键索引（虽然外键自带索引，但显式定义更清晰）
+            ('''CREATE INDEX idx_snippets_file_id
+                ON code_snippets(file_id)''', 'idx_snippets_file_id'),
+
+            # 复合索引：file_id + complexity_score（用于按文件和难度筛选）
+            ('''CREATE INDEX idx_snippets_file_complexity
+                ON code_snippets(file_id, complexity_score)''', 'idx_snippets_file_complexity'),
+        ]
+
         try:
             # 使用基类方法获取客户端
             client = self._get_client()
             client.execute_transaction(statements)
             print("[DB Init] 所有数据表结构已初始化/验证。")
+
+            # 创建索引（跳过已存在的索引）
+            print("[DB Init] 开始创建/验证索引...")
+            for idx_sql, idx_name in index_statements:
+                try:
+                    client.execute(idx_sql)
+                    print(f"[DB Init] 索引 '{idx_name}' 已创建/验证。")
+                except Exception as e:
+                    # MySQL 错误 1061: Duplicate key name (索引已存在)
+                    if "Duplicate key name" in str(e) or "1061" in str(e):
+                        print(f"[DB Init] 索引 '{idx_name}' 已存在，跳过。")
+                    else:
+                        print(f"[DB Init-Warning] 创建索引 '{idx_name}' 时出现问题: {e}")
+                        # 不抛出异常，索引创建失败不应阻止系统启动
+
+            print("[DB Init] 数据库初始化完成（表+索引）。")
         except Exception as e:
             print(f"[DB Init-Error] 创建数据表时失败: {e}")
             raise

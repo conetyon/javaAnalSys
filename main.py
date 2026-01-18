@@ -162,9 +162,9 @@ if __name__ == "__main__":
         print("步骤 3: 运行测试场景")
         print("=" * 60)
 
-        # run_single_test()          # 场景 1: 单个知识点匹配
+        run_single_test()          # 场景 1: 单个知识点匹配
         run_multiple_test()          # 场景 2: 综合知识点匹配
-        # run_utility_functions()    # 工具函数: 查看知识点树等
+        # run_utility_functions()    # 工具函数: 查看知识点树等，在日志中
 
     except KeyboardInterrupt:
         print("\n[INFO] 用户中断")

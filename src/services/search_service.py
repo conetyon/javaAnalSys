@@ -369,34 +369,25 @@ class SearchService:
         """
         候选检索优先调用索引方法；不存在则回退到全量。
         约定优先级：
-          - CodeLibraryManager.find_snippet_candidates(keywords, ast_nodes, limit)
-          - CodeLibraryManager.find_by_keywords_or_ast(keywords, ast_nodes, limit)
-          - CodeLibraryManager.get_all_snippets()
+          - CodeLibraryManager.find_snippet_candidates(keywords, ast_nodes, limit) [已实现]
+          - CodeLibraryManager.get_all_snippets(limit) [安全回退]
         """
         log.debug("[SearchService._fetch_candidates] 开始检索候选, keywords=%s, nodes=%s, limit=%d",
                   kp_keywords_norm, need_nodes, limit)
-        
-        # 优先使用索引检索（如已实现）
+
+        # 优先使用预筛选检索（已实现）
         if hasattr(self.code_mgr, "find_snippet_candidates"):
             try:
-                log.debug("[SearchService._fetch_candidates] 尝试 find_snippet_candidates")
+                log.debug("[SearchService._fetch_candidates] 使用 find_snippet_candidates 预筛选")
                 result = self.code_mgr.find_snippet_candidates(kp_keywords_norm, list(need_nodes or []), limit=limit)
-                log.info("[SearchService._fetch_candidates] 使用 find_snippet_candidates, 获取 %d 条", len(result))
+                log.info("[SearchService._fetch_candidates] 预筛选获取 %d 条候选", len(result))
                 return result
             except Exception as e:
-                log.warning("[SearchService._fetch_candidates] find_snippet_candidates 失败: %s", e)
-        
-        if hasattr(self.code_mgr, "find_by_keywords_or_ast"):
-            try:
-                log.debug("[SearchService._fetch_candidates] 尝试 find_by_keywords_or_ast")
-                result = self.code_mgr.find_by_keywords_or_ast(kp_keywords_norm, list(need_nodes or []), limit=limit)
-                log.info("[SearchService._fetch_candidates] 使用 find_by_keywords_or_ast, 获取 %d 条", len(result))
-                return result
-            except Exception as e:
-                log.warning("[SearchService._fetch_candidates] find_by_keywords_or_ast 失败: %s", e)
-        
-        # 回退：全量（注意：大库会较慢，建议尽快实现索引检索）
-        log.info("[SearchService._fetch_candidates] 回退到全量检索 get_all_snippets")
-        result = self.code_mgr.get_all_snippets()
+                log.error("[SearchService._fetch_candidates] find_snippet_candidates 失败: %s，回退到全量检索", e, exc_info=True)
+
+        # 回退：全量检索（带 LIMIT 安全网）
+        fallback_limit = min(limit * 2, 5000)  # 最多 5000 条，避免 OOM
+        log.warning("[SearchService._fetch_candidates] 回退到全量检索 get_all_snippets (limit=%d)", fallback_limit)
+        result = self.code_mgr.get_all_snippets(limit=fallback_limit)
         log.info("[SearchService._fetch_candidates] 全量检索获取 %d 条", len(result))
         return result
