@@ -145,17 +145,20 @@ JAVA_CORE_KEYWORDS = {
 }
 
 # 歧义度较高的常见词，降低权重（例如 set/get/data/process 等）
+# 注意：set/get 等词在集合类型中很重要，不应过度降权
 AMBIGUOUS_KEYWORDS = {
-    "set", "get", "data", "value", "item", "process", "handle", "read", "write"
+    "data", "value", "item", "process", "handle", "read", "write", "text", "name", "id"
 }
 
 CORE_KEYWORD_WEIGHT = 2.0
 GENERAL_KEYWORD_WEIGHT = 1.0
-AMBIGUOUS_KEYWORD_WEIGHT = 0.5
+AMBIGUOUS_KEYWORD_WEIGHT = 0.7  # 从0.5提高到0.7，减少过度降权
 NAME_KEYWORD_WEIGHT = 0.8  # 从名称拆出的词，略低于显式关键字
 
 # 统一默认权重
-WEIGHT_DEFAULTS = {"ast": 0.6, "keyword": 0.3, "difficulty": 0.1}
+# 基于消融实验结果：Keyword Only达到75%（最优）
+# 使用纯关键词匹配，AST权重为0
+WEIGHT_DEFAULTS = {"ast": 0.0, "keyword": 1.0, "difficulty": 0.0}
 
 
 def _split_name_tokens(name: Optional[str]) -> List[str]:

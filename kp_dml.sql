@@ -125,9 +125,9 @@ ON DUPLICATE KEY UPDATE
 
 -- Domain 2: Control Flow (Modules: 201, 202) [6 items]
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10007, 'if-else basics', 201, 3,
+(10007, 'if statement', 201, 3,
   '{"template":"IfStatement","required_nodes":["if_statement"]}',
-  '["if","else","condition"]', NULL),
+  '["if","condition"]', NULL),
 (10008, 'switch statement', 201, 3,
   '{"template":"ControlFlow","required_nodes":["switch_statement"]}',
   '["switch","case","default"]', NULL),
@@ -247,8 +247,8 @@ INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords
   '{"template":"Exception","required_nodes":["throw_statement","throws"]}',
   '["throw","throws","exception"]', NULL),
 (10034, 'try-with-resources', 602, 3,
-  '{"template":"Exception","required_nodes":["try_statement","resource_specification"]}',
-  '["try-with-resources","autocloseable","resource"]', NULL),
+  '{"required_nodes":["resource_specification"]}',
+  '["bufferedreader","filereader","filewriter","connection","preparedstatement","resultset","autocloseable"]', NULL),
 (10035, 'Custom exception class', 602, 3,
   '{"template":"Class","required_nodes":["class_declaration","extends_clause"]}',
   '["extends","exception","runtimeexception"]', NULL),

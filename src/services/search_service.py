@@ -74,9 +74,12 @@ class SearchService:
         kp_id: int,
         target_difficulty: float = 0.5,
         top_k: int = 5,
-        ast_min_ratio: float = 0.4,
-        keyword_min_score: float = 0.4,
+        ast_min_ratio: float = 0.1,  # 生产环境默认阈值，过滤低质量结果
+        keyword_min_score: float = 0.1,  # 保证推荐质量，同时保持合理召回率
         difficulty_mode: str = "relaxed",
+        w_ast: float = None,  # 可选：自定义AST权重（用于消融实验）
+        w_keyword: float = None,  # 可选：自定义关键词权重
+        w_difficulty: float = None,  # 可选：自定义难度权重
     ) -> List[Dict[str, Any]]:
         """
         使用新策略进行匹配与过滤：
@@ -84,6 +87,12 @@ class SearchService:
           - 启用过滤：AST 覆盖率、关键词最低得分、难度模式
           - 关键词归一化：统一大小写与别名
           - 候选检索：若底层支持则避免全库遍历
+
+        阈值说明：
+          - ast_min_ratio: AST覆盖率最低阈值，低于此值的候选被过滤
+          - keyword_min_score: 关键词得分最低阈值，低于此值的候选被过滤
+          - 默认0.1是生产环境推荐值，保证推荐质量
+          - 评估实验时可设为0.0以测试最大召回能力
         """
         log.info("[SearchService.search] 开始搜索: kp_id=%d, target_diff=%.2f, top_k=%d, ast_min=%.2f, kw_min=%.2f, diff_mode=%s",
                  kp_id, target_difficulty, top_k, ast_min_ratio, keyword_min_score, difficulty_mode)
@@ -137,6 +146,15 @@ class SearchService:
                       snip_id, snip_ast_nodes, snip_keywords_norm, snip_difficulty)
 
             # 4. 打分（将归一化关键词传入策略）
+            # 构建自定义权重（如果提供）
+            custom_weights = WEIGHT_DEFAULTS.copy()
+            if w_ast is not None:
+                custom_weights["ast"] = w_ast
+            if w_keyword is not None:
+                custom_weights["keyword"] = w_keyword
+            if w_difficulty is not None:
+                custom_weights["difficulty"] = w_difficulty
+
             r = calculate_match_score(
                 kp_ast_nodes=need_nodes,
                 snip_ast_nodes=snip_ast_nodes,
@@ -146,7 +164,7 @@ class SearchService:
                 snip_difficulty=snip_difficulty,
                 target_difficulty=target_difficulty if target_difficulty is not None else kp_cfg.get("target_difficulty"),
                 difficulty_mode=difficulty_mode,
-                weights=WEIGHT_DEFAULTS,  # 若需强制 0.6/0.3/0.1，可传 {'ast':0.6, 'keyword':0.3, 'difficulty':0.1}
+                weights=custom_weights,
                 ast_min_ratio=ast_min_ratio,
                 keyword_min_score=keyword_min_score,
             )
@@ -188,7 +206,8 @@ class SearchService:
                 "file_path": snip.get("file_path") or snip.get("source_path"),
             })
 
-        results.sort(key=lambda x: x["score"], reverse=True)
+        # 稳定排序：主排序按score降序，次要排序按ID升序（确保相同得分时结果稳定）
+        results.sort(key=lambda x: (-x["score"], x["id"]))
         final_results = results[:max(1, int(top_k))]
         
         log.info("[SearchService.search] 搜索完成: 候选=%d, 过滤=%d, 通过=%d, 返回=%d",
@@ -205,8 +224,8 @@ class SearchService:
         kp_ids: List[int],
         target_difficulty: float = 0.5,
         top_k: int = 5,
-        ast_min_ratio: float = 0.3,
-        keyword_min_score: float = 0.3,
+        ast_min_ratio: float = 0.1,  # 生产环境默认阈值
+        keyword_min_score: float = 0.1,  # 保证推荐质量
         difficulty_mode: str = "relaxed",
         score_aggregation: str = "average"
     ) -> List[Dict[str, Any]]:
