@@ -43,6 +43,44 @@
 
 📊 **完整评估报告**: [tests/evaluation_results/report.md](tests/evaluation_results/report.md)
 
+### 实验现象说明（FAQ）
+
+#### Q1: 为什么消融实验日志中有大量"领域锚点约束未满足"？
+
+**答**：这是**正常现象**，说明保护机制在工作。
+
+系统采用两阶段匹配：
+1. **召回阶段**：用数据库查询找候选（宽松，追求高召回率）
+2. **排序阶段**：用领域锚点过滤（严格，追求高精准度）
+
+例如查询"ArrayList basics"时：
+- 召回阶段：找到22个包含`new XXX()`的代码
+- 排序阶段：过滤掉19个不含ArrayList/List关键词的代码（如new HashSet(), new TreeMap()）
+- 最终返回：3个真正使用ArrayList的代码
+
+**这保证了ArrayList知识点不会匹配到HashMap代码，提高系统准确性。**
+
+#### Q2: 为什么部分知识点在Keyword Only模式下得分为0？
+
+**答**：揭示了Java知识点的**异质性**，这是有价值的发现。
+
+4个知识点得分为0（但不影响整体94.74%准确率）：
+- **Primitive types**（基本类型）：int, double等类型名称不在关键词提取范围内
+- **Class declaration**（类声明）："class", "declaration"是元级别描述词，不是代码中的实际标识符
+- **Lambda expression**（Lambda表达式）："lambda"不在语言关键字中
+- **Fields and methods**（字段方法）：描述性词汇，非代码实际token
+
+**深层原因**：Java知识点分为两类
+- **行为性知识点**（80%）：通过方法调用、操作关键词识别 → Keyword匹配有效
+- **结构性知识点**（20%）：本质是语法结构 → 必须依赖AST识别
+
+**实验价值**：
+- ✅ 验证了混合策略（AST+Keyword）的必要性
+- ✅ 单一维度无法覆盖所有知识点类型
+- ✅ 关键词匹配对80%的知识点有效，是核心组件
+
+**详细分析**见评估报告中的 [3.1 消融实验现象说明](tests/evaluation_results/report.md#31-消融实验现象说明)。
+
 ## 快速开始
 
 ### 1. 环境准备
