@@ -31,13 +31,17 @@ from lib.globals import core_logger as log
 
 
 def main():
+    # 使用基于项目根目录的绝对路径
+    default_ground_truth = str(project_root / "tests" / "fixtures" / "ground_truth.json")
+    default_output = str(project_root / "tests" / "evaluation_results" / "report.md")
+
     parser = argparse.ArgumentParser(description="运行 Java 知识点匹配系统评估实验")
     parser.add_argument("--quick", action="store_true", help="快速评估（仅评估混合策略）")
     parser.add_argument("--baseline-only", action="store_true", help="仅运行基线对比")
     parser.add_argument("--ablation-only", action="store_true", help="仅运行消融实验")
-    parser.add_argument("--ground-truth", type=str, default="../tests/fixtures/ground_truth.json",
+    parser.add_argument("--ground-truth", type=str, default=default_ground_truth,
                         help="标注数据集路径")
-    parser.add_argument("--output", type=str, default="../tests/evaluation_results/report.md",
+    parser.add_argument("--output", type=str, default=default_output,
                         help="输出报告路径")
     parser.add_argument("--top-k", type=int, default=10, help="评估的截断位置 K")
 
