@@ -74,8 +74,8 @@ class SearchService:
         kp_id: int,
         target_difficulty: float = 0.5,
         top_k: int = 5,
-        ast_min_ratio: float = 0.1,  # 生产环境默认阈值，过滤低质量结果
-        keyword_min_score: float = 0.1,  # 保证推荐质量，同时保持合理召回率
+        ast_min_ratio: float = 0.4,  # 统一默认值：与API Schema一致
+        keyword_min_score: float = 0.4,  # 统一默认值：与API Schema一致
         difficulty_mode: str = "relaxed",
         w_ast: float = None,  # 可选：自定义AST权重（用于消融实验）
         w_keyword: float = None,  # 可选：自定义关键词权重
@@ -89,13 +89,14 @@ class SearchService:
           - 候选检索：若底层支持则避免全库遍历
 
         阈值说明：
-          - ast_min_ratio: AST覆盖率最低阈值，低于此值的候选被过滤
-          - keyword_min_score: 关键词得分最低阈值，低于此值的候选被过滤
-          - 默认0.1是生产环境推荐值，保证推荐质量
+          - ast_min_ratio: AST覆盖率最低阈值，低于此值的候选被过滤（默认0.4）
+          - keyword_min_score: 关键词得分最低阈值，低于此值的候选被过滤（默认0.4）
           - 评估实验时可设为0.0以测试最大召回能力
         """
         log.info("[SearchService.search] 开始搜索: kp_id=%d, target_diff=%.2f, top_k=%d, ast_min=%.2f, kw_min=%.2f, diff_mode=%s",
                  kp_id, target_difficulty, top_k, ast_min_ratio, keyword_min_score, difficulty_mode)
+        log.info("[SearchService.search] 参数验证 - 接收到的阈值: ast_min_ratio=%.2f, keyword_min_score=%.2f",
+                 ast_min_ratio, keyword_min_score)
         
         # 1. 获取知识点
         kp_row = self.kp_mgr.get_by_id(kp_id)
@@ -155,6 +156,15 @@ class SearchService:
             if w_difficulty is not None:
                 custom_weights["difficulty"] = w_difficulty
 
+            # 第一个片段时输出权重配置（避免重复输出）
+            if idx == 0:
+                total_w = custom_weights["ast"] + custom_weights["keyword"] + custom_weights["difficulty"]
+                w_ast_pct = custom_weights["ast"] / total_w * 100 if total_w > 0 else 0
+                w_kw_pct = custom_weights["keyword"] / total_w * 100 if total_w > 0 else 0
+                w_diff_pct = custom_weights["difficulty"] / total_w * 100 if total_w > 0 else 0
+                log.info("[SearchService.search] 权重配置: AST=%.0f%%, 关键词=%.0f%%, 难度=%.0f%%",
+                         w_ast_pct, w_kw_pct, w_diff_pct)
+
             r = calculate_match_score(
                 kp_ast_nodes=need_nodes,
                 snip_ast_nodes=snip_ast_nodes,
@@ -209,14 +219,78 @@ class SearchService:
         # 稳定排序：主排序按score降序，次要排序按ID升序（确保相同得分时结果稳定）
         results.sort(key=lambda x: (-x["score"], x["id"]))
         final_results = results[:max(1, int(top_k))]
-        
+
         log.info("[SearchService.search] 搜索完成: 候选=%d, 过滤=%d, 通过=%d, 返回=%d",
                  len(candidates), filtered_count, len(results), len(final_results))
-        
+
+        # === 兜底逻辑：如果没有结果，降低阈值重试（仅重试一次）===
+        if not final_results and candidates and (ast_min_ratio > 0.0 or keyword_min_score > 0.0):
+            log.warning("[SearchService.search] 未找到匹配结果，启用兜底逻辑（降低阈值重试）")
+            fallback_ast_ratio = max(0.0, ast_min_ratio * 0.5)  # 降低50%
+            fallback_kw_score = max(0.0, keyword_min_score * 0.5)  # 降低50%
+            log.info("[SearchService.search] 兜底阈值: ast_min=%.2f (原%.2f), kw_min=%.2f (原%.2f)",
+                     fallback_ast_ratio, ast_min_ratio, fallback_kw_score, keyword_min_score)
+
+            fallback_results = []
+            for idx, snip in enumerate(candidates):
+                snip_id = snip.get("id", idx)
+                ast_raw = snip.get("ast_features")
+                if isinstance(ast_raw, (str, bytes, bytearray)):
+                    snip_ast_nodes = safe_read_json(ast_raw, default=[])
+                else:
+                    snip_ast_nodes = ast_raw or []
+
+                snip_keywords_norm = normalize_keywords_list(snip.get("keywords"))
+                snip_difficulty = snip.get("complexity_score") or snip.get("difficulty")
+
+                r = calculate_match_score(
+                    kp_ast_nodes=need_nodes,
+                    snip_ast_nodes=snip_ast_nodes,
+                    kp_keywords=kp_keywords_norm,
+                    snip_keywords=snip_keywords_norm,
+                    kp_name=kp_cfg.get("name"),
+                    snip_difficulty=snip_difficulty,
+                    target_difficulty=target_difficulty if target_difficulty is not None else kp_cfg.get("target_difficulty"),
+                    difficulty_mode=difficulty_mode,
+                    weights=custom_weights,
+                    ast_min_ratio=fallback_ast_ratio,
+                    keyword_min_score=fallback_kw_score,
+                )
+
+                if not r.get("filtered"):
+                    fallback_results.append({
+                        "id": snip.get("id"),
+                        "content": snip.get("content", ""),
+                        "score": round(r["final_score"], 3),
+                        "ast_ratio": round(r["ast_score"], 2),
+                        "ast_coverage": round(r["ast_coverage"], 2),
+                        "keyword_score": round(r["keyword_score"], 2),
+                        "keyword_hit": r.get("keyword_hit", 0),
+                        "keyword_total": r.get("keyword_total", 0),
+                        "difficulty": round(r["difficulty_score"], 2),
+                        "details_md": (
+                            f"- AST: {r['ast_score']:.2f} (coverage: {r['ast_coverage']:.2f})\n"
+                            f"- KW: {r['keyword_score']:.2f} ({r.get('keyword_hit', 0)}/{r.get('keyword_total', 0)})\n"
+                            f"- Diff: {r['difficulty_score']:.2f}"
+                        ),
+                        "details": (
+                            f"ast:{r['ast_score']:.2f} (cov:{r['ast_coverage']:.2f}), "
+                            f"kw:{r['keyword_score']:.2f} ({r.get('keyword_hit', 0)}/{r.get('keyword_total', 0)}), "
+                            f"diff:{r['difficulty_score']:.2f}"
+                        ),
+                        "file_path": snip.get("file_path") or snip.get("source_path"),
+                    })
+
+            fallback_results.sort(key=lambda x: (-x["score"], x["id"]))
+            final_results = fallback_results[:max(1, int(top_k))]
+            log.info("[SearchService.search] 兜底结果: 通过=%d, 返回=%d", len(fallback_results), len(final_results))
+
         if final_results:
             log.info("[SearchService.search] Top结果: %s",
                      [(r["id"], r["score"]) for r in final_results[:3]])
-        
+        else:
+            log.warning("[SearchService.search] 最终无匹配结果（候选数=%d）", len(candidates))
+
         return final_results
 
     def composite_search(
@@ -224,8 +298,8 @@ class SearchService:
         kp_ids: List[int],
         target_difficulty: float = 0.5,
         top_k: int = 5,
-        ast_min_ratio: float = 0.1,  # 生产环境默认阈值
-        keyword_min_score: float = 0.1,  # 保证推荐质量
+        ast_min_ratio: float = 0.4,  # 统一默认值：与API Schema一致
+        keyword_min_score: float = 0.4,  # 统一默认值：与API Schema一致
         difficulty_mode: str = "relaxed",
         score_aggregation: str = "average"
     ) -> List[Dict[str, Any]]:

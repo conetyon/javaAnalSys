@@ -86,8 +86,8 @@ class CompositeMatchRequest(BaseModel):
     kp_ids: List[int] = Field(description="知识点 ID 列表（例如：[10011, 10012]）")
     target_difficulty: float = Field(default=0.5, ge=0.0, le=1.0, description="目标难度")
     top_k: int = Field(default=5, ge=1, le=50, description="返回结果数量")
-    ast_min_ratio: float = Field(default=0.3, ge=0.0, le=1.0, description="AST 最低阈值（放宽）")
-    keyword_min_score: float = Field(default=0.3, ge=0.0, le=1.0, description="关键词最低得分（放宽）")
+    ast_min_ratio: float = Field(default=0.4, ge=0.0, le=1.0, description="AST 最低阈值（统一默认值）")
+    keyword_min_score: float = Field(default=0.4, ge=0.0, le=1.0, description="关键词最低得分（统一默认值）")
     difficulty_mode: str = Field(default="relaxed", description="难度模式")
     score_aggregation: str = Field(
         default="average",

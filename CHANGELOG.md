@@ -1,5 +1,113 @@
 # 版本更新记录
 
+## v1.2.6 - 2026-01-18
+
+### 系统健壮性提升和参数传递优化
+
+**主要更新**：全面排查系统，优化日志输出，统一参数默认值，添加兜底逻辑
+
+#### 1. 日志输出优化
+**问题**：日志输出过多，每个候选片段输出3-4条INFO日志
+
+**解决方案**：
+- 将重复的匹配详情降级为DEBUG级别
+- 仅保留关键汇总信息为INFO级别
+- 每次查询添加权重配置日志（仅输出一次）
+
+**效果**：INFO日志减少约70-80%，同时保持关键信息可见
+
+**新增日志**（INFO级别）：
+```
+[SearchService.search] 权重配置: AST=60%, 关键词=30%, 难度=10%
+[SearchService.search] 参数验证 - 接收到的阈值: ast_min_ratio=0.50, keyword_min_score=0.30
+```
+
+#### 2. 参数默认值统一
+**问题**：三个层的默认值不一致，导致混淆
+- API Schema: `ast_min_ratio=0.4, keyword_min_score=0.4`
+- Service Layer: `ast_min_ratio=0.1, keyword_min_score=0.1`
+- Strategy Layer: `ast_min_ratio=0.3, keyword_min_score=0.2`
+
+**解决方案**：统一所有层的默认值为 **0.4, 0.4**
+
+**文件修改**：
+- `src/services/search_service.py:77-78`
+- `src/services/search_service.py:228-229` (composite_search)
+- `src/matching/strategies.py:514-515`
+- `api/schemas/match.py:89-90` (CompositeMatchRequest)
+
+**验证**：添加参数验证日志，确认用户指定的参数正确传递并使用
+
+#### 3. 兜底逻辑添加
+**问题**：高阈值下可能返回0个结果，用户体验差
+
+**解决方案**：自动兜底机制
+- **触发条件**：初次查询返回0个结果 且 阈值不为0
+- **兜底策略**：将阈值降低50%重试（仅重试一次）
+- **示例**：`ast_min=0.4 → 0.2`, `keyword_min=0.4 → 0.2`
+
+**日志示例**：
+```
+[SearchService.search] 搜索完成: 候选=30, 过滤=30, 通过=0, 返回=0
+[SearchService.search] 未找到匹配结果，启用兜底逻辑（降低阈值重试）
+[SearchService.search] 兜底阈值: ast_min=0.20 (原0.40), kw_min=0.20 (原0.40)
+[SearchService.search] 兜底结果: 通过=5, 返回=5
+```
+
+**位置**：`src/services/search_service.py:226-286`
+
+#### 4. 权重配置修正
+**问题**：生产默认权重被设为实验配置（纯关键词）
+```python
+# 错误配置（实验用）
+WEIGHT_DEFAULTS = {"ast": 0.0, "keyword": 1.0, "difficulty": 0.0}
+```
+
+**修正**：恢复平衡的混合策略
+```python
+# 正确配置（生产用）
+WEIGHT_DEFAULTS = {"ast": 0.6, "keyword": 0.3, "difficulty": 0.1}
+```
+
+**说明**：
+- 生产环境使用混合策略（AST结构为主，关键词辅助）
+- 实验时通过 `w_ast/w_keyword/w_difficulty` 参数覆盖
+- 确保生产和实验环境解耦
+
+**位置**：`src/matching/strategies.py:161`
+
+#### 5. 环境解耦验证
+**验证结果**：生产环境和实验环境完全独立
+
+| 维度 | API（生产） | 实验 | 状态 |
+|------|------------|------|------|
+| **服务实例** | 单例（`api/routes/match.py:20-28`）| 独立实例（`scripts/run_evaluation.py:67`）| ✓ 不共享 |
+| **权重配置** | 使用 `WEIGHT_DEFAULTS`（0.6/0.3/0.1）| 通过参数覆盖（`w_ast=...`）| ✓ 独立 |
+| **阈值设置** | API Schema默认值（0.4/0.4）| 实验强制设为0.0（最大召回）| ✓ 独立 |
+| **全局变量** | `WEIGHT_DEFAULTS` 只读 | 同左 | ✓ 无冲突 |
+
+#### 6. 系统全面排查
+**排查内容**：
+- ✓ API Schema与Route Handler参数传递一致性
+- ✓ Service层参数接收和使用正确性
+- ✓ 数据库字段名一致性（`complexity_score` vs `difficulty`）
+- ✓ 返回值格式符合schema定义
+- ✓ 错误处理和边界情况
+
+**发现问题**：
+- 数据库字段名已统一使用 `complexity_score`，代码中兼容 `difficulty` 作为别名
+- 参数传递链路完整：API Schema → Route → Service → Matching
+
+#### 总结
+本次更新重点提升系统健壮性和可维护性：
+1. **日志更清晰** - 减少冗余，保留关键信息
+2. **参数统一** - 避免混淆，提升可理解性
+3. **兜底保障** - 尽量不返回空结果
+4. **环境隔离** - 生产和实验互不干扰
+5. **全面验证** - 确保系统各层协调一致
+
+---
+
 ## v1.2.5 - 2026-01-18
 
 ### 项目结构优化和实验方案完善

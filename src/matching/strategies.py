@@ -156,9 +156,9 @@ AMBIGUOUS_KEYWORD_WEIGHT = 0.7  # 从0.5提高到0.7，减少过度降权
 NAME_KEYWORD_WEIGHT = 0.8  # 从名称拆出的词，略低于显式关键字
 
 # 统一默认权重
-# 基于消融实验结果：Keyword Only达到75%（最优）
-# 使用纯关键词匹配，AST权重为0
-WEIGHT_DEFAULTS = {"ast": 0.0, "keyword": 1.0, "difficulty": 0.0}
+# 生产环境使用平衡配置，综合考虑AST结构、关键词、难度三个维度
+# 注意：消融实验可通过 search() 的 w_ast/w_keyword/w_difficulty 参数覆盖这些默认值
+WEIGHT_DEFAULTS = {"ast": 0.6, "keyword": 0.3, "difficulty": 0.1}
 
 
 def _split_name_tokens(name: Optional[str]) -> List[str]:
@@ -511,8 +511,8 @@ def calculate_match_score(
     target_difficulty: Any = None,
     difficulty_mode: str = "relaxed",
     weights: Optional[Dict[str, float]] = None,
-    ast_min_ratio: float = 0.3,  # 降低到 0.3（原 0.4），确保更多结果通过
-    keyword_min_score: float = 0.2,  # 降低到 0.2（原 0.4），避免过度过滤
+    ast_min_ratio: float = 0.4,  # 统一默认值：与API Schema一致
+    keyword_min_score: float = 0.4,  # 统一默认值：与API Schema一致
 ) -> Dict[str, Any]:
     """
     综合计算"知识点-代码片段"的最终匹配得分。
@@ -533,8 +533,8 @@ def calculate_match_score(
         target_difficulty: 用户期望难度
         difficulty_mode: "strict" / "relaxed"
         weights: dict，可覆盖默认权重
-        ast_min_ratio: AST 覆盖率低于此值时视作结构不匹配（默认 0.3，降低以增加召回率）
-        keyword_min_score: 关键词得分低于此值时视作弱相关（默认 0.2，降低以增加召回率）
+        ast_min_ratio: AST 覆盖率低于此值时视作结构不匹配（默认 0.4）
+        keyword_min_score: 关键词得分低于此值时视作弱相关（默认 0.4）
 
     返回:
         {
@@ -549,7 +549,9 @@ def calculate_match_score(
         }
     """
     log.debug("[MATCH] ===== 开始匹配计算 =====")
-    log.info("[MATCH] 知识点: %s", kp_name)
+    log.debug("[MATCH] 知识点: %s", kp_name)
+    log.debug("[MATCH] 阈值配置: ast_min_ratio=%.2f, keyword_min_score=%.2f, difficulty_mode=%s",
+              ast_min_ratio, keyword_min_score, difficulty_mode)
     log.debug("[MATCH] AST节点: KP=%s, Snippet=%s", kp_ast_nodes, snip_ast_nodes)
     log.debug("[MATCH] 关键词: KP=%s, Snippet=%s", kp_keywords, snip_keywords)
     log.debug("[MATCH] 难度: Snippet=%.2f, Target=%.2f, Mode=%s",
@@ -571,7 +573,7 @@ def calculate_match_score(
         w_kw /= total_w
         w_diff /= total_w
 
-    log.info("[MATCH] 权重配置: AST=%.1f%%, 关键词=%.1f%%, 难度=%.1f%%",
+    log.debug("[MATCH] 权重配置: AST=%.1f%%, 关键词=%.1f%%, 难度=%.1f%%",
              w_ast*100, w_kw*100, w_diff*100)
 
     # 1. AST 结构匹配（兼容 JSON/字符串）
@@ -603,20 +605,20 @@ def calculate_match_score(
         filter_reason.append("难度严格模式不匹配")
 
     # === 日志：各维度得分 ===
-    log.info("[MATCH] 得分明细: AST=%.2f(覆盖%.2f) | 关键词=%.2f(%d/%d) | 难度=%.2f",
+    log.debug("[MATCH] 得分明细: AST=%.2f(覆盖%.2f) | 关键词=%.2f(%d/%d) | 难度=%.2f",
              ast_score, ast_cov, kw_score, kw_hit, kw_total, diff_score)
 
     # 4. 加权融合
     if filtered:
         final_score = 0.0
-        log.warning("[MATCH] ❌ 被过滤: %s", " | ".join(filter_reason))
+        log.debug("[MATCH] ❌ 被过滤: %s", " | ".join(filter_reason))
     else:
         final_score = w_ast * ast_score + w_kw * kw_score + w_diff * diff_score
         if final_score < 0.0:
             final_score = 0.0
         if final_score > 1.0:
             final_score = 1.0
-        log.info("[MATCH] ✓ 最终得分: %.3f (%.0f%% x %.2f + %.0f%% x %.2f + %.0f%% x %.2f)",
+        log.debug("[MATCH] ✓ 最终得分: %.3f (%.0f%% x %.2f + %.0f%% x %.2f + %.0f%% x %.2f)",
                  final_score, w_ast*100, ast_score, w_kw*100, kw_score, w_diff*100, diff_score)
 
     return {
