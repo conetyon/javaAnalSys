@@ -15,10 +15,10 @@ import argparse
 from pathlib import Path
 
 # 添加项目根目录到 Python 路径
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from tests.evaluation.experiment import (
+from experiments.evaluation.experiment import (
     load_ground_truth,
     run_single_evaluation,
     run_baseline_comparison,
@@ -32,8 +32,8 @@ from lib.globals import core_logger as log
 
 def main():
     # 使用基于项目根目录的绝对路径
-    default_ground_truth = str(project_root / "tests" / "fixtures" / "ground_truth.json")
-    default_output = str(project_root / "tests" / "evaluation_results" / "report.md")
+    default_ground_truth = str(project_root / "experiments" / "datasets" / "ground_truth" / "codesearchnet_v7.0-final.json")
+    default_output = str(project_root / "experiments" / "results" / "report.md")
 
     parser = argparse.ArgumentParser(description="运行 Java 知识点匹配系统评估实验")
     parser.add_argument("--quick", action="store_true", help="快速评估（仅评估混合策略）")

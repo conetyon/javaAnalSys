@@ -94,6 +94,13 @@ DOMAIN_ANCHORS = {
     "set", "hashset", "treeset", "linkedhashset",
     "map", "hashmap", "treemap", "linkedhashmap",
     "queue", "deque", "arraydeque", "priorityqueue",
+    # 工具类
+    "stringbuilder", "stringbuffer", "string",
+    "arrays", "collections", "objects",
+    # Stream API
+    "stream", "optional",
+    # 并发类
+    "future", "completablefuture", "reentrantlock", "countdownlatch",
 }
 
 # 类型层级图：支持继承关系的松弛匹配
@@ -155,10 +162,31 @@ GENERAL_KEYWORD_WEIGHT = 1.0
 AMBIGUOUS_KEYWORD_WEIGHT = 0.7  # 从0.5提高到0.7，减少过度降权
 NAME_KEYWORD_WEIGHT = 0.8  # 从名称拆出的词，略低于显式关键字
 
-# 统一默认权重
-# 生产环境使用平衡配置，综合考虑AST结构、关键词、难度三个维度
+# 特定 API 类名权重（提高以增强识别度）
+# 这些类名对于识别特定 API 至关重要
+API_CLASS_KEYWORDS = {
+    # 集合类
+    "arraylist", "linkedlist", "vector", "stack",
+    "hashset", "treeset", "linkedhashset",
+    "hashmap", "treemap", "linkedhashmap", "hashtable",
+    "arraydeque", "priorityqueue",
+    # 工具类
+    "stringbuilder", "stringbuffer",
+    "arrays", "collections", "objects",
+    # Stream & Optional
+    "stream", "optional",
+    # 并发类
+    "future", "completablefuture", "executor", "executorservice",
+    "reentrantlock", "reentrantreadwritelock", "countdownlatch", "cyclicbarrier",
+    "semaphore", "phaser",
+}
+API_CLASS_WEIGHT = 1.8  # 介于 CORE 和 GENERAL 之间，强调 API 特异性
+
+# 统一默认权重（v1.2.8 基于实验结果的优化配置）
+# **关键发现**：AST匹配是最可靠的特征，Keyword引入噪声大于贡献
+# 根据CodeSearchNet数据集评估，AST-only达到最佳效果
 # 注意：消融实验可通过 search() 的 w_ast/w_keyword/w_difficulty 参数覆盖这些默认值
-WEIGHT_DEFAULTS = {"ast": 0.6, "keyword": 0.3, "difficulty": 0.1}
+WEIGHT_DEFAULTS = {"ast": 1.0, "keyword": 0.0, "difficulty": 0.0}
 
 
 def _split_name_tokens(name: Optional[str]) -> List[str]:
@@ -415,19 +443,18 @@ def calculate_keyword_score(kp_kws: Any, snip_kws: Any, kp_name: Optional[str] =
         log.debug("[KW] 知识点无关键词定义，返回默认分 0.5")
         return 0.5, 0, 0
 
-    # === 领域锚点约束（松弛版本：支持类型层级匹配）===
-    # 当知识点关键词包含领域特定词（如arraylist, hashset）时，代码片段必须至少命中一个锚点（或其兼容类型）
+    # === 领域锚点约束（软约束版本：降低得分而非归零）===
+    # 当知识点关键词包含领域特定词（如arraylist, hashset）时，代码片段应尽量命中锚点
+    # 改进：使用乘数惩罚（0.3x）而不是直接归零，保证系统在召回阶段不会过度过滤
+    anchor_penalty = 1.0  # 默认无惩罚
     kp_anchors = base_tokens.intersection(DOMAIN_ANCHORS)
     if kp_anchors:
         # 使用松弛检查：支持类型层级匹配（ArrayList → List, HashSet → Set）
         if not _check_domain_anchors_relaxed(kp_anchors, snip_tokens):
-            log.info("[KW] 领域锚点约束未满足（松弛模式）: 需要锚点=%s, 片段关键词无兼容匹配 -> 得分=0", kp_anchors)
-            # 返回0分，但保留统计信息
-            plain_inter = len(base_tokens.intersection(snip_tokens))
-            plain_total = len(base_tokens)
-            return 0.0, plain_inter, plain_total
+            anchor_penalty = 0.3  # 未满足锚点：降低到30%
+            log.info("[KW] 领域锚点约束未满足（软惩罚）: 需要锚点=%s, 应用惩罚系数=%.1f", kp_anchors, anchor_penalty)
         else:
-            log.debug("[KW] 领域锚点约束满足（松弛模式）: 需要锚点=%s ✓", kp_anchors)
+            log.debug("[KW] 领域锚点约束满足: 需要锚点=%s ✓", kp_anchors)
 
     weighted_total = 0.0
     weighted_hit = 0.0
@@ -436,6 +463,8 @@ def calculate_keyword_score(kp_kws: Any, snip_kws: Any, kp_name: Optional[str] =
     for token in base_tokens:
         if token in JAVA_CORE_KEYWORDS:
             w = CORE_KEYWORD_WEIGHT
+        elif token in API_CLASS_KEYWORDS:
+            w = API_CLASS_WEIGHT  # 特定 API 类名获得更高权重
         elif token in AMBIGUOUS_KEYWORDS:
             w = AMBIGUOUS_KEYWORD_WEIGHT
         elif token in name_tokens:
@@ -454,11 +483,15 @@ def calculate_keyword_score(kp_kws: Any, snip_kws: Any, kp_name: Optional[str] =
     else:
         score = weighted_hit / weighted_total
 
+    # 应用领域锚点惩罚（如果有）
+    score = score * anchor_penalty
+
     plain_inter = len(base_tokens.intersection(snip_tokens))
     plain_total = len(base_tokens)
 
-    log.debug("[KW] 命中详情: %s, 加权得分=%.3f (%.2f/%.2f), 简单命中=%d/%d",
-              hit_details, score, weighted_hit, weighted_total, plain_inter, plain_total)
+    log.debug("[KW] 命中详情: %s, 基础得分=%.3f (%.2f/%.2f), 锚点惩罚=%.1f, 最终=%.3f, 简单命中=%d/%d",
+              hit_details, weighted_hit/weighted_total if weighted_total > 0 else 0,
+              weighted_hit, weighted_total, anchor_penalty, score, plain_inter, plain_total)
 
     return max(0.0, min(1.0, score)), plain_inter, plain_total
 

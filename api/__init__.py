@@ -8,7 +8,10 @@ from flask_cors import CORS
 
 from api.routes import register_routes
 from api.middleware import register_error_handlers
+from api.middleware.metrics import init_metrics_middleware
+from api.middleware.request_logger import init_request_logging
 from lib.globals import api_logger as log
+from lib.background_jobs import start_worker
 
 
 def create_app(config_object=None) -> Flask:
@@ -37,11 +40,18 @@ def create_app(config_object=None) -> Flask:
         }
     })
 
+    # 注册中间件
+    init_metrics_middleware(app)
+    init_request_logging(app)
+
     # 注册错误处理器
     register_error_handlers(app)
 
     # 注册路由
     register_routes(app)
+
+    # 启动后台任务队列工作线程
+    start_worker()
 
     # 根路由 - 健康检查
     @app.route('/')
@@ -49,14 +59,19 @@ def create_app(config_object=None) -> Flask:
         return {
             "code": 200,
             "message": "Java Knowledge Matching API",
-            "version": "1.0.0",
+            "version": "1.3.0",
             "endpoints": {
+                "health": "GET /api/health",
+                "metrics": "GET /api/metrics",
                 "knowledge_tree": "GET /api/knowledge/tree",
                 "knowledge_list": "GET /api/knowledge/list",
                 "knowledge_detail": "GET /api/knowledge/{id}",
                 "match": "POST /api/match",
                 "batch_match": "POST /api/match/batch",
-                "health": "GET /api/match/health"
+                "composite_match": "POST /api/match/composite",
+                "match_health": "GET /api/match/health",
+                "bulk_import": "POST /api/bulk-import",
+                "bulk_import_status": "GET /api/bulk-import/{job_id}"
             }
         }
 

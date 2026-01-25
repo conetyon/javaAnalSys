@@ -173,7 +173,13 @@ class RandomMatcher:
     随机匹配器（最差基线）
 
     随机排序所有代码片段，用于验证其他方法是否优于随机。
+    使用固定随机种子确保结果可复现。
     """
+
+    def __init__(self, seed=42):
+        """初始化Random matcher"""
+        self.seed = seed
+        random.seed(seed)
 
     def match(self, all_snippets: List[Dict[str, Any]], top_k: int = 10) -> List[int]:
         """
@@ -187,8 +193,11 @@ class RandomMatcher:
             List[int]: 随机排序的 snippet_id 列表
         """
         snippet_ids = [s.get("id") for s in all_snippets if s.get("id")]
-        random.shuffle(snippet_ids)
-        result_ids = snippet_ids[:top_k]
+
+        # 创建副本避免修改原列表，设置种子确保可复现
+        shuffled = snippet_ids.copy()
+        random.Random(self.seed).shuffle(shuffled)
+        result_ids = shuffled[:top_k]
 
         log.debug(f"[Random Matcher] Top-{top_k} 结果: {result_ids[:5]}...")
         return result_ids

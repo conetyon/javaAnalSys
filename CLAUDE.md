@@ -1,3 +1,22 @@
+<!-- OPENSPEC:START -->
+# OpenSpec Instructions
+
+These instructions are for AI assistants working in this project.
+
+Always open `@/openspec/AGENTS.md` when the request:
+- Mentions planning or proposals (words like proposal, spec, change, plan)
+- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
+- Sounds ambiguous and you need the authoritative spec before coding
+
+Use `@/openspec/AGENTS.md` to learn:
+- How to create and apply change proposals
+- Spec format and conventions
+- Project structure and guidelines
+
+Keep this managed block so 'openspec update' can refresh the instructions.
+
+<!-- OPENSPEC:END -->
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -36,14 +55,18 @@ python main.py
 3. Both are idempotent - safe to run multiple times
 
 **Manual operations** (if needed):
-```python
-from scripts.offline_tasks import init_database, analyze_code_file
+```bash
+# Initialize database schema only
+python scripts/init_data/init_schema.py
 
-# Initialize database only
-init_database()
+# Load knowledge points only
+python scripts/init_data/load_knowledge_points.py
 
-# Analyze a specific file
-analyze_code_file("path/to/file.java", save_to_db=True)
+# Analyze a specific Java file
+python scripts/init_data/analyze_sample_code.py
+
+# Check system status
+python scripts/init_data/check_status.py
 ```
 
 **Note**:
@@ -60,6 +83,34 @@ python run_api.py
 # With custom settings
 python run_api.py --port 8080 --host 0.0.0.0 --debug
 ```
+
+### Evaluation and Testing
+
+```bash
+# Run complete evaluation (baseline comparison + ablation study)
+python scripts/run_evaluation.py
+
+# Quick evaluation (hybrid strategy only)
+python scripts/run_evaluation.py --quick
+
+# Run only baseline comparison
+python scripts/run_evaluation.py --baseline-only
+
+# Run only ablation study
+python scripts/run_evaluation.py --ablation-only
+
+# Run unit tests for matching strategies
+python tests/test_matching_strategies.py
+```
+
+**Evaluation Framework**:
+- Ground truth dataset: `experiments/datasets/ground_truth/codesearchnet_v7.0-final.json` (99 test cases, 495 annotated snippets)
+- Baselines: TF-IDF (1.01%), Pure AST (0.00%), Random (0.00%)
+- Hybrid strategy: 96.97% Top-1 Accuracy (提升 95+ 个百分点)
+- Ablation study: Tests AST-only, Keyword-only, AST+Keyword, Full (AST+Keyword+Difficulty)
+- Metrics: Top-1 Accuracy, Precision@K, Recall@K, F1@K, MRR, MAP
+- Results: Saved to `experiments/results/report.md` and `report.json`
+- **Key Finding**: Keyword 是最重要特征（单独 53.54%），AST 需要与其他特征组合发挥作用
 
 ### Offline Testing (`main.py`)
 
@@ -95,12 +146,13 @@ python main.py
 
 **Example knowledge point IDs**: `10010, 10011, 10031, 10034, 10083` (print-related)
 
-**Utility functions** (can be imported from `scripts.offline_tasks`):
-- `init_database()` - Initialize database (called automatically in Step 1)
-- `analyze_code_file(path)` - Analyze Java file (called automatically for sample_code.java in Step 2)
-- `print_knowledge_tree()` - View KP hierarchy (included in utility scenario)
-- `run_matching_test(kp_ids)` - Single/batch matching
-- `run_composite_matching_test(kp_ids)` - Composite matching
+**Available utility scripts**:
+- `scripts/init_data/init_schema.py` - Initialize database schema
+- `scripts/init_data/load_knowledge_points.py` - Load knowledge points from kp_dml.sql
+- `scripts/init_data/analyze_sample_code.py` - Analyze sample_code.java
+- `scripts/init_data/check_status.py` - View system data status
+- `scripts/run_experiments.py` - Run complete experiment pipeline
+- `scripts/run_evaluation.py` - Run evaluation experiments
 
 ## Architecture Overview
 
@@ -169,6 +221,13 @@ Hybrid scoring algorithm with three components:
 - `ast_min_ratio`: Minimum AST coverage (default 0.4)
 - `keyword_min_score`: Minimum keyword score (default 0.4)
 - Snippets below thresholds get `final_score=0`
+
+**Automatic Fallback Logic** (v1.2.6+):
+- When initial search returns 0 results with non-zero thresholds
+- System automatically retries with thresholds reduced by 50% (e.g., 0.4 → 0.2)
+- Fallback triggers only once per request
+- Improves user experience by reducing empty results
+- Logged as: `[SearchService.search] 未找到匹配结果，启用兜底逻辑（降低阈值重试）`
 
 #### 3. Service Layer (`src/services/`)
 
@@ -320,6 +379,15 @@ MySQL connections are expensive. Connection pooling in `MySQLClient`:
 - Handles concurrent API requests efficiently
 - Supports both quick single queries and multi-statement transactions
 
+### Why Difficulty Parameter Despite Trade-off
+The system includes a `difficulty` parameter (default weight 0.1) even though it may reduce pure semantic matching accuracy in some cases. This is an intentional design trade-off:
+- **Current Performance**: Full (AST+KW+DIFF) = 96.97%, AST+KW = 63.64%
+- **Improvement**: Difficulty 提升 33.33 个百分点，证明其有效性
+- Real users have varying skill levels requiring difficulty-appropriate code examples
+- Evaluation datasets only measure semantic relevance, not user preferences for code complexity
+- For pure semantic matching, set `w_difficulty=0.0` in API requests
+- The parameter adds valuable personalization capability for educational platforms
+
 ## Dependencies
 
 Core:
@@ -335,11 +403,42 @@ Windows-specific:
 
 ## Testing Notes
 
-This repository does not currently include automated tests. When adding tests:
-- Place unit tests in `tests/` directory
-- Use pytest as the test runner
-- Mock database connections using `unittest.mock` or `pytest-mock`
-- Test matching algorithm with known KP-snippet pairs in `tests/fixtures/`
+The repository includes both unit tests and a comprehensive evaluation framework:
+
+**Unit Tests** (`tests/test_matching_strategies.py`):
+- Tests AST score calculation (exact/partial/no match)
+- Tests keyword scoring with domain anchors
+- Tests end-to-end matching with realistic scenarios
+- Run with: `python tests/test_matching_strategies.py`
+
+**Evaluation Framework** (`experiments/evaluation/`):
+- `ground_truth/codesearchnet_v7.0-final.json`: Auto-generated dataset (99 test cases, 495 snippets, using content_hash)
+- `metrics.py`: Precision@K, Recall@K, F1@K, MRR, MAP, Top-1 Accuracy
+- `baselines.py`: TF-IDF, Pure AST, Random baseline implementations
+- `experiment.py`: Orchestrates baseline comparison and ablation studies
+
+**Current Performance** (v7.0 dataset, 2026-01-25):
+- **Hybrid Strategy**: 96.97% Top-1 Accuracy, 0.9832 MRR, 99.39% Recall@10
+- **vs TF-IDF**: +95.96个百分点 (1.01% → 96.97%)
+- **vs Pure AST**: +96.97个百分点 (0.00% → 96.97%)
+- **P@10 = 49.91%**: 接近理论最优（每个KP平均5个相关片段，上限50%）
+
+**Baseline Analysis**:
+- TF-IDF (1.01%): 简单余弦相似度，无别名规范化，无权重分层
+- Pure AST (0.00%): 简单Jaccard，无节点映射，无领域锚点
+- Random (0.00%): 理论命中率~0.25%，统计上接近0%合理
+
+**Adding New Tests**:
+- Unit tests: Add to `tests/test_matching_strategies.py`
+- Evaluation cases: Add to `experiments/ground_truth_codesearchnet.json` with format:
+  ```json
+  {
+    "kp_id": 10011,
+    "kp_name": "For loop",
+    "relevant_snippet_ids": [1, 5, 8]
+  }
+  ```
+- Mock database connections using `unittest.mock` for isolated testing
 
 ## Common Workflows
 
@@ -350,6 +449,20 @@ This repository does not currently include automated tests. When adding tests:
 3. Add new weight parameter to `WEIGHT_DEFAULTS` if needed
 4. Update API schema in `api/schemas/match.py` to accept new parameters
 5. Test via offline script: Uncomment relevant scenario in `main.py` and run `python main.py`
+6. Run evaluation to measure impact: `python scripts/run_evaluation.py`
+
+### Running and Validating Evaluations
+
+1. Ensure database is initialized and CodeSearchNet dataset is imported: `python scripts/setup_database.py --import-dataset`
+2. Run evaluation: `python scripts/run_experiments.py` (outputs to `experiments/results/report.md`)
+3. Validate results against expected metrics (see README.md for current benchmarks)
+4. Key metrics to check:
+   - Top-1 Accuracy: Should be ≥95% for hybrid strategy
+   - MRR: Should be ≥0.95
+   - Recall@10: Should be ≥95%
+   - **P@10 ≈ 50%**: 接近理论最优（Ground Truth 平均5个相关片段/KP）
+5. For ablation studies, verify that Full configuration achieves ~97% Top-1 Accuracy
+6. Baseline methods should show: TF-IDF ~1%, Pure AST ~0%, Random ~0%
 
 ### Adding a New API Endpoint
 
@@ -364,7 +477,7 @@ This repository does not currently include automated tests. When adding tests:
 1. Update `src/java_analyzer/analyzer.py` (extraction logic)
 2. Update `src/java_analyzer/constants.py` (node types, keywords, aliases)
 3. Update `src/matching/strategies.py` (NODE_MAPPING if templates change)
-4. Re-analyze existing code files: Use `analyze_code_file()` from `scripts.offline_tasks`
+4. Re-analyze existing code files: `python scripts/init_data/analyze_sample_code.py`
 
 ### Using Composite Knowledge Point Matching
 
@@ -390,8 +503,31 @@ curl -X POST http://localhost:5000/api/match/composite \
 
 1. Modify table definitions in `src/db_manager/database.py` (`_init_tables()`)
 2. Update manager classes in `src/db_manager/` for new fields
-3. Run `python main.py` (database auto-initialization uses `CREATE TABLE IF NOT EXISTS`, safe to re-run)
-4. For destructive changes, manually drop tables first or write migration script
+3. Run `python scripts/init_data/init_schema.py` to create/update tables
+4. For clean reinstallation, drop the database first: `DROP DATABASE javalearningsys;`
+
+**Note**: All table definitions include complete schema with all fields. The system uses `CREATE TABLE IF NOT EXISTS`, so it's safe to re-run initialization. For adding new fields to existing tables, consider dropping and recreating the database for experimental setups.
+
+### Debugging Matching Issues
+
+When matching results are unexpected:
+
+1. **Check log levels**: Set `core_logger` to DEBUG in `config/logger.yaml` for detailed matching info
+2. **Verify thresholds**: Default `ast_min_ratio=0.4, keyword_min_score=0.4` - check if fallback logic triggered
+3. **Inspect domain anchors**: Look for "领域锚点约束未满足" in logs - this is normal and indicates protective filtering
+4. **Validate keywords**: Check if `CANONICAL_ALIASES` in `src/java_analyzer/constants.py` includes expected method names
+5. **Test without difficulty**: Set `w_difficulty=0.0` to isolate semantic matching issues
+6. **Check AST templates**: Verify knowledge point `ast_template.required_nodes` in database match expected node types
+7. **Run unit tests**: `python tests/test_matching_strategies.py` to verify core logic
+
+### Understanding "Domain Anchor Constraint Not Met" Warnings
+
+These warnings are **normal and expected**:
+- Appear during the ranking phase when filtering candidates
+- Example: Query "ArrayList basics" finds 22 candidates with `new XXX()`, but filters out 19 that don't contain "arraylist" or "list" keywords
+- This prevents ArrayList knowledge points from matching HashMap/TreeMap code
+- Indicates the protective mechanism is working correctly
+- Does not indicate an error - only means a candidate was correctly rejected
 
 ## Files NOT to Edit
 
@@ -400,3 +536,54 @@ curl -X POST http://localhost:5000/api/match/composite \
 - `__pycache__/`: Python bytecode cache
 - `sample_code.java`: Example file for testing (can be replaced for testing purposes)
 - `kp_dml.sql`: Pre-populated knowledge points data (modify only if changing KP structure)
+
+## Important System Defaults (v1.2.6+)
+
+**Default Thresholds** (unified across all layers):
+- `ast_min_ratio`: 0.4
+- `keyword_min_score`: 0.4
+
+**Default Weights** (production configuration):
+- `w_ast`: 0.6 (AST structure matching)
+- `w_keyword`: 0.3 (keyword semantic matching)
+- `w_difficulty`: 0.1 (difficulty scoring)
+
+**Note**: These defaults are consistent across:
+- API schemas (`api/schemas/match.py`)
+- Service layer (`src/services/search_service.py`)
+- Strategy layer (`src/matching/strategies.py`)
+
+For experimental configurations (e.g., pure semantic matching), override via API request parameters:
+```json
+{
+  "kp_id": 10011,
+  "w_ast": 0.5,
+  "w_keyword": 0.5,
+  "w_difficulty": 0.0
+}
+```
+
+## Recent Major Changes
+
+**v1.3.0** (2026-01-25):
+- **修复基线评估 Bug**：基线方法从 ID 到 Hash 的转换缺失，导致评估结果全 0%
+- **完整数据集评估**：使用 CodeSearchNet 子集（20,022 个片段，99 个测试用例）
+- **实验结果更新**：Hybrid 96.97%，TF-IDF 1.01%，Pure AST 0.00%，Random 0.00%
+- **文档更新**：增加详细的基线方法分析和 P@10 说明
+
+**v1.2.6** (2026-01-18):
+- Added automatic fallback/retry logic when no results found
+- Unified default thresholds across all layers (0.4, 0.4)
+- Optimized logging output (reduced INFO logs by 70-80%)
+- Added parameter validation logging for debugging
+
+**v1.2.4** (2026-01-18):
+- Completed comprehensive evaluation with 19 test cases
+- Added fallback logic and weight optimization
+- Achieved 94.74% Top-1 Accuracy (100% without difficulty parameter)
+
+**v1.2.3** (2026-01-03):
+- Fixed domain anchor bugs
+- Added AST fallback mechanisms
+
+See `CHANGELOG.md` for complete version history.

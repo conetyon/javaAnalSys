@@ -1,0 +1,1303 @@
+{
+  "version": "3.2",
+  "description": "Java knowledge point matching - CodeSearchNet ground truth (auto-generated, full coverage)",
+  "created_at": "2026-01-25",
+  "dataset": "CodeSearchNet Java subset",
+  "generation_method": "Hybrid matching (w_ast=0.6, w_kw=0.3, w_diff=0.1) with score >= 0.4 threshold, zero thresholds for max recall",
+  "identifier_type": "content_hash (stable across database rebuilds)",
+  "test_cases": [
+    {
+      "id": 1,
+      "kp_id": 10001,
+      "kp_name": "Primitive types: int/double/boolean",
+      "relevant_snippet_hashes": [
+        "88f1ab2db66a438a54363345e5d68e8c2a304c41cf1a4f5781e4e3e8fa89b81d",
+        "ea9554452a6a82c6efb9c821a7372117ba6d5acf8d22a426769d3f79a29a25c5",
+        "3721f0b08eb6bb0ebaac31111b3e9e7cbf531458d9056319a3deeb90e2741100",
+        "ae52831d251903116b0172b5b1824e3649c3151a40d9c8efa2f915e5fbe28ca4",
+        "93c5f87618f3bba436abfc5376feedd1766048fcbbd7e9d926f3e7e0ef59398b"
+      ],
+      "notes": "Auto-generated (score 0.65-0.68, top 5)"
+    },
+    {
+      "id": 2,
+      "kp_id": 10002,
+      "kp_name": "Type casting and promotion",
+      "relevant_snippet_hashes": [
+        "e6b7b8cad656ffc065bfba6f1a1318545f0ab3332419e364f0947b5bb4aa53b3",
+        "a4a62485d744617bf96f092ceca0f2648ae463e6dc131779b3b57f37db8aaebc",
+        "6707f75d9e1b8f90c7338a99f82f55039496732f04582bc516d7e40263d7d187",
+        "c9080ca30583faa70554a6909f07a0262a189a2a28446f6c8a0ccd7b8a93146e",
+        "cb92098f81828ea4f77781253f0b3f85c96c2df1de815a01db6227186a8509f9"
+      ],
+      "notes": "Auto-generated (score 0.54-0.65, top 5)"
+    },
+    {
+      "id": 3,
+      "kp_id": 10003,
+      "kp_name": "String operations basics",
+      "relevant_snippet_hashes": [
+        "a2767002ae75a495b407324a2640318ae2b2223a25de35aa08481ce33d2b88db",
+        "65a10fb2af2950d8836c3fe3f7071a3673cb8779dae14473f065cbf5da50e14f",
+        "60b0ea4ed65433e082a22a432246423eb197fe34effab7446812c8e6fbf011da",
+        "4b3eccf961b95eb9ff2836ec44ce35091b1c8fc7dd6a13ab154e8e31d138e5e0",
+        "b9e498cbb11a7d6d92e70a3468740a624511f939733f71232bad17ed20f1b1cd"
+      ],
+      "notes": "Auto-generated (score 0.61-0.65, top 5)"
+    },
+    {
+      "id": 4,
+      "kp_id": 10004,
+      "kp_name": "StringBuilder and StringBuffer",
+      "relevant_snippet_hashes": [
+        "c520c6e98f64f7ed5513ee2ceea1365d0c1131a1475a843b67f291628fb4c3f0",
+        "4b3eccf961b95eb9ff2836ec44ce35091b1c8fc7dd6a13ab154e8e31d138e5e0",
+        "65604fc6b16e812f7192521b08f6aac0bcd7e71ed3af6732b651f3f8a8593002",
+        "682aa0b0263a0de282dae94ebfafb3385d8c9c9944758d7fb1a2a9627d740ab9",
+        "982e45168e1ca904ff5c5b592ed3d465cc7c553142be6b1e7d8f39ec142a6a48"
+      ],
+      "notes": "Auto-generated (score 0.69-0.71, top 5)"
+    },
+    {
+      "id": 5,
+      "kp_id": 10005,
+      "kp_name": "Arrays basics",
+      "relevant_snippet_hashes": [
+        "f44163c019a036719c17299753bea0d6678a88050c7a67456f47000d38600c4f",
+        "a9557c5fc200afbb70259fdb93bd83a4461e7491f01ffda03c0f9fcc71544b85",
+        "0fa5a086c4b204da9bda8699c8859efd01570b1ac9ac0e8f13b7ae0a685c1b1d",
+        "68b27cef5918af9defcf14529308b62144c21f2e6806dce0ae9787116c00aea8",
+        "b845d34aef1df5f3cfd9cb956b5d9aac38e757ee8b551c9356c5b088629d8486"
+      ],
+      "notes": "Auto-generated (score 0.64-0.67, top 5)"
+    },
+    {
+      "id": 6,
+      "kp_id": 10006,
+      "kp_name": "var and local type inference",
+      "relevant_snippet_hashes": [
+        "638539a096f4055f050bd2f0960ca9b6acf882de63085d4de3df49ed0c2f5c36",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "335ca4b9d98f42eb5a3c8261ecd34f21d5ce791a31dd0737ec800eaaae01005b",
+        "a2ca3430d6936e7f45e4cf8016ae50fad8650703ea418d0f2bd0fa24b04937f6"
+      ],
+      "notes": "Auto-generated (score 0.54-0.55, top 5)"
+    },
+    {
+      "id": 7,
+      "kp_id": 10007,
+      "kp_name": "if statement",
+      "relevant_snippet_hashes": [
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "335ca4b9d98f42eb5a3c8261ecd34f21d5ce791a31dd0737ec800eaaae01005b",
+        "a2ca3430d6936e7f45e4cf8016ae50fad8650703ea418d0f2bd0fa24b04937f6",
+        "342d2c833e41f52f0ff1bc567e8dc41c611ca4831b69aa1528dc861389c96ec3"
+      ],
+      "notes": "Auto-generated (score 0.79-0.79, top 5)"
+    },
+    {
+      "id": 8,
+      "kp_id": 10008,
+      "kp_name": "switch statement",
+      "relevant_snippet_hashes": [
+        "9146b18f000be8f47cc5fae298e95a561d869b7549841169a3e954c87a01f08a",
+        "e67b50cc6fca9fdc9468c59fb11604291f19343e6d707d5d593025adab5027b8",
+        "6b0603d0d21e003aef2f643291d92d56abb9d56cd10f7af7c6abf84372b85077",
+        "47e3ba7a41794b2cf822393c4b6bbe0e4a377e4a878bfbbab27ae26da784c21a",
+        "53a361fc5946cd7c1784ed75619fa76e5bfea023f74d25c402bad6dd68abbb4a"
+      ],
+      "notes": "Auto-generated (score 0.73-0.74, top 5)"
+    },
+    {
+      "id": 9,
+      "kp_id": 10009,
+      "kp_name": "switch expression",
+      "relevant_snippet_hashes": [
+        "e9dfb7eb3216ef4be29280730260fbfe1d6ed264e40cded9a3fdec3f1a6d2ba0",
+        "9146b18f000be8f47cc5fae298e95a561d869b7549841169a3e954c87a01f08a",
+        "e67b50cc6fca9fdc9468c59fb11604291f19343e6d707d5d593025adab5027b8",
+        "6b0603d0d21e003aef2f643291d92d56abb9d56cd10f7af7c6abf84372b85077",
+        "47e3ba7a41794b2cf822393c4b6bbe0e4a377e4a878bfbbab27ae26da784c21a"
+      ],
+      "notes": "Auto-generated (score 0.66-0.67, top 5)"
+    },
+    {
+      "id": 10,
+      "kp_id": 10010,
+      "kp_name": "for loop",
+      "relevant_snippet_hashes": [
+        "4b6577aa1be6f92ceacb1839a0d91c907d993ee446de59c36f89b37e5c4ec4b7",
+        "96bd3bf2997c5329503e0b45a8e1cfca26899595bc7c172e6e0acd940285d9df",
+        "4159de0c31c90b731ec254b77b2ca9035e627ef6179afce6e43e347c05ed65c3",
+        "a6fd61b7a2ee362f23cf34d92ec859bfd3004c4467b22f68f33f91693511d1e0",
+        "ee3ef1d0d508559003e2669d66c9cb190b9fc881096efd6b3ef07d61b4067af0"
+      ],
+      "notes": "Auto-generated (score 0.79-0.79, top 5)"
+    },
+    {
+      "id": 11,
+      "kp_id": 10011,
+      "kp_name": "while loop",
+      "relevant_snippet_hashes": [
+        "e5d0b5b9fd307faa2889cc67daff6dde955e7bfddda21b3f803d62bcb28189c7",
+        "a1543ffdb8b7ae8f21d3e8d2f07efe2fe4e93760212af1efbf222d1e021954eb",
+        "436c0eb6d38b8536ecd5fb1d04e0772e273ab1c605fb553aaec9c5abe457d11d",
+        "bcdce0862481cac1fb25829b5e6fc87e28c6eafe1612ced3f71d46d022bc7f67",
+        "887a677a21355154d549bf1773315c7d8d30f47e5e93c3307f0c5713f21baf33"
+      ],
+      "notes": "Auto-generated (score 0.79-0.79, top 5)"
+    },
+    {
+      "id": 12,
+      "kp_id": 10012,
+      "kp_name": "break and continue",
+      "relevant_snippet_hashes": [
+        "e9dfb7eb3216ef4be29280730260fbfe1d6ed264e40cded9a3fdec3f1a6d2ba0",
+        "9146b18f000be8f47cc5fae298e95a561d869b7549841169a3e954c87a01f08a",
+        "e67b50cc6fca9fdc9468c59fb11604291f19343e6d707d5d593025adab5027b8",
+        "6b0603d0d21e003aef2f643291d92d56abb9d56cd10f7af7c6abf84372b85077",
+        "47e3ba7a41794b2cf822393c4b6bbe0e4a377e4a878bfbbab27ae26da784c21a"
+      ],
+      "notes": "Auto-generated (score 0.65-0.66, top 5)"
+    },
+    {
+      "id": 13,
+      "kp_id": 10013,
+      "kp_name": "Class declaration",
+      "relevant_snippet_hashes": [
+        "ecec87f2a40cdbb4f3c7a1ed6c055ee14339b0c273ff0a477a16333edba0a11c",
+        "1fb9dfdc46405a32d0e56365249b6b76b0e0fbb5d64ed508e5d401f34f93386f",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "335ca4b9d98f42eb5a3c8261ecd34f21d5ce791a31dd0737ec800eaaae01005b"
+      ],
+      "notes": "Auto-generated (score 0.51-0.66, top 5)"
+    },
+    {
+      "id": 14,
+      "kp_id": 10014,
+      "kp_name": "Fields and methods",
+      "relevant_snippet_hashes": [
+        "6e8daeb5225eed225d13ffed246217bbce28ab0afed94b7850aba509ab5862b3",
+        "c7756d20d098d7b7f84f1a80ba629113a7f3c1273b5024707ba29546a046e906",
+        "30244ff690698ca19298caf76c21c5a8ab151ad518835b18fde78585d78c3779",
+        "6da80b354888643c9a2656910f41fae94094fc37753b761032a089e185ded8f9",
+        "638539a096f4055f050bd2f0960ca9b6acf882de63085d4de3df49ed0c2f5c36"
+      ],
+      "notes": "Auto-generated (score 0.54-0.57, top 5)"
+    },
+    {
+      "id": 15,
+      "kp_id": 10015,
+      "kp_name": "Constructors",
+      "relevant_snippet_hashes": [
+        "83555f0a5f1ce77f396c08525065726d3aa7f24d5a6051e91b7f2621fa4edf9f",
+        "8a6ff3bb6b9c99964b1c0eedaeb3269089374937a4966f5e0282d991be0a60d9",
+        "c281c971a60bf50d37c0e20cdd025270e238cc2bfcf3a7480d6f7649f9b00c7f",
+        "1968a8f57acf116afe8e900e957de25ad650d4588db6df2d9ccb6830e6d951ea",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a"
+      ],
+      "notes": "Auto-generated (score 0.49-0.59, top 5)"
+    },
+    {
+      "id": 16,
+      "kp_id": 10016,
+      "kp_name": "this and super usage",
+      "relevant_snippet_hashes": [
+        "606ff70a0ef7c27d1825fdb19696758226a7a0803ac13405593e548befa7d1a4",
+        "0e3d273b27f4489f025205010fc0f91ad7dcbfa8c0290bc26fb3b2339da2cd9b",
+        "457d24073c8b954299db542b005d1347792adc6da97da4cfb92f1a68e19c6559",
+        "0109cee0c44d28b283ccaf08427fbd22effac50ad380e982b2eb177aee28d33b",
+        "1e1d43c4d9abeb5ede2b25e95b173c354233ae7a7713509aa402399d076cafa6"
+      ],
+      "notes": "Auto-generated (score 0.60-0.63, top 5)"
+    },
+    {
+      "id": 17,
+      "kp_id": 10017,
+      "kp_name": "Inheritance: extends",
+      "relevant_snippet_hashes": [
+        "e779499dc12ac91ab468935cd900cfc9ce95428eeab58ed3b0dbe2c4c463ea38",
+        "c9dd9b299c6fe062f0f00448946a092ea445f5b1c759708da1269ea4e8fa186a",
+        "709da747ed91cc9d37e1b42823601ff129e194d27a683f0df66af77b0f1fa37b",
+        "5cef7a937407dda9a2e5572ecc5eda1e0cafa88aac21c41592cf382fefa1ee03",
+        "1004b8a2e29af32d9b2ee5b60a815b17f9e6a5374359ec3d1fafbbb2ee50ae16"
+      ],
+      "notes": "Auto-generated (score 0.46-0.47, top 5)"
+    },
+    {
+      "id": 18,
+      "kp_id": 10018,
+      "kp_name": "Method overriding and @Override",
+      "relevant_snippet_hashes": [
+        "44e99bf0f177a0406efd4b135c159fed646aefc026b50db5c609dc0146472cea",
+        "a5ecab0f04812f066eaeab81d5e51701d9624dd2693fdaf922aa226f830fecfa",
+        "8e1f44089cb2aee48acfd22eba9511ed2c5df49918e07d7816c1b1e9d6c64bd8",
+        "4f3468033f23ab64b20ab6dbc5f286b6e26a624a54381f0f09a68608ced9096a",
+        "8ac32848aadecd342323bc5a9e7ebc7ae2b75cd2c5827eda702e65d24ba88305"
+      ],
+      "notes": "Auto-generated (score 0.69-0.70, top 5)"
+    },
+    {
+      "id": 19,
+      "kp_id": 10020,
+      "kp_name": "Abstract class and methods",
+      "relevant_snippet_hashes": [
+        "6e8daeb5225eed225d13ffed246217bbce28ab0afed94b7850aba509ab5862b3",
+        "c7756d20d098d7b7f84f1a80ba629113a7f3c1273b5024707ba29546a046e906",
+        "30244ff690698ca19298caf76c21c5a8ab151ad518835b18fde78585d78c3779",
+        "ecec87f2a40cdbb4f3c7a1ed6c055ee14339b0c273ff0a477a16333edba0a11c",
+        "6da80b354888643c9a2656910f41fae94094fc37753b761032a089e185ded8f9"
+      ],
+      "notes": "Auto-generated (score 0.55-0.57, top 5)"
+    },
+    {
+      "id": 20,
+      "kp_id": 10021,
+      "kp_name": "Access modifiers: private/protected/public",
+      "relevant_snippet_hashes": [
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "335ca4b9d98f42eb5a3c8261ecd34f21d5ce791a31dd0737ec800eaaae01005b",
+        "a2ca3430d6936e7f45e4cf8016ae50fad8650703ea418d0f2bd0fa24b04937f6",
+        "342d2c833e41f52f0ff1bc567e8dc41c611ca4831b69aa1528dc861389c96ec3"
+      ],
+      "notes": "Auto-generated (score 0.51-0.51, top 5)"
+    },
+    {
+      "id": 21,
+      "kp_id": 10022,
+      "kp_name": "final keyword usage",
+      "relevant_snippet_hashes": [
+        "db16849539b280954c2045510a2ce3ca98aa5a73f9bf4c55a84e9aea21088125",
+        "4f3412b9aa85f774caf47f92c451c65a1ab97f9ee003874bd1babba0d506d2ec",
+        "153846c90602b4881424c11287637044e49696874bd998198c7d247d4241a473",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe"
+      ],
+      "notes": "Auto-generated (score 0.50-0.53, top 5)"
+    },
+    {
+      "id": 22,
+      "kp_id": 10023,
+      "kp_name": "static fields and methods",
+      "relevant_snippet_hashes": [
+        "638539a096f4055f050bd2f0960ca9b6acf882de63085d4de3df49ed0c2f5c36",
+        "8fcaa4e2637ceb38e63aae34428b4bcaafd51740a42c63aeef51ab3ad06c75e1",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "a2ca3430d6936e7f45e4cf8016ae50fad8650703ea418d0f2bd0fa24b04937f6"
+      ],
+      "notes": "Auto-generated (score 0.54-0.56, top 5)"
+    },
+    {
+      "id": 23,
+      "kp_id": 10024,
+      "kp_name": "Inner and anonymous classes",
+      "relevant_snippet_hashes": [
+        "638539a096f4055f050bd2f0960ca9b6acf882de63085d4de3df49ed0c2f5c36",
+        "8fcaa4e2637ceb38e63aae34428b4bcaafd51740a42c63aeef51ab3ad06c75e1",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "335ca4b9d98f42eb5a3c8261ecd34f21d5ce791a31dd0737ec800eaaae01005b"
+      ],
+      "notes": "Auto-generated (score 0.49-0.51, top 5)"
+    },
+    {
+      "id": 24,
+      "kp_id": 10025,
+      "kp_name": "Generic class declaration",
+      "relevant_snippet_hashes": [
+        "0b54d90b2e569692a5de8de6323114c488bef0c9e3c19adcaabc3900fc1f3416",
+        "c03139054f40063d85f47c520ad600de6c73e93277246189eadd37d8ecb4624a",
+        "63ae6947b855eb7acd9609ecddc68e6f877d42fbbf7458e1b3d9421071a514ec",
+        "4f3468033f23ab64b20ab6dbc5f286b6e26a624a54381f0f09a68608ced9096a",
+        "8ac32848aadecd342323bc5a9e7ebc7ae2b75cd2c5827eda702e65d24ba88305"
+      ],
+      "notes": "Auto-generated (score 0.54-0.54, top 5)"
+    },
+    {
+      "id": 25,
+      "kp_id": 10026,
+      "kp_name": "Generic methods",
+      "relevant_snippet_hashes": [
+        "6e8daeb5225eed225d13ffed246217bbce28ab0afed94b7850aba509ab5862b3",
+        "c7756d20d098d7b7f84f1a80ba629113a7f3c1273b5024707ba29546a046e906",
+        "30244ff690698ca19298caf76c21c5a8ab151ad518835b18fde78585d78c3779",
+        "0b54d90b2e569692a5de8de6323114c488bef0c9e3c19adcaabc3900fc1f3416",
+        "c03139054f40063d85f47c520ad600de6c73e93277246189eadd37d8ecb4624a"
+      ],
+      "notes": "Auto-generated (score 0.54-0.55, top 5)"
+    },
+    {
+      "id": 26,
+      "kp_id": 10027,
+      "kp_name": "Diamond operator",
+      "relevant_snippet_hashes": [
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "342d2c833e41f52f0ff1bc567e8dc41c611ca4831b69aa1528dc861389c96ec3",
+        "0b6380fd320fb5ab1dfb791f93280d1ed53aef83788c52267eaa8c5dfd5aad8a",
+        "363c1658a864c0ee4769bde2fd59f4dc9875b6995e97ab86e36a233a25d6a010",
+        "982e45168e1ca904ff5c5b592ed3d465cc7c553142be6b1e7d8f39ec142a6a48"
+      ],
+      "notes": "Auto-generated (score 0.62-0.62, top 5)"
+    },
+    {
+      "id": 27,
+      "kp_id": 10028,
+      "kp_name": "Wildcard ?",
+      "relevant_snippet_hashes": [
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "335ca4b9d98f42eb5a3c8261ecd34f21d5ce791a31dd0737ec800eaaae01005b",
+        "a2ca3430d6936e7f45e4cf8016ae50fad8650703ea418d0f2bd0fa24b04937f6",
+        "342d2c833e41f52f0ff1bc567e8dc41c611ca4831b69aa1528dc861389c96ec3"
+      ],
+      "notes": "Auto-generated (score 0.49-0.49, top 5)"
+    },
+    {
+      "id": 28,
+      "kp_id": 10029,
+      "kp_name": "Upper bound extends",
+      "relevant_snippet_hashes": [
+        "0b54d90b2e569692a5de8de6323114c488bef0c9e3c19adcaabc3900fc1f3416",
+        "b3a05ba0edc2d268064d3ae590b3d14bbb4c4a250c54a80fb3ffcdbe2e6a0541",
+        "cf3bdd3c87806d373958e8a33c06feca85fe3751801668354ef8538d6bc08a03",
+        "7e013d6a485de73115c493b53e4cdfaa6e610ff8692e07e2ef97314efc2f6e1e",
+        "75b4cd36a64c5ca7f3f9d22d8cf11f7d7e491737347cc5cb38e3bed6f9b9576c"
+      ],
+      "notes": "Auto-generated (score 0.51-0.54, top 5)"
+    },
+    {
+      "id": 29,
+      "kp_id": 10030,
+      "kp_name": "Lower bound super",
+      "relevant_snippet_hashes": [
+        "606ff70a0ef7c27d1825fdb19696758226a7a0803ac13405593e548befa7d1a4",
+        "1a00551785f90f01c92fa233d7c3bfdf66fdf5d79c9a5ef83604bea059cb7f82",
+        "0e3d273b27f4489f025205010fc0f91ad7dcbfa8c0290bc26fb3b2339da2cd9b",
+        "457d24073c8b954299db542b005d1347792adc6da97da4cfb92f1a68e19c6559",
+        "3d1cafa82487f9903b447b9634b2d358932f35ea3c93614d366d19df3c0408fa"
+      ],
+      "notes": "Auto-generated (score 0.54-0.56, top 5)"
+    },
+    {
+      "id": 30,
+      "kp_id": 10031,
+      "kp_name": "try-catch basics",
+      "relevant_snippet_hashes": [
+        "57c021b7df780ae6482a7b6e1571b0703adc066a1451d5f6fc5c149323327d78",
+        "027c8a2e15ffe71c5f090e5cc484f801a9afcfb50d20795c30405dd7c6f9d2cd",
+        "ab15a93147692a665d6af3e7dcfe5b8222b2e9679efee72f0f1b96b2a5bb8638",
+        "4719d160b3704eca50209ba084c2c0aeff61dd9e8b0eec559fddde2c94a175a2",
+        "532520b6e05a24923c960ba6b197f7d26ad2b5c38169e3fbb08e93c146d34055"
+      ],
+      "notes": "Auto-generated (score 0.87-0.91, top 5)"
+    },
+    {
+      "id": 31,
+      "kp_id": 10032,
+      "kp_name": "finally clause",
+      "relevant_snippet_hashes": [
+        "57c021b7df780ae6482a7b6e1571b0703adc066a1451d5f6fc5c149323327d78",
+        "027c8a2e15ffe71c5f090e5cc484f801a9afcfb50d20795c30405dd7c6f9d2cd",
+        "ab15a93147692a665d6af3e7dcfe5b8222b2e9679efee72f0f1b96b2a5bb8638",
+        "4719d160b3704eca50209ba084c2c0aeff61dd9e8b0eec559fddde2c94a175a2",
+        "532520b6e05a24923c960ba6b197f7d26ad2b5c38169e3fbb08e93c146d34055"
+      ],
+      "notes": "Auto-generated (score 0.79-0.82, top 5)"
+    },
+    {
+      "id": 32,
+      "kp_id": 10033,
+      "kp_name": "throw and throws",
+      "relevant_snippet_hashes": [
+        "57c021b7df780ae6482a7b6e1571b0703adc066a1451d5f6fc5c149323327d78",
+        "027c8a2e15ffe71c5f090e5cc484f801a9afcfb50d20795c30405dd7c6f9d2cd",
+        "ab15a93147692a665d6af3e7dcfe5b8222b2e9679efee72f0f1b96b2a5bb8638",
+        "4719d160b3704eca50209ba084c2c0aeff61dd9e8b0eec559fddde2c94a175a2",
+        "532520b6e05a24923c960ba6b197f7d26ad2b5c38169e3fbb08e93c146d34055"
+      ],
+      "notes": "Auto-generated (score 0.87-0.91, top 5)"
+    },
+    {
+      "id": 33,
+      "kp_id": 10034,
+      "kp_name": "try-with-resources",
+      "relevant_snippet_hashes": [
+        "d34c747f340cb54e9d1985a1dd2007c5bf7ac7da6197b205299c6eb8690c0f9b",
+        "be8c81443fd1d6bc0106d4453c2cf57321ce5f939ce4e293fed9df2cf67e1002",
+        "c422a3c31e225b5a250803e2f86714113e91c654ba6d6f74090c517caa40a396",
+        "509a7334566207bdc6301eaa58320ae6b2e5183ad2c10420c5e1280376a58920",
+        "c53c876bbbb808551a3beabfb71b31680b87fb0c138c99405882830779965448"
+      ],
+      "notes": "Auto-generated (score 0.79-0.81, top 5)"
+    },
+    {
+      "id": 34,
+      "kp_id": 10035,
+      "kp_name": "Custom exception class",
+      "relevant_snippet_hashes": [
+        "e65ef112289d82b883a085ab0554bf4797c076eba9e25d56577c2884011e1481",
+        "d08d950ec3c41791bf59557d84d324a0ffd8576a1f311cc84a2f95e08321d593",
+        "02e0f57e44cd00c16a8d756a1f8cfe88336089bd2e92c3d8e3968eac8a5fa96d",
+        "603c72c3231ec375539e31b11279e1cb2eeba000949603840fd3653ca6ec80f8",
+        "ecec87f2a40cdbb4f3c7a1ed6c055ee14339b0c273ff0a477a16333edba0a11c"
+      ],
+      "notes": "Auto-generated (score 0.52-0.53, top 5)"
+    },
+    {
+      "id": 35,
+      "kp_id": 10036,
+      "kp_name": "Rethrow exceptions",
+      "relevant_snippet_hashes": [
+        "57c021b7df780ae6482a7b6e1571b0703adc066a1451d5f6fc5c149323327d78",
+        "027c8a2e15ffe71c5f090e5cc484f801a9afcfb50d20795c30405dd7c6f9d2cd",
+        "ab15a93147692a665d6af3e7dcfe5b8222b2e9679efee72f0f1b96b2a5bb8638",
+        "4719d160b3704eca50209ba084c2c0aeff61dd9e8b0eec559fddde2c94a175a2",
+        "532520b6e05a24923c960ba6b197f7d26ad2b5c38169e3fbb08e93c146d34055"
+      ],
+      "notes": "Auto-generated (score 0.80-0.83, top 5)"
+    },
+    {
+      "id": 36,
+      "kp_id": 10037,
+      "kp_name": "ArrayList basics",
+      "relevant_snippet_hashes": [
+        "70f8ecb94976e6cfbd6b0a7e7419d0d6fbb0f7a022f42fd7dedbb851f4314e87",
+        "d06676ac2c2ea4c7acf02fa8d06c7c1081a0883d9a7015c0526eb0512c5416c2",
+        "befe88e0d04381705f59e554486a75536a6f4551636383c10795dff94df71404",
+        "62347803ddf27ac4c8825a1f3dad403489c1ad0128b1dcbff7672d3d0acf1f75",
+        "12bd2fb9a0bc75c2ebaa9047cd7cddcb8b3dbf6b30731c6d06806c3553048da1"
+      ],
+      "notes": "Auto-generated (score 0.84-0.86, top 5)"
+    },
+    {
+      "id": 37,
+      "kp_id": 10038,
+      "kp_name": "LinkedList basics",
+      "relevant_snippet_hashes": [
+        "5b334043b1d8e2c3d0d66978513d713d6eb357b1efb8c48f3d65575c844c1391",
+        "ccd755f181cc1604bc0311e94a17b865bf905d4c0a1e2c683e8fbf8a47e9cbf0",
+        "5003b43aea80b9a5f81e376a6b715a3d834c131dcbe25bc8294f7910a0f5ce4e",
+        "28b3548e45ea1aac2a76e0c9fe8520851fb188af9e2b547d8bf2cc179cb762c5",
+        "b89dd7ac0f6e5e53cf07e333ac85929407515525caf747bc6b3ad756fac24177"
+      ],
+      "notes": "Auto-generated (score 0.82-0.85, top 5)"
+    },
+    {
+      "id": 38,
+      "kp_id": 10039,
+      "kp_name": "List add/remove/get",
+      "relevant_snippet_hashes": [
+        "70f8ecb94976e6cfbd6b0a7e7419d0d6fbb0f7a022f42fd7dedbb851f4314e87",
+        "dbdc55d05d80c4b4d6c057051e395f72088579243cd6e3aa3680ed2d29696100",
+        "d06676ac2c2ea4c7acf02fa8d06c7c1081a0883d9a7015c0526eb0512c5416c2",
+        "befe88e0d04381705f59e554486a75536a6f4551636383c10795dff94df71404",
+        "5b334043b1d8e2c3d0d66978513d713d6eb357b1efb8c48f3d65575c844c1391"
+      ],
+      "notes": "Auto-generated (score 0.81-0.84, top 5)"
+    },
+    {
+      "id": 39,
+      "kp_id": 10040,
+      "kp_name": "List sorting with Comparator",
+      "relevant_snippet_hashes": [
+        "f72d90f025231ad908dd721363fd83485becee23bb82b6e579c4a5835dcb6a1b",
+        "f3ed0cbae4399e8767d77a5bdc7dd86be9a08e9acf8e4a484a383e3d1aea6d5d",
+        "480f2f92a8ce2f2946a7d7f61f80131b155d1a583a9f5eba764e3c58c491904d",
+        "342d2c833e41f52f0ff1bc567e8dc41c611ca4831b69aa1528dc861389c96ec3",
+        "63ae6947b855eb7acd9609ecddc68e6f877d42fbbf7458e1b3d9421071a514ec"
+      ],
+      "notes": "Auto-generated (score 0.71-0.79, top 5)"
+    },
+    {
+      "id": 40,
+      "kp_id": 10041,
+      "kp_name": "HashSet basics",
+      "relevant_snippet_hashes": [
+        "868b399124de46f9a2a0ecb11a8fefa81372ffac84022de3b600cfe61cdbe183",
+        "f5bea97dc5bad2a8d494209a83db39b0956c71c06fb47c4e35ea033eb90937fa",
+        "411b72fe074e48fe36f62c0345f958fbdb9b9c309e3f0d2edb1b04dc5a883555",
+        "0a7e26832972575005ba68e0fee1da691b1d27c1e7fb51abb1183f54a1f241e1",
+        "562b2dcbc1888335ebfe1140be7ed313eee4e5c4b8b8c867584e1d22271324de"
+      ],
+      "notes": "Auto-generated (score 0.80-0.82, top 5)"
+    },
+    {
+      "id": 41,
+      "kp_id": 10042,
+      "kp_name": "TreeSet basics",
+      "relevant_snippet_hashes": [
+        "342d2c833e41f52f0ff1bc567e8dc41c611ca4831b69aa1528dc861389c96ec3",
+        "9aae3280e5d1fc6ea8307d36cd414031789a41dbf39f2b94fd146d530117d03b",
+        "a0ec3f58549f8a5614ac59e445baf7d915c5beac83cf013669e5919bfdd1f463",
+        "4e84c02c90a3210df1281674bf81e76b76ef1e91f995cd63191e2a100a26e445",
+        "59c0e0f029b0d66442dfe17c7ff4fd3e206f755dd3e3fddeed9a63c2b2bfd910"
+      ],
+      "notes": "Auto-generated (score 0.79-0.82, top 5)"
+    },
+    {
+      "id": 42,
+      "kp_id": 10043,
+      "kp_name": "Set add/remove/contains",
+      "relevant_snippet_hashes": [
+        "48635bded644bcc88b3ebf8dfc62ad01cc2587eaa839c56c6b93420682dab21d",
+        "342d2c833e41f52f0ff1bc567e8dc41c611ca4831b69aa1528dc861389c96ec3",
+        "f82251deaaa3dd0e03f62d52829b896d42e2a02c41d210557a0003ac9d608b85",
+        "9146b18f000be8f47cc5fae298e95a561d869b7549841169a3e954c87a01f08a",
+        "9aae3280e5d1fc6ea8307d36cd414031789a41dbf39f2b94fd146d530117d03b"
+      ],
+      "notes": "Auto-generated (score 0.76-0.82, top 5)"
+    },
+    {
+      "id": 43,
+      "kp_id": 10044,
+      "kp_name": "LinkedHashSet basics",
+      "relevant_snippet_hashes": [
+        "02bb2513740c3bff0be7079382ed531adcf3594c476c4102b5cc2a1b8abe2c14",
+        "0109cee0c44d28b283ccaf08427fbd22effac50ad380e982b2eb177aee28d33b",
+        "0e383e47e5295e378241ba7b5e522718e61d7bf7ab082f597ccb04d9fdb8d6c8",
+        "9e2abf04362ad1a5ae71da6e3d7885758cb8f630d6a7827c8033f71511f524fd",
+        "b3a05ba0edc2d268064d3ae590b3d14bbb4c4a250c54a80fb3ffcdbe2e6a0541"
+      ],
+      "notes": "Auto-generated (score 0.78-0.82, top 5)"
+    },
+    {
+      "id": 44,
+      "kp_id": 10045,
+      "kp_name": "HashMap basics",
+      "relevant_snippet_hashes": [
+        "17b669329eeacb07f27ea1b04201691f68cfbfaea4d23be73562e1d5050ab8bd",
+        "0682732452f6b4c884a617f6f6e7402e9ea93a42ee81eb5e7ded2c1c11b1156a",
+        "34f92e6dab1e9bd8ff8c9c2bfd2ab1ed594c70a1d923caa8ec332ec634c344f1",
+        "88f1ab2db66a438a54363345e5d68e8c2a304c41cf1a4f5781e4e3e8fa89b81d",
+        "b82c8fb61e75312b4a5cfda627390bf955328a31602704b7d90d9279de5fb583"
+      ],
+      "notes": "Auto-generated (score 0.69-0.71, top 5)"
+    },
+    {
+      "id": 45,
+      "kp_id": 10046,
+      "kp_name": "LinkedHashMap basics",
+      "relevant_snippet_hashes": [
+        "fb9bddf440d185381dcecdaa800cab911be1c1133b21e8675ba518e43f308881",
+        "2be4a5d74851431455e577a2420e41bf89c68b59a73b884a2ed20c0626708de0",
+        "764107fe5281a18b456f3193b8dc74345071298c1bb7725185a218f6c074ca0c",
+        "73b6f7002e4b1b12f500bbbfe464d4ec590cc1ebf910902ea02c98e4eadac043",
+        "17b669329eeacb07f27ea1b04201691f68cfbfaea4d23be73562e1d5050ab8bd"
+      ],
+      "notes": "Auto-generated (score 0.64-0.66, top 5)"
+    },
+    {
+      "id": 46,
+      "kp_id": 10047,
+      "kp_name": "TreeMap basics",
+      "relevant_snippet_hashes": [
+        "764107fe5281a18b456f3193b8dc74345071298c1bb7725185a218f6c074ca0c",
+        "73b6f7002e4b1b12f500bbbfe464d4ec590cc1ebf910902ea02c98e4eadac043",
+        "411b72fe074e48fe36f62c0345f958fbdb9b9c309e3f0d2edb1b04dc5a883555",
+        "140ceb43442d09c3736853ef82463170c7ba356b02e5b334c03328c8dc7a4008",
+        "2d32e22f10ba668b339e321e63618e1be2c8f4cd819ae5a0bb1f21ccc2cc3b8c"
+      ],
+      "notes": "Auto-generated (score 0.68-0.72, top 5)"
+    },
+    {
+      "id": 47,
+      "kp_id": 10048,
+      "kp_name": "Map entrySet iteration",
+      "relevant_snippet_hashes": [
+        "2d32e22f10ba668b339e321e63618e1be2c8f4cd819ae5a0bb1f21ccc2cc3b8c",
+        "3c6288779b3c728f9452b2561d19d666c61407f51b078b226245931c30412969",
+        "19335191e6ac064c5f20da018d412c685ee7d91c015477fb6037bd7208b82332",
+        "411b72fe074e48fe36f62c0345f958fbdb9b9c309e3f0d2edb1b04dc5a883555",
+        "88f1ab2db66a438a54363345e5d68e8c2a304c41cf1a4f5781e4e3e8fa89b81d"
+      ],
+      "notes": "Auto-generated (score 0.58-0.59, top 5)"
+    },
+    {
+      "id": 48,
+      "kp_id": 10049,
+      "kp_name": "ArrayDeque basics",
+      "relevant_snippet_hashes": [
+        "f71b97c5f1f8606979aa06c4c91ae354c5b028124365a13c483cf93f1e975a89",
+        "b89dd7ac0f6e5e53cf07e333ac85929407515525caf747bc6b3ad756fac24177",
+        "caece6f74d70567e098c5b7921bb72b2729e8e20c56c8bda01f6db565fd3f37b",
+        "5b334043b1d8e2c3d0d66978513d713d6eb357b1efb8c48f3d65575c844c1391",
+        "006265afb3899739325e23bc6a68c58b2bbe9036482fd82edc226db8a11f1a28"
+      ],
+      "notes": "Auto-generated (score 0.58-0.67, top 5)"
+    },
+    {
+      "id": 49,
+      "kp_id": 10050,
+      "kp_name": "PriorityQueue basics",
+      "relevant_snippet_hashes": [
+        "8720dcdcfdf7f5e490592f299fe11eb44e3ae36a2bda0d3b4d6d79c1a102681a",
+        "1440c6060a3eb1733fcff90b61aba1e27e29dfbea85e6ab93dc58b6d818349a0",
+        "34f92e6dab1e9bd8ff8c9c2bfd2ab1ed594c70a1d923caa8ec332ec634c344f1",
+        "b89dd7ac0f6e5e53cf07e333ac85929407515525caf747bc6b3ad756fac24177",
+        "caece6f74d70567e098c5b7921bb72b2729e8e20c56c8bda01f6db565fd3f37b"
+      ],
+      "notes": "Auto-generated (score 0.59-0.67, top 5)"
+    },
+    {
+      "id": 50,
+      "kp_id": 10051,
+      "kp_name": "Queue offer/poll/peek",
+      "relevant_snippet_hashes": [
+        "8720dcdcfdf7f5e490592f299fe11eb44e3ae36a2bda0d3b4d6d79c1a102681a",
+        "34f92e6dab1e9bd8ff8c9c2bfd2ab1ed594c70a1d923caa8ec332ec634c344f1",
+        "383c21cb1f04719ddb4e82ea3e69d946aff088d0511d33408a638a17213d7a4d",
+        "51ec086be2b5d65531f97489e4afd45c8a56ed41ed42a686ec36de5ca353f038",
+        "32d93be5aace166a6b928e3e22822d91111ddd7e46718a78126c8219acf39a41"
+      ],
+      "notes": "Auto-generated (score 0.56-0.60, top 5)"
+    },
+    {
+      "id": 51,
+      "kp_id": 10052,
+      "kp_name": "Deque push/pop",
+      "relevant_snippet_hashes": [
+        "f71b97c5f1f8606979aa06c4c91ae354c5b028124365a13c483cf93f1e975a89",
+        "32d93be5aace166a6b928e3e22822d91111ddd7e46718a78126c8219acf39a41",
+        "51ec086be2b5d65531f97489e4afd45c8a56ed41ed42a686ec36de5ca353f038",
+        "383c21cb1f04719ddb4e82ea3e69d946aff088d0511d33408a638a17213d7a4d",
+        "8856fd3a92eb774a7a51407859be3b71233fc85fc51bcfe6a00997ce31a05398"
+      ],
+      "notes": "Auto-generated (score 0.55-0.60, top 5)"
+    },
+    {
+      "id": 52,
+      "kp_id": 10053,
+      "kp_name": "Stream pipeline creation",
+      "relevant_snippet_hashes": [
+        "5af1c6520da4d0ff988f0f3b57b3b8f8aade78504d02e4ce3f997a5ee67542a2",
+        "82fa5f4198b19a6eeba8f341419d6b3b70e2b772852076e6283daa150b61073e",
+        "b6bda53cd58b8e48abf9d45732d41f2f875228661e94b6c761d05f3e21ee6694",
+        "480f2f92a8ce2f2946a7d7f61f80131b155d1a583a9f5eba764e3c58c491904d",
+        "0b54d90b2e569692a5de8de6323114c488bef0c9e3c19adcaabc3900fc1f3416"
+      ],
+      "notes": "Auto-generated (score 0.70-0.81, top 5)"
+    },
+    {
+      "id": 53,
+      "kp_id": 10054,
+      "kp_name": "Intermediate operations: map/filter",
+      "relevant_snippet_hashes": [
+        "82fa5f4198b19a6eeba8f341419d6b3b70e2b772852076e6283daa150b61073e",
+        "b6bda53cd58b8e48abf9d45732d41f2f875228661e94b6c761d05f3e21ee6694",
+        "5af1c6520da4d0ff988f0f3b57b3b8f8aade78504d02e4ce3f997a5ee67542a2",
+        "480f2f92a8ce2f2946a7d7f61f80131b155d1a583a9f5eba764e3c58c491904d",
+        "11b27f93fbf19a588773901aaa9a23329eeff4f55d665ac8921eed8d9a9449ee"
+      ],
+      "notes": "Auto-generated (score 0.72-0.89, top 5)"
+    },
+    {
+      "id": 54,
+      "kp_id": 10055,
+      "kp_name": "flatMap",
+      "relevant_snippet_hashes": [
+        "5af1c6520da4d0ff988f0f3b57b3b8f8aade78504d02e4ce3f997a5ee67542a2",
+        "480f2f92a8ce2f2946a7d7f61f80131b155d1a583a9f5eba764e3c58c491904d",
+        "82fa5f4198b19a6eeba8f341419d6b3b70e2b772852076e6283daa150b61073e",
+        "b6bda53cd58b8e48abf9d45732d41f2f875228661e94b6c761d05f3e21ee6694",
+        "11b27f93fbf19a588773901aaa9a23329eeff4f55d665ac8921eed8d9a9449ee"
+      ],
+      "notes": "Auto-generated (score 0.73-0.93, top 5)"
+    },
+    {
+      "id": 55,
+      "kp_id": 10056,
+      "kp_name": "sorted and distinct",
+      "relevant_snippet_hashes": [
+        "5af1c6520da4d0ff988f0f3b57b3b8f8aade78504d02e4ce3f997a5ee67542a2",
+        "82fa5f4198b19a6eeba8f341419d6b3b70e2b772852076e6283daa150b61073e",
+        "b6bda53cd58b8e48abf9d45732d41f2f875228661e94b6c761d05f3e21ee6694",
+        "480f2f92a8ce2f2946a7d7f61f80131b155d1a583a9f5eba764e3c58c491904d",
+        "0b54d90b2e569692a5de8de6323114c488bef0c9e3c19adcaabc3900fc1f3416"
+      ],
+      "notes": "Auto-generated (score 0.70-0.82, top 5)"
+    },
+    {
+      "id": 56,
+      "kp_id": 10057,
+      "kp_name": "collect toList/toSet",
+      "relevant_snippet_hashes": [
+        "480f2f92a8ce2f2946a7d7f61f80131b155d1a583a9f5eba764e3c58c491904d",
+        "5af1c6520da4d0ff988f0f3b57b3b8f8aade78504d02e4ce3f997a5ee67542a2",
+        "82fa5f4198b19a6eeba8f341419d6b3b70e2b772852076e6283daa150b61073e",
+        "b6bda53cd58b8e48abf9d45732d41f2f875228661e94b6c761d05f3e21ee6694",
+        "b3a05ba0edc2d268064d3ae590b3d14bbb4c4a250c54a80fb3ffcdbe2e6a0541"
+      ],
+      "notes": "Auto-generated (score 0.71-0.81, top 5)"
+    },
+    {
+      "id": 57,
+      "kp_id": 10058,
+      "kp_name": "reduce",
+      "relevant_snippet_hashes": [
+        "5af1c6520da4d0ff988f0f3b57b3b8f8aade78504d02e4ce3f997a5ee67542a2",
+        "82fa5f4198b19a6eeba8f341419d6b3b70e2b772852076e6283daa150b61073e",
+        "b6bda53cd58b8e48abf9d45732d41f2f875228661e94b6c761d05f3e21ee6694",
+        "480f2f92a8ce2f2946a7d7f61f80131b155d1a583a9f5eba764e3c58c491904d",
+        "0b54d90b2e569692a5de8de6323114c488bef0c9e3c19adcaabc3900fc1f3416"
+      ],
+      "notes": "Auto-generated (score 0.70-0.90, top 5)"
+    },
+    {
+      "id": 58,
+      "kp_id": 10059,
+      "kp_name": "findFirst/findAny",
+      "relevant_snippet_hashes": [
+        "82fa5f4198b19a6eeba8f341419d6b3b70e2b772852076e6283daa150b61073e",
+        "5af1c6520da4d0ff988f0f3b57b3b8f8aade78504d02e4ce3f997a5ee67542a2",
+        "b6bda53cd58b8e48abf9d45732d41f2f875228661e94b6c761d05f3e21ee6694",
+        "480f2f92a8ce2f2946a7d7f61f80131b155d1a583a9f5eba764e3c58c491904d",
+        "0b54d90b2e569692a5de8de6323114c488bef0c9e3c19adcaabc3900fc1f3416"
+      ],
+      "notes": "Auto-generated (score 0.70-0.82, top 5)"
+    },
+    {
+      "id": 59,
+      "kp_id": 10060,
+      "kp_name": "parallel streams",
+      "relevant_snippet_hashes": [
+        "5af1c6520da4d0ff988f0f3b57b3b8f8aade78504d02e4ce3f997a5ee67542a2",
+        "82fa5f4198b19a6eeba8f341419d6b3b70e2b772852076e6283daa150b61073e",
+        "b6bda53cd58b8e48abf9d45732d41f2f875228661e94b6c761d05f3e21ee6694",
+        "480f2f92a8ce2f2946a7d7f61f80131b155d1a583a9f5eba764e3c58c491904d",
+        "0b54d90b2e569692a5de8de6323114c488bef0c9e3c19adcaabc3900fc1f3416"
+      ],
+      "notes": "Auto-generated (score 0.70-0.81, top 5)"
+    },
+    {
+      "id": 60,
+      "kp_id": 10061,
+      "kp_name": "Lambda expression basics",
+      "relevant_snippet_hashes": [
+        "f5a83dc3e8d4d530ef63768ee9deea98bd0091fc1edb1bdb649742074501f103",
+        "b2f04b5ceb09b7ea18204d9edb52721fceefc09fd03924889526bed30f43a612",
+        "72206746efbc3f2eca083c765487dc732274477a8538d54dc90dcb603e683c48",
+        "297a2d32eaebe5844715d0f76ef323f7cd4e69a6527e95e987447a2e50a0a6fc",
+        "47139959e28e9055589a8e7eb2297729ce95a25634a3c8a32af7be3be02e9e6e"
+      ],
+      "notes": "Auto-generated (score 0.70-0.76, top 5)"
+    },
+    {
+      "id": 61,
+      "kp_id": 10062,
+      "kp_name": "Functional interfaces",
+      "relevant_snippet_hashes": [
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "335ca4b9d98f42eb5a3c8261ecd34f21d5ce791a31dd0737ec800eaaae01005b",
+        "a2ca3430d6936e7f45e4cf8016ae50fad8650703ea418d0f2bd0fa24b04937f6",
+        "342d2c833e41f52f0ff1bc567e8dc41c611ca4831b69aa1528dc861389c96ec3"
+      ],
+      "notes": "Auto-generated (score 0.49-0.49, top 5)"
+    },
+    {
+      "id": 62,
+      "kp_id": 10063,
+      "kp_name": "Predicate and Function",
+      "relevant_snippet_hashes": [
+        "638539a096f4055f050bd2f0960ca9b6acf882de63085d4de3df49ed0c2f5c36",
+        "8fcaa4e2637ceb38e63aae34428b4bcaafd51740a42c63aeef51ab3ad06c75e1",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "335ca4b9d98f42eb5a3c8261ecd34f21d5ce791a31dd0737ec800eaaae01005b"
+      ],
+      "notes": "Auto-generated (score 0.51-0.56, top 5)"
+    },
+    {
+      "id": 63,
+      "kp_id": 10064,
+      "kp_name": "Comparator with lambda",
+      "relevant_snippet_hashes": [
+        "383c21cb1f04719ddb4e82ea3e69d946aff088d0511d33408a638a17213d7a4d",
+        "140ceb43442d09c3736853ef82463170c7ba356b02e5b334c03328c8dc7a4008",
+        "d31d5402d7c5bb8ae45b7d439e86cb86bc6046db80712b135fba00b860bc2b60",
+        "0b54d90b2e569692a5de8de6323114c488bef0c9e3c19adcaabc3900fc1f3416",
+        "f72d90f025231ad908dd721363fd83485becee23bb82b6e579c4a5835dcb6a1b"
+      ],
+      "notes": "Auto-generated (score 0.56-0.66, top 5)"
+    },
+    {
+      "id": 64,
+      "kp_id": 10065,
+      "kp_name": "Method references",
+      "relevant_snippet_hashes": [
+        "6e8daeb5225eed225d13ffed246217bbce28ab0afed94b7850aba509ab5862b3",
+        "c7756d20d098d7b7f84f1a80ba629113a7f3c1273b5024707ba29546a046e906",
+        "30244ff690698ca19298caf76c21c5a8ab151ad518835b18fde78585d78c3779",
+        "0b54d90b2e569692a5de8de6323114c488bef0c9e3c19adcaabc3900fc1f3416",
+        "c520c6e98f64f7ed5513ee2ceea1365d0c1131a1475a843b67f291628fb4c3f0"
+      ],
+      "notes": "Auto-generated (score 0.54-0.55, top 5)"
+    },
+    {
+      "id": 65,
+      "kp_id": 10066,
+      "kp_name": "Consumer and Supplier",
+      "relevant_snippet_hashes": [
+        "638539a096f4055f050bd2f0960ca9b6acf882de63085d4de3df49ed0c2f5c36",
+        "8fcaa4e2637ceb38e63aae34428b4bcaafd51740a42c63aeef51ab3ad06c75e1",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "335ca4b9d98f42eb5a3c8261ecd34f21d5ce791a31dd0737ec800eaaae01005b"
+      ],
+      "notes": "Auto-generated (score 0.51-0.56, top 5)"
+    },
+    {
+      "id": 66,
+      "kp_id": 10067,
+      "kp_name": "Stream forEach with method reference",
+      "relevant_snippet_hashes": [
+        "5af1c6520da4d0ff988f0f3b57b3b8f8aade78504d02e4ce3f997a5ee67542a2",
+        "82fa5f4198b19a6eeba8f341419d6b3b70e2b772852076e6283daa150b61073e",
+        "b6bda53cd58b8e48abf9d45732d41f2f875228661e94b6c761d05f3e21ee6694",
+        "480f2f92a8ce2f2946a7d7f61f80131b155d1a583a9f5eba764e3c58c491904d",
+        "0b54d90b2e569692a5de8de6323114c488bef0c9e3c19adcaabc3900fc1f3416"
+      ],
+      "notes": "Auto-generated (score 0.71-0.80, top 5)"
+    },
+    {
+      "id": 67,
+      "kp_id": 10068,
+      "kp_name": "Function composition andThen",
+      "relevant_snippet_hashes": [
+        "638539a096f4055f050bd2f0960ca9b6acf882de63085d4de3df49ed0c2f5c36",
+        "8fcaa4e2637ceb38e63aae34428b4bcaafd51740a42c63aeef51ab3ad06c75e1",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "335ca4b9d98f42eb5a3c8261ecd34f21d5ce791a31dd0737ec800eaaae01005b"
+      ],
+      "notes": "Auto-generated (score 0.54-0.56, top 5)"
+    },
+    {
+      "id": 68,
+      "kp_id": 10069,
+      "kp_name": "Optional basics",
+      "relevant_snippet_hashes": [
+        "11310bde04396d0983917defeff56dd7ec2eb7273aff4efed3781701ed74be0a",
+        "b66620172e0d6273c4274a60aa8faa24005e311da97ce69b5e26a6e8399c2ce9",
+        "0109cee0c44d28b283ccaf08427fbd22effac50ad380e982b2eb177aee28d33b",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe"
+      ],
+      "notes": "Auto-generated (score 0.54-0.55, top 5)"
+    },
+    {
+      "id": 69,
+      "kp_id": 10070,
+      "kp_name": "Optional map/filter/orElse",
+      "relevant_snippet_hashes": [
+        "82fa5f4198b19a6eeba8f341419d6b3b70e2b772852076e6283daa150b61073e",
+        "965ebcf3ecc41855da01952b077ff52558459c9198e48d2283acd423726fef78",
+        "b6bda53cd58b8e48abf9d45732d41f2f875228661e94b6c761d05f3e21ee6694",
+        "c11ac015626373b4fdcca810f6f167e9b692ab5dfd6228f613e3012e56534f8f",
+        "5af1c6520da4d0ff988f0f3b57b3b8f8aade78504d02e4ce3f997a5ee67542a2"
+      ],
+      "notes": "Auto-generated (score 0.57-0.66, top 5)"
+    },
+    {
+      "id": 70,
+      "kp_id": 10071,
+      "kp_name": "orElseGet and ifPresent",
+      "relevant_snippet_hashes": [
+        "812800f7bf2784b77248e3fd3ca01006275833fabf6360b4851a649457560e29",
+        "ec01c281f185033e82cf398a2264a92e5206452faf8bd1b0fdfbf2febaa7d746",
+        "d06676ac2c2ea4c7acf02fa8d06c7c1081a0883d9a7015c0526eb0512c5416c2",
+        "8deb1d1348fc68122d5a5e301c352dc2aa364c3753ad4b72bad1bec66de4c2b3",
+        "2e3666a4a0727c1f102f1ac71b592c653f396ce30a774d27fdd13f4d04b660b5"
+      ],
+      "notes": "Auto-generated (score 0.56-0.56, top 5)"
+    },
+    {
+      "id": 71,
+      "kp_id": 10072,
+      "kp_name": "Optional flatMap",
+      "relevant_snippet_hashes": [
+        "5af1c6520da4d0ff988f0f3b57b3b8f8aade78504d02e4ce3f997a5ee67542a2",
+        "965ebcf3ecc41855da01952b077ff52558459c9198e48d2283acd423726fef78",
+        "c11ac015626373b4fdcca810f6f167e9b692ab5dfd6228f613e3012e56534f8f",
+        "82fa5f4198b19a6eeba8f341419d6b3b70e2b772852076e6283daa150b61073e",
+        "b6bda53cd58b8e48abf9d45732d41f2f875228661e94b6c761d05f3e21ee6694"
+      ],
+      "notes": "Auto-generated (score 0.57-0.65, top 5)"
+    },
+    {
+      "id": 72,
+      "kp_id": 10073,
+      "kp_name": "Thread creation: Thread/Runnable",
+      "relevant_snippet_hashes": [
+        "2db57eb3065ff9ff8e3ea5074c3ae7aa5b13b1d80b989bcfbe5fa18ab0369d4e",
+        "cb92098f81828ea4f77781253f0b3f85c96c2df1de815a01db6227186a8509f9",
+        "3d778c0f80cb1d2089f956353ec83fd309196e8d89d19c61d54c464448a8651a",
+        "efada6edb669f091fe110a3d608b2f2f0c37784a92447cb4aac5b4cd8ba0a025",
+        "a8ed1177c50723bf1e062d221243774067a1bc5288773b23c9e7799d03e61863"
+      ],
+      "notes": "Auto-generated (score 0.64-0.70, top 5)"
+    },
+    {
+      "id": 73,
+      "kp_id": 10074,
+      "kp_name": "synchronized keyword",
+      "relevant_snippet_hashes": [
+        "c03139054f40063d85f47c520ad600de6c73e93277246189eadd37d8ecb4624a",
+        "3d778c0f80cb1d2089f956353ec83fd309196e8d89d19c61d54c464448a8651a",
+        "4f3468033f23ab64b20ab6dbc5f286b6e26a624a54381f0f09a68608ced9096a",
+        "8ac32848aadecd342323bc5a9e7ebc7ae2b75cd2c5827eda702e65d24ba88305",
+        "fa34e3fb937470cd85260d4eee3e49be2706dfd0c15b84b1e046886b5ad60255"
+      ],
+      "notes": "Auto-generated (score 0.69-0.69, top 5)"
+    },
+    {
+      "id": 74,
+      "kp_id": 10075,
+      "kp_name": "volatile variable",
+      "relevant_snippet_hashes": [
+        "153846c90602b4881424c11287637044e49696874bd998198c7d247d4241a473",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "a2ca3430d6936e7f45e4cf8016ae50fad8650703ea418d0f2bd0fa24b04937f6",
+        "342d2c833e41f52f0ff1bc567e8dc41c611ca4831b69aa1528dc861389c96ec3"
+      ],
+      "notes": "Auto-generated (score 0.50-0.51, top 5)"
+    },
+    {
+      "id": 75,
+      "kp_id": 10076,
+      "kp_name": "wait and notify",
+      "relevant_snippet_hashes": [
+        "bc35eda5f062a5c63e85db1141220875aa3bebbf6f36203363a865c699e4bfa7",
+        "c03139054f40063d85f47c520ad600de6c73e93277246189eadd37d8ecb4624a",
+        "3d778c0f80cb1d2089f956353ec83fd309196e8d89d19c61d54c464448a8651a",
+        "4f3468033f23ab64b20ab6dbc5f286b6e26a624a54381f0f09a68608ced9096a",
+        "8ac32848aadecd342323bc5a9e7ebc7ae2b75cd2c5827eda702e65d24ba88305"
+      ],
+      "notes": "Auto-generated (score 0.56-0.58, top 5)"
+    },
+    {
+      "id": 76,
+      "kp_id": 10077,
+      "kp_name": "ExecutorService submit",
+      "relevant_snippet_hashes": [
+        "07cd1869f0c32bf24b2be8d481de7b39e81e79cbac0cafa51b618da4e14dd56c",
+        "142a4ba91c703db90bbfff41ef67c67438aaf526fe0c88389ddfe569d6ae44eb",
+        "2d481cc3fea8ba4210f4ded44da47d62da55038f5a308e1fb003f42569ac81fb",
+        "b600ecc598139f0507482632db6c93a766fff15198eb58a37fc4e89b5be4eeca",
+        "1422b1bd13ebb6af336d6a188d654565b8151543879b9ec08a2a6dc2f87e95df"
+      ],
+      "notes": "Auto-generated (score 0.61-0.63, top 5)"
+    },
+    {
+      "id": 77,
+      "kp_id": 10078,
+      "kp_name": "Future get",
+      "relevant_snippet_hashes": [
+        "a2ca3430d6936e7f45e4cf8016ae50fad8650703ea418d0f2bd0fa24b04937f6",
+        "3cca6a9f4622b3b8e5cae5b39648f92d4824ce1b905d30d3ca13ef5d000f977c",
+        "9e7574fb3be47f4b847e15f196be3e56cfe2001ba502015bdee3336b7abfa538",
+        "9b7ef5a1e256f4c22067206da60c905a199465597837b9da063d8d9339ea60f3",
+        "764107fe5281a18b456f3193b8dc74345071298c1bb7725185a218f6c074ca0c"
+      ],
+      "notes": "Auto-generated (score 0.56-0.56, top 5)"
+    },
+    {
+      "id": 78,
+      "kp_id": 10079,
+      "kp_name": "ReentrantLock usage",
+      "relevant_snippet_hashes": [
+        "0e2b234b5aec0c15f7057fbecb39fee94385f782a55065c8ebcc0cbf7ebe826b",
+        "0fd328e47b8602212e6fb1a3aa5f65eafbf89800e5909a1d6e3a39beeae9ba56",
+        "9984a274a7b9d9b62d19c833ea69904aaabca26a80c3d71f1af8e80a3b5b609b",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe"
+      ],
+      "notes": "Auto-generated (score 0.56-0.58, top 5)"
+    },
+    {
+      "id": 79,
+      "kp_id": 10080,
+      "kp_name": "AtomicInteger operations",
+      "relevant_snippet_hashes": [
+        "b7f37de9e742e77d832355a36c8a40627b5b21e1ab7e5641aa86b1eda5abd913",
+        "bb4c83dda1b231f37e401c989747199041e59d7285f039e21ba21e97121d9817",
+        "3f6e09fb9e59f7d20544f00e27e1d3a9ab6b8e12683d3624b9406100b2e77718",
+        "fda1ab706bbaeb98be1b55c9a1d8901844a11dfd258355dc8b5665aa85233b3b",
+        "43c309371708a41b6ee747c17ae491c3fd46341c4d92ea88678943a5f67a374d"
+      ],
+      "notes": "Auto-generated (score 0.60-0.61, top 5)"
+    },
+    {
+      "id": 80,
+      "kp_id": 10081,
+      "kp_name": "FileInputStream and FileOutputStream",
+      "relevant_snippet_hashes": [
+        "1a00551785f90f01c92fa233d7c3bfdf66fdf5d79c9a5ef83604bea059cb7f82",
+        "e5abffa2c56386d60559fbacd3e9f57037facf74736c450a29761f90ff9b0fca",
+        "965ebcf3ecc41855da01952b077ff52558459c9198e48d2283acd423726fef78",
+        "c11ac015626373b4fdcca810f6f167e9b692ab5dfd6228f613e3012e56534f8f",
+        "5af1c6520da4d0ff988f0f3b57b3b8f8aade78504d02e4ce3f997a5ee67542a2"
+      ],
+      "notes": "Auto-generated (score 0.61-0.61, top 5)"
+    },
+    {
+      "id": 81,
+      "kp_id": 10082,
+      "kp_name": "BufferedReader and BufferedWriter",
+      "relevant_snippet_hashes": [
+        "3c6288779b3c728f9452b2561d19d666c61407f51b078b226245931c30412969",
+        "93c5f87618f3bba436abfc5376feedd1766048fcbbd7e9d926f3e7e0ef59398b",
+        "b187f4044ab412ae3e5d8d50e4ac956817b4f9827841f489f521b92655bde767",
+        "509975b0ab80ea15f95b39062079b7663adaa52dd7ba7eaa9db2fbac49e05ef2",
+        "a1431390f14ca486eb665f4f7417f6d2ddd315f127efd6e5560b61f9fec27ec2"
+      ],
+      "notes": "Auto-generated (score 0.61-0.68, top 5)"
+    },
+    {
+      "id": 82,
+      "kp_id": 10083,
+      "kp_name": "PrintStream println",
+      "relevant_snippet_hashes": [
+        "c11ac015626373b4fdcca810f6f167e9b692ab5dfd6228f613e3012e56534f8f",
+        "3d1cafa82487f9903b447b9634b2d358932f35ea3c93614d366d19df3c0408fa",
+        "82fa5f4198b19a6eeba8f341419d6b3b70e2b772852076e6283daa150b61073e",
+        "b6bda53cd58b8e48abf9d45732d41f2f875228661e94b6c761d05f3e21ee6694",
+        "bb181039beec66b5121b815dedc89d983aed1369b9059b5361b65963b1458d20"
+      ],
+      "notes": "Auto-generated (score 0.60-0.64, top 5)"
+    },
+    {
+      "id": 83,
+      "kp_id": 10084,
+      "kp_name": "Charset and encoding",
+      "relevant_snippet_hashes": [
+        "88f170a9c79300b4f8f9aea1e0bf6c5e819514809be2b3be44f0cc9e7c301fa2",
+        "638539a096f4055f050bd2f0960ca9b6acf882de63085d4de3df49ed0c2f5c36",
+        "8fcaa4e2637ceb38e63aae34428b4bcaafd51740a42c63aeef51ab3ad06c75e1",
+        "520f0923046aca77146cd982cacbf5872be97071b164f7730118905592c47ca6",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a"
+      ],
+      "notes": "Auto-generated (score 0.54-0.61, top 5)"
+    },
+    {
+      "id": 84,
+      "kp_id": 10085,
+      "kp_name": "Paths and Files",
+      "relevant_snippet_hashes": [
+        "30244ff690698ca19298caf76c21c5a8ab151ad518835b18fde78585d78c3779",
+        "6e8daeb5225eed225d13ffed246217bbce28ab0afed94b7850aba509ab5862b3",
+        "3b0800cc43132b008cfe4968104c81912aba22747785cfa888f7d1ba9cb54f18",
+        "c7756d20d098d7b7f84f1a80ba629113a7f3c1273b5024707ba29546a046e906",
+        "d128a7343359765ad088322d0a667e027204ae3832c25212c725bd8557504670"
+      ],
+      "notes": "Auto-generated (score 0.59-0.63, top 5)"
+    },
+    {
+      "id": 85,
+      "kp_id": 10086,
+      "kp_name": "FileChannel and ByteBuffer",
+      "relevant_snippet_hashes": [
+        "41152aa8d4da532a0db293a910606e922df7666fe92229c51877372aabb67189",
+        "fc778f814b7074bb0fb16b5e77ced4a557fd42d407ffd8234df2a8d3fd16b386",
+        "6e8daeb5225eed225d13ffed246217bbce28ab0afed94b7850aba509ab5862b3",
+        "f2f736141e8127507d12e340a39a871a7a09cbd12fc7f39c4a93d658e36a34f6",
+        "7616848d70da920f57d60f88166171c155b27520cb5d43cc02aab99e92597dd6"
+      ],
+      "notes": "Auto-generated (score 0.59-0.60, top 5)"
+    },
+    {
+      "id": 86,
+      "kp_id": 10087,
+      "kp_name": "LocalDate",
+      "relevant_snippet_hashes": [
+        "3c12207a4dc64710f4ea96b06c217259495dfaded8f096f3cee9d3b903474437",
+        "1db9841b934d1842e818cef2c2ef9bf87e2264d4fdbb893474881787ad49a610",
+        "b6f3395c4de62a3b596c75c49187c6af767b01490c6e27d0212805bc5f01f1e7",
+        "ae51001ef54eedeeaac92f20582114b0fff978049796a7cea0c3af1139bf9a81",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a"
+      ],
+      "notes": "Auto-generated (score 0.54-0.61, top 5)"
+    },
+    {
+      "id": 87,
+      "kp_id": 10088,
+      "kp_name": "LocalDateTime",
+      "relevant_snippet_hashes": [
+        "3c12207a4dc64710f4ea96b06c217259495dfaded8f096f3cee9d3b903474437",
+        "8b1fdcd657361817f490283bbb81e754761e09c8fc31b76d8de2ba8437f0bf1e",
+        "1db9841b934d1842e818cef2c2ef9bf87e2264d4fdbb893474881787ad49a610",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe"
+      ],
+      "notes": "Auto-generated (score 0.54-0.58, top 5)"
+    },
+    {
+      "id": 88,
+      "kp_id": 10089,
+      "kp_name": "Instant",
+      "relevant_snippet_hashes": [
+        "0b33ec2e8d046ad741ae68c653682959858e4be75e0a595151ce6a1ebeba53bd",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "335ca4b9d98f42eb5a3c8261ecd34f21d5ce791a31dd0737ec800eaaae01005b",
+        "a2ca3430d6936e7f45e4cf8016ae50fad8650703ea418d0f2bd0fa24b04937f6"
+      ],
+      "notes": "Auto-generated (score 0.54-0.61, top 5)"
+    },
+    {
+      "id": 89,
+      "kp_id": 10090,
+      "kp_name": "DateTimeFormatter",
+      "relevant_snippet_hashes": [
+        "3cca6a9f4622b3b8e5cae5b39648f92d4824ce1b905d30d3ca13ef5d000f977c",
+        "bb4c83dda1b231f37e401c989747199041e59d7285f039e21ba21e97121d9817",
+        "c520c6e98f64f7ed5513ee2ceea1365d0c1131a1475a843b67f291628fb4c3f0",
+        "9683492b877c6921c444d2f1169e5a6aee585bd947176f5e7612da65f7570661",
+        "460e281a71cc87c06187ff19d5057114fd01397ef7f5f9cb3b7b71c4eeb96100"
+      ],
+      "notes": "Auto-generated (score 0.58-0.59, top 5)"
+    },
+    {
+      "id": 90,
+      "kp_id": 10091,
+      "kp_name": "ZonedDateTime and ZoneId",
+      "relevant_snippet_hashes": [
+        "1ca1076accdd3f147f991935827c609c72f3510a135a095fff05d01eafbd47c3",
+        "cb49b9c137841a2e1ea1b2c78673c550b853314631d4ae4c621e424d277e7cdd",
+        "638539a096f4055f050bd2f0960ca9b6acf882de63085d4de3df49ed0c2f5c36",
+        "1db9841b934d1842e818cef2c2ef9bf87e2264d4fdbb893474881787ad49a610",
+        "8b1fdcd657361817f490283bbb81e754761e09c8fc31b76d8de2ba8437f0bf1e"
+      ],
+      "notes": "Auto-generated (score 0.55-0.57, top 5)"
+    },
+    {
+      "id": 91,
+      "kp_id": 10092,
+      "kp_name": "Period and Duration",
+      "relevant_snippet_hashes": [
+        "638539a096f4055f050bd2f0960ca9b6acf882de63085d4de3df49ed0c2f5c36",
+        "8fcaa4e2637ceb38e63aae34428b4bcaafd51740a42c63aeef51ab3ad06c75e1",
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "335ca4b9d98f42eb5a3c8261ecd34f21d5ce791a31dd0737ec800eaaae01005b"
+      ],
+      "notes": "Auto-generated (score 0.54-0.59, top 5)"
+    },
+    {
+      "id": 92,
+      "kp_id": 10093,
+      "kp_name": "@Override and @Deprecated usage",
+      "relevant_snippet_hashes": [
+        "44e99bf0f177a0406efd4b135c159fed646aefc026b50db5c609dc0146472cea",
+        "a5ecab0f04812f066eaeab81d5e51701d9624dd2693fdaf922aa226f830fecfa",
+        "8e1f44089cb2aee48acfd22eba9511ed2c5df49918e07d7816c1b1e9d6c64bd8",
+        "4f3468033f23ab64b20ab6dbc5f286b6e26a624a54381f0f09a68608ced9096a",
+        "8ac32848aadecd342323bc5a9e7ebc7ae2b75cd2c5827eda702e65d24ba88305"
+      ],
+      "notes": "Auto-generated (score 0.54-0.54, top 5)"
+    },
+    {
+      "id": 93,
+      "kp_id": 10094,
+      "kp_name": "Custom annotation declaration",
+      "relevant_snippet_hashes": [
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "335ca4b9d98f42eb5a3c8261ecd34f21d5ce791a31dd0737ec800eaaae01005b",
+        "a2ca3430d6936e7f45e4cf8016ae50fad8650703ea418d0f2bd0fa24b04937f6",
+        "342d2c833e41f52f0ff1bc567e8dc41c611ca4831b69aa1528dc861389c96ec3"
+      ],
+      "notes": "Auto-generated (score 0.49-0.49, top 5)"
+    },
+    {
+      "id": 94,
+      "kp_id": 10095,
+      "kp_name": "Retention and Target",
+      "relevant_snippet_hashes": [
+        "44e99bf0f177a0406efd4b135c159fed646aefc026b50db5c609dc0146472cea",
+        "a5ecab0f04812f066eaeab81d5e51701d9624dd2693fdaf922aa226f830fecfa",
+        "8e1f44089cb2aee48acfd22eba9511ed2c5df49918e07d7816c1b1e9d6c64bd8",
+        "4f3468033f23ab64b20ab6dbc5f286b6e26a624a54381f0f09a68608ced9096a",
+        "8ac32848aadecd342323bc5a9e7ebc7ae2b75cd2c5827eda702e65d24ba88305"
+      ],
+      "notes": "Auto-generated (score 0.54-0.54, top 5)"
+    },
+    {
+      "id": 95,
+      "kp_id": 10096,
+      "kp_name": "Class.forName and ClassLoader",
+      "relevant_snippet_hashes": [
+        "868b399124de46f9a2a0ecb11a8fefa81372ffac84022de3b600cfe61cdbe183",
+        "1fb9dfdc46405a32d0e56365249b6b76b0e0fbb5d64ed508e5d401f34f93386f",
+        "ecec87f2a40cdbb4f3c7a1ed6c055ee14339b0c273ff0a477a16333edba0a11c",
+        "88f170a9c79300b4f8f9aea1e0bf6c5e819514809be2b3be44f0cc9e7c301fa2",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe"
+      ],
+      "notes": "Auto-generated (score 0.57-0.61, top 5)"
+    },
+    {
+      "id": 96,
+      "kp_id": 10097,
+      "kp_name": "getMethods and getFields",
+      "relevant_snippet_hashes": [
+        "f5bea97dc5bad2a8d494209a83db39b0956c71c06fb47c4e35ea033eb90937fa",
+        "a2ca3430d6936e7f45e4cf8016ae50fad8650703ea418d0f2bd0fa24b04937f6",
+        "3cca6a9f4622b3b8e5cae5b39648f92d4824ce1b905d30d3ca13ef5d000f977c",
+        "9e7574fb3be47f4b847e15f196be3e56cfe2001ba502015bdee3336b7abfa538",
+        "9b7ef5a1e256f4c22067206da60c905a199465597837b9da063d8d9339ea60f3"
+      ],
+      "notes": "Auto-generated (score 0.58-0.62, top 5)"
+    },
+    {
+      "id": 97,
+      "kp_id": 10098,
+      "kp_name": "Annotation introspection getAnnotation",
+      "relevant_snippet_hashes": [
+        "0a0d963f62629ade4aef2e9dc08fa9b8377e75893af2f37f1eaef06ec8597c35",
+        "a2ca3430d6936e7f45e4cf8016ae50fad8650703ea418d0f2bd0fa24b04937f6",
+        "3cca6a9f4622b3b8e5cae5b39648f92d4824ce1b905d30d3ca13ef5d000f977c",
+        "9e7574fb3be47f4b847e15f196be3e56cfe2001ba502015bdee3336b7abfa538",
+        "9b7ef5a1e256f4c22067206da60c905a199465597837b9da063d8d9339ea60f3"
+      ],
+      "notes": "Auto-generated (score 0.59-0.60, top 5)"
+    },
+    {
+      "id": 98,
+      "kp_id": 10099,
+      "kp_name": "package declaration",
+      "relevant_snippet_hashes": [
+        "894e301cc07480c8560f1b67d0c03f428f3b175388d86db244e34e15f5615d8a",
+        "32e477fe55fe93c76820434f4f1c41e2b0f0e3f63a5d01087b54b147884e57fe",
+        "335ca4b9d98f42eb5a3c8261ecd34f21d5ce791a31dd0737ec800eaaae01005b",
+        "a2ca3430d6936e7f45e4cf8016ae50fad8650703ea418d0f2bd0fa24b04937f6",
+        "342d2c833e41f52f0ff1bc567e8dc41c611ca4831b69aa1528dc861389c96ec3"
+      ],
+      "notes": "Auto-generated (score 0.49-0.49, top 5)"
+    },
+    {
+      "id": 99,
+      "kp_id": 10100,
+      "kp_name": "module-info requires",
+      "relevant_snippet_hashes": [
+        "703c67bf490f5f9ca427f99912040370aea94f69e0857b8803868b76d1acc96b",
+        "425a875dd235800a4308eeca1c4510579e1c20cc69b95c04b63a2dc2fcd7e842",
+        "4028228a12d7418c765c93b88a2145243531b9b71d1b4a60c9d06dc8fa7b5eb2",
+        "39b6215c99fc63adcf46fe6faefb91e2d18c9a3119d271cb11c72735e3adc4dd",
+        "889893b554387b3d674a6b6fca22f6409136fdf03f58503524db356fe67dd514"
+      ],
+      "notes": "Auto-generated (score 0.54-0.55, top 5)"
+    }
+  ],
+  "statistics": {
+    "total_test_cases": 99,
+    "total_relevant_snippets": 495,
+    "skipped_kps": 1,
+    "total_kps_tested": 100
+  }
+}

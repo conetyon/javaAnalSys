@@ -126,7 +126,15 @@ class SearchService:
         filtered_count = 0
         for idx, snip in enumerate(candidates):
             snip_id = snip.get("id", idx)
-            
+
+            # === 过滤测试/示例数据（可选）===
+            # 在评估模式下，可以通过 file_path 过滤特定数据源
+            # 例如：跳过 sample_code.java 等示例文件
+            file_path = snip.get("file_path", snip.get("source_path", ""))
+            if file_path and "sample_code.java" in file_path:
+                log.debug("[SearchService.search] 跳过示例文件片段 #%s (sample_code.java)", snip_id)
+                continue
+
             # AST
             ast_raw = snip.get("ast_features")
             if isinstance(ast_raw, (str, bytes, bytearray)):
@@ -189,6 +197,7 @@ class SearchService:
 
             results.append({
                 "id": snip.get("id"),
+                "content_hash": snip.get("content_hash"),  # 添加稳定标识符
                 "content": snip.get("content", ""),
                 "score": round(r["final_score"], 3),
 
@@ -260,6 +269,7 @@ class SearchService:
                 if not r.get("filtered"):
                     fallback_results.append({
                         "id": snip.get("id"),
+                        "content_hash": snip.get("content_hash"),  # 添加稳定标识符
                         "content": snip.get("content", ""),
                         "score": round(r["final_score"], 3),
                         "ast_ratio": round(r["ast_score"], 2),

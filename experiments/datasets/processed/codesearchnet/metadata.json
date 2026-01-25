@@ -1,0 +1,9 @@
+{
+  "dataset": "CodeSearchNet",
+  "language": "Java",
+  "processed_at": "2026-01-24T19:08:56.533018Z",
+  "max_samples_per_split": null,
+  "num_knowledge_points": 100,
+  "labeling_strategy": "heuristic_keyword_matching",
+  "keyword_threshold": 0.3
+}

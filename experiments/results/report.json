@@ -1,0 +1,147 @@
+{
+  "single_evaluation": {
+    "method": "Hybrid (AST + Keyword + Difficulty)",
+    "top1_accuracy": 0.9696969696969697,
+    "precision@5": 0.9373737373737366,
+    "precision@10": 0.4991341991341991,
+    "recall@5": 0.9373737373737366,
+    "recall@10": 0.9939393939393939,
+    "f1@5": 0.9373737373737366,
+    "f1@10": 0.6645474753332103,
+    "mrr": 0.9831649831649831,
+    "map": 0.9648019881353216,
+    "avg_execution_time_ms": 343.8340268953882,
+    "num_test_cases": 99
+  },
+  "num_test_cases": 99,
+  "baseline_comparison": [
+    {
+      "method": "Hybrid (AST + Keyword + Difficulty)",
+      "top1_accuracy": 0.9696969696969697,
+      "precision@5": 0.9373737373737366,
+      "precision@10": 0.4991341991341991,
+      "recall@5": 0.9373737373737366,
+      "recall@10": 0.9939393939393939,
+      "f1@5": 0.9373737373737366,
+      "f1@10": 0.6645474753332103,
+      "mrr": 0.9831649831649831,
+      "map": 0.9648019881353216,
+      "avg_execution_time_ms": 336.9743390516801,
+      "num_test_cases": 99
+    },
+    {
+      "method": "TF-IDF",
+      "top1_accuracy": 0.010101010101010102,
+      "precision@5": 0.01818181818181818,
+      "precision@10": 0.019191919191919198,
+      "recall@5": 0.01818181818181818,
+      "recall@10": 0.038383838383838395,
+      "f1@5": 0.01818181818181818,
+      "f1@10": 0.025589225589225596,
+      "mrr": 0.04934664101330769,
+      "map": 0.011300304633637967,
+      "avg_execution_time_ms": 116.3832274350253,
+      "num_test_cases": 99
+    },
+    {
+      "method": "Pure AST",
+      "top1_accuracy": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.00101010101010101,
+      "recall@5": 0.0,
+      "recall@10": 0.00202020202020202,
+      "f1@5": 0.0,
+      "f1@10": 0.0013468013468013467,
+      "mrr": 0.0016835016835016834,
+      "map": 0.0003367003367003367,
+      "avg_execution_time_ms": 156.57358217721034,
+      "num_test_cases": 99
+    },
+    {
+      "method": "Random",
+      "top1_accuracy": 0.0,
+      "precision@5": 0.0,
+      "precision@10": 0.0,
+      "recall@5": 0.0,
+      "recall@10": 0.0,
+      "f1@5": 0.0,
+      "f1@10": 0.0,
+      "mrr": 0.0,
+      "map": 0.0,
+      "avg_execution_time_ms": 6.240770070239751,
+      "num_test_cases": 99
+    }
+  ],
+  "ablation_study": [
+    {
+      "method": "Full (AST+KW+DIFF)",
+      "weights": "AST=0.5, KW=0.4, DIFF=0.1",
+      "top1_accuracy": 0.9696969696969697,
+      "precision@10": 0.4991341991341991,
+      "recall@10": 0.9939393939393939,
+      "mrr": 0.9831649831649831,
+      "map": 0.9648019881353216,
+      "avg_execution_time_ms": 333.27195379469134
+    },
+    {
+      "method": "AST + Keyword",
+      "weights": "AST=0.7, KW=0.3, DIFF=0.0",
+      "top1_accuracy": 0.6363636363636364,
+      "precision@10": 0.31125541125541134,
+      "recall@10": 0.6181818181818184,
+      "mrr": 0.7281906365239699,
+      "map": 0.48842151675485024,
+      "avg_execution_time_ms": 335.2435189064103
+    },
+    {
+      "method": "Keyword + Difficulty",
+      "weights": "AST=0.0, KW=0.9, DIFF=0.1",
+      "top1_accuracy": 0.696969696969697,
+      "precision@10": 0.39812409812409794,
+      "recall@10": 0.7919191919191917,
+      "mrr": 0.7586099086099087,
+      "map": 0.6880423280423281,
+      "avg_execution_time_ms": 336.4957438574897
+    },
+    {
+      "method": "AST + Difficulty",
+      "weights": "AST=0.9, KW=0.0, DIFF=0.1",
+      "top1_accuracy": 0.5252525252525253,
+      "precision@10": 0.23852813852813856,
+      "recall@10": 0.4727272727272728,
+      "mrr": 0.5705507455507455,
+      "map": 0.41117364117364114,
+      "avg_execution_time_ms": 401.4971448917581
+    },
+    {
+      "method": "AST Only",
+      "weights": "AST=1.0, KW=0.0, DIFF=0.0",
+      "top1_accuracy": 0.0707070707070707,
+      "precision@10": 0.09610389610389611,
+      "recall@10": 0.18787878787878787,
+      "mrr": 0.1555996472663139,
+      "map": 0.10016354016354016,
+      "avg_execution_time_ms": 857.8806742273197
+    },
+    {
+      "method": "Keyword Only",
+      "weights": "AST=0.0, KW=1.0, DIFF=0.0",
+      "top1_accuracy": 0.5353535353535354,
+      "precision@10": 0.2506493506493507,
+      "recall@10": 0.49696969696969706,
+      "mrr": 0.6226551226551227,
+      "map": 0.37303511303511305,
+      "avg_execution_time_ms": 736.1513653186836
+    },
+    {
+      "method": "Difficulty Only",
+      "weights": "AST=0.0, KW=0.0, DIFF=1.0",
+      "top1_accuracy": 0.26262626262626265,
+      "precision@10": 0.1072150072150072,
+      "recall@10": 0.21010101010101012,
+      "mrr": 0.28737373737373734,
+      "map": 0.1864462081128748,
+      "avg_execution_time_ms": 597.303361603708
+    }
+  ]
+}
