@@ -1,18 +1,14 @@
 # scripts/__init__.py
 """
-离线脚本模块
-包含数据库初始化、代码分析、匹配测试等离线任务
-"""
-from .offline_tasks import (
-    init_database,
-    analyze_code_file,
-    run_matching_test,
-    run_full_pipeline,
-)
+脚本模块 - 用户接口
 
-__all__ = [
-    "init_database",
-    "analyze_code_file",
-    "run_matching_test",
-    "run_full_pipeline",
-]
+提供三个统一入口：
+- setup_database.py - 数据库管理
+- run_experiments.py - 实验评估
+- (项目根目录) run_api.py - API 服务
+
+内部实现位于 _internal/ 目录。
+"""
+
+__all__ = []
+
