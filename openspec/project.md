@@ -79,11 +79,11 @@ Java knowledge point matching system for educational purposes. The system analyz
 
 ### Matching Algorithm (Hybrid Strategy)
 **Three components with weights**:
-1. **AST Matching (w_ast=0.6)**: Structural similarity
+1. **AST Matching (w_ast=0.5)**: Structural similarity
    - Maps templates to tree-sitter node types via `NODE_MAPPING`
    - Requires domain anchors for collection types (prevents false positives)
    - Calculates coverage ratio (matched nodes / template nodes)
-2. **Keyword Matching (w_keyword=0.3)**: Semantic similarity
+2. **Keyword Matching (w_keyword=0.4)**: Semantic similarity
    - Weighted scoring: Core keywords (2.0x), General (1.0x), Ambiguous (0.5x)
    - Alias normalization (e.g., `System.out.println` → `println`)
    - Name tokens from KP names (0.8x weight)

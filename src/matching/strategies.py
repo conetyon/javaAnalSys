@@ -4,11 +4,11 @@ Java 知识点 - 代码片段匹配策略实现（优化版）。
 
 改动要点：
 - AST：引入领域锚点（Domain Anchors）；当模板包含锚点时，必须至少命中一个锚点，否则直接判为不匹配；
-       降低“没有 AST 模板”的默认分（由 0.6 -> 0.3），避免弱约束下的高分。
+       降低"没有 AST 模板"的默认分（由 0.6 -> 0.3），避免弱约束下的高分。
 - 关键词：对歧义词（如 set、get）降低权重；去除平滑项（未命中 -> 0 分），提升区分度。
 - 过滤阈值：默认提高 AST 覆盖率阈值为 0.4，并支持关键词最低得分阈值（默认 0.4）。当任何阶段过滤触发 -> final_score=0。
 - 兼容输入：当 required_nodes/keywords 为 JSON 字符串或混合类型时，自动解析成规范集合。
-- 权重：统一默认权重 AST 0.6 / KW 0.3 / DIFF 0.1，归一化后参与加权融合。
+- 权重：从 config/matching.yaml 加载，默认 AST 0.5 / KW 0.4 / DIFF 0.1，归一化后参与加权融合。
 """
 
 import re
@@ -182,11 +182,36 @@ API_CLASS_KEYWORDS = {
 }
 API_CLASS_WEIGHT = 1.8  # 介于 CORE 和 GENERAL 之间，强调 API 特异性
 
-# 统一默认权重（v1.2.8 基于实验结果的优化配置）
-# **关键发现**：AST匹配是最可靠的特征，Keyword引入噪声大于贡献
-# 根据CodeSearchNet数据集评估，AST-only达到最佳效果
-# 注意：消融实验可通过 search() 的 w_ast/w_keyword/w_difficulty 参数覆盖这些默认值
-WEIGHT_DEFAULTS = {"ast": 1.0, "keyword": 0.0, "difficulty": 0.0}
+# 统一默认权重 - 从 config/matching.yaml 加载
+# 评估实验可通过 search() 的 w_ast/w_keyword/w_difficulty 参数覆盖这些默认值
+def _load_weight_defaults() -> Dict[str, float]:
+    """
+    从 config/matching.yaml 加载默认权重配置。
+    如果加载失败，使用硬编码的回退值。
+    """
+    try:
+        from lib.utils.matching_config import get_matching_config
+        cfg = get_matching_config('default')
+        weights = {
+            "ast": float(cfg.get('w_ast', 0.5)),
+            "keyword": float(cfg.get('w_keyword', 0.4)),
+            "difficulty": float(cfg.get('w_difficulty', 0.1)),
+        }
+        log.debug("[strategies] 从 matching.yaml 加载权重: %s", weights)
+        return weights
+    except Exception as e:
+        log.warning("[strategies] 无法加载 matching.yaml，使用回退值: %s", e)
+        return {"ast": 0.5, "keyword": 0.4, "difficulty": 0.1}
+
+# 延迟加载，避免循环导入
+_weight_defaults_cache: Optional[Dict[str, float]] = None
+
+def get_weight_defaults() -> Dict[str, float]:
+    """获取默认权重（带缓存，从 matching.yaml 加载）"""
+    global _weight_defaults_cache
+    if _weight_defaults_cache is None:
+        _weight_defaults_cache = _load_weight_defaults()
+    return _weight_defaults_cache.copy()
 
 
 def _split_name_tokens(name: Optional[str]) -> List[str]:
@@ -592,11 +617,12 @@ def calculate_match_score(
               float(target_difficulty) if target_difficulty else 0,
               difficulty_mode)
 
-    # 权重
-    weights = weights or WEIGHT_DEFAULTS
-    w_ast = float(weights.get("ast", WEIGHT_DEFAULTS["ast"]))
-    w_kw = float(weights.get("keyword", WEIGHT_DEFAULTS["keyword"]))
-    w_diff = float(weights.get("difficulty", WEIGHT_DEFAULTS["difficulty"]))
+    # 权重 - 使用动态加载的配置
+    default_weights = get_weight_defaults()
+    weights = weights or default_weights
+    w_ast = float(weights.get("ast", default_weights["ast"]))
+    w_kw = float(weights.get("keyword", default_weights["keyword"]))
+    w_diff = float(weights.get("difficulty", default_weights["difficulty"]))
 
     total_w = w_ast + w_kw + w_diff
     if total_w <= 0:
@@ -702,7 +728,7 @@ def select_top_matches(
             snip_difficulty=sn.get("difficulty"),
             target_difficulty=target_difficulty,
             difficulty_mode=difficulty_mode,
-            weights=weights or WEIGHT_DEFAULTS,
+            weights=weights or get_weight_defaults(),
             ast_min_ratio=ast_min_ratio,
             keyword_min_score=keyword_min_score,
         )

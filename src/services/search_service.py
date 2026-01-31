@@ -12,8 +12,15 @@ from lib.globals import core_logger as log
 from src.matching.strategies import (
     extract_required_nodes,
     calculate_match_score,
-    WEIGHT_DEFAULTS,
+    get_weight_defaults,
 )
+
+
+class KnowledgePointNotFoundError(Exception):
+    """知识点不存在异常"""
+    def __init__(self, kp_id: int):
+        self.kp_id = kp_id
+        super().__init__(f"Knowledge point not found: {kp_id}")
 
 # 优先从 java_analyzer.constants 导入别名表；若不可用，使用内置最小表
 try:
@@ -102,7 +109,7 @@ class SearchService:
         kp_row = self.kp_mgr.get_by_id(kp_id)
         if not kp_row:
             log.warning("[SearchService.search] 知识点不存在: kp_id=%d", kp_id)
-            return []
+            raise KnowledgePointNotFoundError(kp_id)
         
         log.debug("[SearchService.search] 知识点原始数据: %s", kp_row)
 
@@ -156,7 +163,7 @@ class SearchService:
 
             # 4. 打分（将归一化关键词传入策略）
             # 构建自定义权重（如果提供）
-            custom_weights = WEIGHT_DEFAULTS.copy()
+            custom_weights = get_weight_defaults()
             if w_ast is not None:
                 custom_weights["ast"] = w_ast
             if w_keyword is not None:
@@ -372,6 +379,9 @@ class SearchService:
 
         if not kp_configs:
             log.warning("[SearchService.composite_search] 没有有效的知识点配置")
+            # 如果传入了 kp_ids 但全部不存在，抛出异常
+            if kp_ids:
+                raise KnowledgePointNotFoundError(kp_ids[0])
             return []
 
         # 2. 获取候选片段（合并所有知识点的候选集）
@@ -407,7 +417,7 @@ class SearchService:
                     snip_difficulty=snip_difficulty,
                     target_difficulty=target_difficulty,
                     difficulty_mode=difficulty_mode,
-                    weights=WEIGHT_DEFAULTS,
+                    weights=get_weight_defaults(),
                     ast_min_ratio=ast_min_ratio,
                     keyword_min_score=keyword_min_score,
                 )

@@ -6,6 +6,7 @@ from flask import jsonify, request
 from pydantic import ValidationError
 from . import api_bp
 from src.services import SearchService
+from src.services.search_service import KnowledgePointNotFoundError
 from api.schemas.match import (
     MatchRequest,
     BatchMatchRequest,
@@ -116,6 +117,11 @@ def match_knowledge():
             "data": results
         })
 
+    except KnowledgePointNotFoundError as e:
+        raise NotFoundException(
+            message=f"知识点不存在: {e.kp_id}",
+            error=f"Knowledge point {e.kp_id} not found"
+        )
     except BadRequestException:
         raise
     except Exception as e:
@@ -187,6 +193,7 @@ def batch_match_knowledge():
         # 调用服务层
         service = get_search_service()
         results = {}
+        errors = {}  # 记录失败的知识点
 
         for kp_id in req.kp_ids:
             try:
@@ -199,19 +206,29 @@ def batch_match_knowledge():
                     difficulty_mode=req.difficulty_mode
                 )
                 results[str(kp_id)] = kp_results
+            except KnowledgePointNotFoundError as e:
+                log.warning(f"[POST] /api/match/batch - kp_id={kp_id} 不存在")
+                results[str(kp_id)] = []
+                errors[str(kp_id)] = "Knowledge point not found"
             except Exception as e:
                 log.warning(f"[POST] /api/match/batch - kp_id={kp_id} 匹配失败: {str(e)}")
                 results[str(kp_id)] = []
+                errors[str(kp_id)] = str(e)
 
         total_results = sum(len(v) for v in results.values())
         log.info(f"[POST] /api/match/batch - 成功匹配 {len(req.kp_ids)} 个知识点，"
                  f"共 {total_results} 条结果")
 
-        return jsonify({
+        response = {
             "code": 200,
             "message": "success",
             "data": results
-        })
+        }
+        if errors:
+            response["errors"] = errors
+            response["message"] = f"部分成功 ({len(errors)}/{len(req.kp_ids)} 失败)"
+
+        return jsonify(response)
 
     except BadRequestException:
         raise
@@ -363,6 +380,11 @@ def composite_match_knowledge():
             "data": results
         })
 
+    except KnowledgePointNotFoundError as e:
+        raise NotFoundException(
+            message=f"知识点不存在: {e.kp_id}",
+            error=f"Knowledge point {e.kp_id} not found"
+        )
     except BadRequestException:
         raise
     except Exception as e:

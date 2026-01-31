@@ -227,8 +227,8 @@ The system SHALL return structured error responses with consistent format for al
 ## Default Configuration
 
 ### Matching Parameters (v1.2.6+)
-- `w_ast`: 0.6 (AST structure weight)
-- `w_keyword`: 0.3 (keyword semantic weight)
+- `w_ast`: 0.5 (AST structure weight)
+- `w_keyword`: 0.4 (keyword semantic weight)
 - `w_difficulty`: 0.1 (difficulty alignment weight)
 - `ast_min_ratio`: 0.4 (minimum AST coverage)
 - `keyword_min_score`: 0.4 (minimum keyword score)

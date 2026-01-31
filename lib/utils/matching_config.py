@@ -4,17 +4,9 @@
 用法:
     from lib.utils.matching_config import get_matching_config
 
-    # 获取评估配置
-    cfg = get_matching_config('evaluation')
-    results = search_service.search(
-        kp_id=kp_id,
-        top_k=10,
-        ast_min_ratio=cfg['ast_min_ratio'],
-        keyword_min_score=cfg['keyword_min_score'],
-        w_ast=cfg['w_ast'],
-        w_keyword=cfg['w_keyword'],
-        w_difficulty=cfg['w_difficulty']
-    )
+    # 获取生产环境配置
+    cfg = get_matching_config('default')
+    # cfg = {'ast_min_ratio': 0.4, 'keyword_min_score': 0.4, 'w_ast': 0.5, ...}
 """
 
 import yaml
@@ -52,15 +44,15 @@ def get_matching_config(profile: str = 'default') -> Dict[str, Any]:
     获取指定配置profile
 
     Args:
-        profile: 配置名称（default, evaluation, ground_truth, codesearchnet）
+        profile: 配置名称（目前仅支持 'default'）
 
     Returns:
         配置字典，包含阈值和权重
 
     Examples:
-        >>> cfg = get_matching_config('evaluation')
-        >>> print(cfg['ast_min_ratio'])
-        0.2
+        >>> cfg = get_matching_config('default')
+        >>> print(cfg['w_ast'])
+        0.5
     """
     config = load_matching_config()
 
@@ -68,6 +60,21 @@ def get_matching_config(profile: str = 'default') -> Dict[str, Any]:
         raise ValueError(f"Unknown profile: {profile}. Available: {list(config.keys())}")
 
     return config[profile]
+
+
+def get_default_weights() -> Dict[str, float]:
+    """
+    获取默认权重（生产环境）
+
+    Returns:
+        {'w_ast': 0.5, 'w_keyword': 0.4, 'w_difficulty': 0.1}
+    """
+    cfg = get_matching_config('default')
+    return {
+        'w_ast': cfg['w_ast'],
+        'w_keyword': cfg['w_keyword'],
+        'w_difficulty': cfg['w_difficulty']
+    }
 
 
 def get_default_thresholds() -> Dict[str, float]:
@@ -82,38 +89,3 @@ def get_default_thresholds() -> Dict[str, float]:
         'ast_min_ratio': cfg['ast_min_ratio'],
         'keyword_min_score': cfg['keyword_min_score']
     }
-
-
-def get_default_weights() -> Dict[str, float]:
-    """
-    获取默认权重（生产环境）
-
-    Returns:
-        {'w_ast': 0.6, 'w_keyword': 0.3, 'w_difficulty': 0.1}
-    """
-    cfg = get_matching_config('default')
-    return {
-        'w_ast': cfg['w_ast'],
-        'w_keyword': cfg['w_keyword'],
-        'w_difficulty': cfg['w_difficulty']
-    }
-
-
-def get_evaluation_config() -> Dict[str, Any]:
-    """
-    获取评估配置（快捷方法）
-
-    Returns:
-        评估配置字典
-    """
-    return get_matching_config('evaluation')
-
-
-def get_ground_truth_config() -> Dict[str, Any]:
-    """
-    获取Ground Truth生成配置（快捷方法）
-
-    Returns:
-        Ground Truth配置字典
-    """
-    return get_matching_config('ground_truth')

@@ -494,8 +494,8 @@ These warnings are **normal and expected**:
 - `keyword_min_score`: 0.4
 
 **Default Weights** (production configuration):
-- `w_ast`: 0.6 (AST structure matching)
-- `w_keyword`: 0.3 (keyword semantic matching)
+- `w_ast`: 0.5 (AST structure matching)
+- `w_keyword`: 0.4 (keyword semantic matching)
 - `w_difficulty`: 0.1 (difficulty scoring)
 
 **Note**: These defaults are consistent across:

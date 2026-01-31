@@ -1,71 +1,26 @@
-# 匹配策略配置 - 中心化管理
-# Created: 2026-01-25 (v1.3.1修复)
-# Purpose: 统一所有脚本的阈值和权重配置，确保评估与生产一致性
+# 匹配策略配置 - 生产环境
+# Updated: 2026-01-31 (v1.3.1 配置与代码解耦)
+# Purpose: API 生产环境的阈值和权重配置
 
-# 默认配置（生产环境）
+# 默认配置（被 strategies.py 的 get_weight_defaults() 加载）
 default:
   # 过滤阈值（质量保证）
   ast_min_ratio: 0.4      # AST覆盖率最低阈值
   keyword_min_score: 0.4  # 关键词得分最低阈值
 
   # 权重配置（加权融合）
-  w_ast: 0.6              # AST结构匹配权重
-  w_keyword: 0.3          # 关键词匹配权重
+  w_ast: 0.5              # AST结构匹配权重
+  w_keyword: 0.4          # 关键词匹配权重
   w_difficulty: 0.1       # 难度匹配权重
-
-# 评估配置（实验/测试）
-evaluation:
-  # 较宽松的阈值（测试系统最大召回能力）
-  ast_min_ratio: 0.2      # 保证AST基础质量
-  keyword_min_score: 0.0  # 不限制关键词（测试纯AST效果）
-
-  # 标准权重（与默认一致）
-  w_ast: 0.6
-  w_keyword: 0.3
-  w_difficulty: 0.1
-
-# Ground Truth生成配置（标注生成）
-ground_truth:
-  # 与评估一致的阈值（确保标注与评估对齐）
-  ast_min_ratio: 0.2
-  keyword_min_score: 0.0
-
-  # 使用混合策略（而非纯AST）- v1.3.1关键修复
-  w_ast: 0.6
-  w_keyword: 0.3
-  w_difficulty: 0.1
-
-  # 标注筛选阈值
-  min_score: 0.8          # 只标注得分>=0.8的样本为相关
-  max_samples_per_kp: 3   # 每个知识点最多标注3个样本
-
-# CodeSearchNet实验配置
-codesearchnet:
-  # 与评估一致的阈值
-  ast_min_ratio: 0.2
-  keyword_min_score: 0.0
-
-  # 标准权重
-  w_ast: 0.6
-  w_keyword: 0.3
-  w_difficulty: 0.1
-
-  # 检索参数
-  top_k: 50               # 检索Top-K结果
 
 # 配置说明
 notes: |
-  阈值设计原则:
-  1. 生产环境（default）: 高阈值保证推荐质量
-  2. 评估环境（evaluation）: 低阈值测试最大召回能力
-  3. Ground Truth生成: 必须与评估阈值一致，确保标注有效性
-  4. CodeSearchNet实验: 使用评估阈值，验证大规模数据性能
+  此文件仅用于 API 生产环境，评估实验使用脚本内硬编码配置。
 
-  权重设计原则:
-  1. AST权重主导（0.6）: 结构匹配最可靠
-  2. 关键词辅助（0.3）: 语义匹配补充
-  3. 难度权重低（0.1）: 用户体验增强但不主导排序
+  权重设计原则（基于消融实验 experiment.py 结果）:
+  1. AST权重（0.5）: 提供结构验证，与关键词协同达到最优效果
+  2. 关键词权重（0.4）: Keyword Only 准确率 53.54%，是最重要的单一特征
+  3. 难度权重（0.1）: 用户体验增强但不主导排序
 
-  修复历史:
-  - v1.3.1 (2026-01-25): 统一配置，修复Ground Truth生成使用纯AST的问题
-  - v1.3.0 (2026-01-24): 初始版本，默认权重设置
+  版本历史:
+  - v1.3.1 (2026-01-31): 配置与代码解耦，strategies.py 从此文件加载

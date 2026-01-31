@@ -10,7 +10,7 @@
     "f1@10": 0.6645474753332103,
     "mrr": 0.9882154882154883,
     "map": 0.9727785794452463,
-    "avg_execution_time_ms": 346.1713935389663,
+    "avg_execution_time_ms": 336.6392646173034,
     "num_test_cases": 99
   },
   "num_test_cases": 99,
@@ -26,7 +26,7 @@
       "f1@10": 0.6645474753332103,
       "mrr": 0.9882154882154883,
       "map": 0.9727785794452463,
-      "avg_execution_time_ms": 473.71945959148985,
+      "avg_execution_time_ms": 335.45448081661954,
       "num_test_cases": 99
     },
     {
@@ -40,7 +40,7 @@
       "f1@10": 0.00808080808080808,
       "mrr": 0.01658249158249158,
       "map": 0.003316498316498317,
-      "avg_execution_time_ms": 130.0361758530742,
+      "avg_execution_time_ms": 133.660184012519,
       "num_test_cases": 99
     },
     {
@@ -54,7 +54,7 @@
       "f1@10": 0.0,
       "mrr": 0.0,
       "map": 0.0,
-      "avg_execution_time_ms": 175.78283704892553,
+      "avg_execution_time_ms": 178.26230116564818,
       "num_test_cases": 99
     },
     {
@@ -68,7 +68,7 @@
       "f1@10": 0.0,
       "mrr": 0.0,
       "map": 0.0,
-      "avg_execution_time_ms": 7.786305263789013,
+      "avg_execution_time_ms": 7.73651912958935,
       "num_test_cases": 99
     }
   ],
@@ -81,7 +81,7 @@
       "recall@10": 0.993939393939394,
       "mrr": 0.9882154882154883,
       "map": 0.9727785794452463,
-      "avg_execution_time_ms": 433.11786892438175
+      "avg_execution_time_ms": 333.2607288553257
     },
     {
       "method": "AST + Keyword",
@@ -91,7 +91,7 @@
       "recall@10": 0.4929292929292931,
       "mrr": 0.5856902356902356,
       "map": 0.35660734327401006,
-      "avg_execution_time_ms": 623.0367626806702
+      "avg_execution_time_ms": 334.0562690388073
     },
     {
       "method": "Keyword + Difficulty",
@@ -101,7 +101,7 @@
       "recall@10": 0.8,
       "mrr": 0.7770322270322271,
       "map": 0.7228739778739777,
-      "avg_execution_time_ms": 478.19778413483596
+      "avg_execution_time_ms": 335.1516940376975
     },
     {
       "method": "AST + Difficulty",
@@ -111,7 +111,7 @@
       "recall@10": 0.6323232323232323,
       "mrr": 0.6260582010582012,
       "map": 0.5513804713804713,
-      "avg_execution_time_ms": 333.69303231287483
+      "avg_execution_time_ms": 332.924455103248
     },
     {
       "method": "AST Only",
@@ -121,7 +121,7 @@
       "recall@10": 0.20404040404040408,
       "mrr": 0.18653198653198647,
       "map": 0.12046496713163381,
-      "avg_execution_time_ms": 330.87729444407455
+      "avg_execution_time_ms": 332.3042368648028
     },
     {
       "method": "Keyword Only",
@@ -131,7 +131,7 @@
       "recall@10": 0.3191919191919192,
       "mrr": 0.42158489658489656,
       "map": 0.23227192560525892,
-      "avg_execution_time_ms": 333.2801924811469
+      "avg_execution_time_ms": 332.9100247585412
     },
     {
       "method": "Difficulty Only",
@@ -141,7 +141,7 @@
       "recall@10": 0.3434343434343434,
       "mrr": 0.3542929292929293,
       "map": 0.29145342312008976,
-      "avg_execution_time_ms": 334.8005540443189
+      "avg_execution_time_ms": 331.056727303399
     }
   ]
 }

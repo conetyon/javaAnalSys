@@ -28,7 +28,7 @@ def get_knowledge_tree():
     获取知识点树状结构
     ---
     GET /api/knowledge/tree
-    
+
     Response:
         {
             "code": 200,
@@ -55,11 +55,18 @@ def get_knowledge_tree():
         count = _count_nodes(tree_data)
         log.info(f"[GET] /api/knowledge/tree - 成功获取 {count} 个知识点节点")
 
-        return jsonify({
+        response = {
             "code": 200,
             "message": "success",
             "data": tree_data
-        })
+        }
+
+        # 空数据警告（日志记录详细信息，响应返回用户友好提示）
+        if not tree_data:
+            log.warning("[GET] /api/knowledge/tree - 知识点表为空，需要初始化: python scripts/setup_database.py --load-kp")
+            response["warning"] = "暂无知识点数据"
+
+        return jsonify(response)
     except Exception as e:
         log.error(f"[GET] /api/knowledge/tree - 异常: {str(e)}", exc_info=True)
         raise
@@ -71,7 +78,7 @@ def get_knowledge_list():
     获取知识点扁平列表
     ---
     GET /api/knowledge/list
-    
+
     Response:
         {
             "code": 200,
@@ -96,11 +103,18 @@ def get_knowledge_list():
 
         log.info(f"[GET] /api/knowledge/list - 成功获取 {len(list_data)} 个知识点")
 
-        return jsonify({
+        response = {
             "code": 200,
             "message": "success",
             "data": list_data
-        })
+        }
+
+        # 空数据警告
+        if not list_data:
+            log.warning("[GET] /api/knowledge/list - 知识点表为空，需要初始化: python scripts/setup_database.py --load-kp")
+            response["warning"] = "暂无知识点数据"
+
+        return jsonify(response)
     except Exception as e:
         log.error(f"[GET] /api/knowledge/list - 异常: {str(e)}", exc_info=True)
         raise
