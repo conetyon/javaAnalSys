@@ -83,22 +83,6 @@ class DatabaseInitializer(BaseManager):
                     metrics      JSON,
                     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     INDEX idx_dataset (dataset_name)
-                )''', ()),
-
-            ('''CREATE TABLE IF NOT EXISTS bulk_import_jobs
-                (
-                    id               INT PRIMARY KEY AUTO_INCREMENT,
-                    job_id           VARCHAR(100) UNIQUE NOT NULL,
-                    repo_path        VARCHAR(500),
-                    status           ENUM('queued', 'running', 'completed', 'failed') DEFAULT 'queued',
-                    progress         INT DEFAULT 0,
-                    total_files      INT DEFAULT 0,
-                    snippets_imported INT DEFAULT 0,
-                    errors           JSON,
-                    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    INDEX idx_job_id (job_id),
-                    INDEX idx_status (status)
                 )''', ())
         ]
 

@@ -88,8 +88,7 @@ def validate_environment():
         "knowledge_points",
         "code_files",
         "code_snippets",
-        "experiment_runs",
-        "bulk_import_jobs"
+        "experiment_runs"
     ]
 
     try:
@@ -104,10 +103,8 @@ def validate_environment():
         if missing_tables:
             print(f"[FAIL] Missing tables: {', '.join(missing_tables)}")
             print("\nTroubleshooting:")
-            print("  1. Run database initialization:")
-            print("     python scripts/init_data/run_all.py")
-            print("  2. Or manually run migrations:")
-            print("     python scripts/init_data/init_schema.py")
+            print("  Run database initialization:")
+            print("     python scripts/setup_database.py --init-schema")
             sys.exit(1)
 
         print(f"[OK] All required tables exist ({len(required_tables)} tables)")

@@ -271,13 +271,24 @@ def import_java_file(
             return
 
         # First pass: check which snippets are new (without creating file record)
+        # Also deduplicate within the same file (same content_hash)
         new_snippets = []
+        seen_hashes_in_file = set()  # Track hashes within this file
         duplicate_count = 0
 
         for snippet in snippets:
+            content_hash = snippet['content_hash']
+
+            # Skip if already seen in this file (same file has duplicate methods)
+            if content_hash in seen_hashes_in_file:
+                duplicate_count += 1
+                continue
+            seen_hashes_in_file.add(content_hash)
+
+            # Check if exists in database
             existing = client.fetch_one(
                 "SELECT id FROM code_snippets WHERE content_hash = %s",
-                (snippet['content_hash'],)
+                (content_hash,)
             )
             if existing is None:
                 new_snippets.append(snippet)

@@ -1,7 +1,7 @@
 # Java 知识点匹配系统
 
 > For graduation-design-2026, BUPT
-> **Version**: v1.3.0
+> **Version**: v1.3.1
 
 一个基于 AST 分析和关键词匹配的 Java 代码知识点匹配系统。采用混合打分策略（AST 结构 + 关键词语义 + 难度评估），支持单点匹配和综合知识点匹配。
 
@@ -629,53 +629,78 @@ results = search_service.search(kp_id=10037, top_k=10)
 ```
 java-ana-mvp/
 ├── api/                          # Flask API 层
+│   ├── __init__.py               # Flask 应用工厂
 │   ├── routes/                   # 路由模块
+│   │   ├── knowledge.py          # 知识点接口
+│   │   ├── match.py              # 匹配接口
+│   │   └── system.py             # 系统接口（健康检查、指标）
 │   ├── schemas/                  # Pydantic 数据模型
-│   └── middleware/               # 异常处理、日志
+│   │   ├── common.py             # 通用响应模型
+│   │   ├── knowledge.py          # 知识点模型
+│   │   └── match.py              # 匹配请求/响应模型
+│   └── middleware/               # 中间件
+│       ├── error_handler.py      # 异常处理
+│       ├── metrics.py            # 性能指标
+│       └── request_logger.py     # 请求日志
 │
 ├── src/                          # 核心业务逻辑
 │   ├── db_manager/               # 数据库管理
-│   │   ├── database.py          # 表结构初始化
-│   │   ├── knowledge_manager.py # 知识点 CRUD
-│   │   └── code_library.py      # 代码片段 CRUD
+│   │   ├── base.py               # 管理器基类
+│   │   ├── database.py           # 表结构初始化
+│   │   ├── knowledge_point_manager.py  # 知识点 CRUD
+│   │   └── code_library_manager.py     # 代码片段 CRUD
 │   ├── java_analyzer/            # AST 分析
-│   │   ├── analyzer.py          # tree-sitter 解析
-│   │   └── constants.py         # 关键词、别名定义
+│   │   ├── analyzer.py           # tree-sitter 解析
+│   │   └── constants.py          # 关键词、别名定义
 │   ├── matching/                 # 匹配策略
-│   │   └── strategies.py        # 混合打分算法
+│   │   ├── strategies.py         # 混合打分算法
+│   │   └── utils.py              # 匹配工具函数
 │   └── services/                 # 服务层
-│       ├── search_service.py    # 检索服务
-│       └── knowledge_service.py # 知识点服务
+│       ├── search_service.py     # 检索服务
+│       └── knowledge_service.py  # 知识点服务
 │
 ├── experiments/                  # 评估实验
 │   ├── datasets/                 # 数据集
-│   │   ├── cache/               # 原始数据缓存
-│   │   ├── processed/           # 处理后数据
-│   │   └── ground_truth/        # Ground Truth 标注
+│   │   ├── cache/                # 原始数据缓存
+│   │   ├── processed/            # 处理后数据
+│   │   └── ground_truth/         # Ground Truth 标注
 │   │       └── codesearchnet_v7.0-final.json
 │   ├── evaluation/               # 评估框架
-│   │   ├── experiment.py        # 实验主逻辑
-│   │   ├── metrics.py           # 评估指标
-│   │   └── baselines.py         # 基线方法
+│   │   ├── experiment.py         # 实验主逻辑
+│   │   ├── metrics.py            # 评估指标
+│   │   └── baselines.py          # 基线方法
 │   └── results/                  # 评估结果
-│       ├── report.md            # 可读报告
-│       └── report.json          # 结构化数据
+│       ├── report.md             # 可读报告
+│       └── report.json           # 结构化数据
 │
-├── scripts/                      # 用户脚本（仅暴露 2 个）
+├── scripts/                      # 用户脚本（仅暴露 2 个入口）
 │   ├── setup_database.py         # 数据库设置统一入口 ⭐
 │   ├── run_experiments.py        # 实验评估统一入口 ⭐
 │   └── _internal/                # 内部实现（用户不直接调用）
-│       ├── init/                # 初始化模块
-│       ├── import_utils/        # 导入工具
-│       └── run_evaluation.py    # 评估执行脚本
+│       ├── run_evaluation.py     # 评估执行脚本
+│       ├── init/                 # 初始化模块
+│       │   ├── init_schema.py    # 数据库表结构
+│       │   ├── load_knowledge_points.py  # 加载知识点
+│       │   └── analyze_sample_code.py    # 分析示例代码
+│       └── import_utils/         # 导入工具
+│           ├── file_discovery.py # 文件发现
+│           ├── hash_utils.py     # 哈希工具
+│           ├── import_code_repos.py      # 项目导入
+│           └── import_codesearchnet_to_db.py  # 数据集导入
 │
 ├── lib/                          # 基础设施
-│   ├── client/db.py              # MySQL 连接池
-│   └── globals/                  # 全局配置和日志
+│   ├── client/                   # 客户端
+│   │   └── db.py                 # MySQL 连接池
+│   ├── globals/                  # 全局配置和日志
+│   │   └── __init__.py           # Cfg 单例、logger 实例
+│   └── utils/                    # 工具模块
+│       ├── settings.py           # YAML 配置解析
+│       └── matching_config.py    # 匹配参数配置
 │
 ├── config/                       # 配置文件
 │   ├── db.yaml                   # 数据库配置
-│   └── logger.yaml               # 日志配置
+│   ├── logger.yaml               # 日志配置
+│   └── matching.yaml             # 匹配参数配置
 │
 ├── run_api.py                    # API 服务入口 ⭐
 ├── sample_code.java              # 示例代码
@@ -907,6 +932,7 @@ A: 不会。用户代码和数据集代码存储在同一表，通过 `source` �
 
 | 版本 | 日期 | 主要更新 |
 |------|------|----------|
+| v1.3.1 | 2026-01-31 | 移除异步导入 API（简化架构，CLI 脚本足够使用） |
 | v1.3.0 | 2026-01-31 | 新增批量项目导入、修复代码分析 bug、完善文档 |
 | v1.2.6 | 2026-01-25 | scripts 重构、目录整理、评估数据集更新 |
 | v1.2.4 | 2026-01-18 | 兜底逻辑优化、权重 fix、评估报告完善 |

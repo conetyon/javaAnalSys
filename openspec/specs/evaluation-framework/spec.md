@@ -177,9 +177,9 @@ The system SHALL use content-based hashing to ensure stable snippet identificati
 ## Implementation Details
 
 ### Evaluation Scripts
-- Main evaluation runner: scripts/run_evaluation.py:1
-- Experiment orchestrator: scripts/run_experiments.py:1
-- Ground truth generator: experiments/evaluation/generate_ground_truth.py:1
+- Main evaluation runner: scripts/run_experiments.py:1
+- Internal evaluation: scripts/_internal/run_evaluation.py:1
+- Experiment orchestrator: experiments/evaluation/experiment.py:1
 
 ### Metrics Implementation
 - All metrics: experiments/evaluation/metrics.py:1
@@ -213,7 +213,7 @@ The system SHALL use content-based hashing to ensure stable snippet identificati
 - JSON reports: experiments/results/report.json
 - Evaluation history: Timestamped reports for trend analysis
 
-## Current Performance Benchmarks (v1.3.0, 2026-01-25)
+## Current Performance Benchmarks (v1.3.1, 2026-01-31)
 
 ### Hybrid Strategy (Default)
 - **Top-1 Accuracy**: 96.97%
@@ -243,22 +243,22 @@ The system SHALL use content-based hashing to ensure stable snippet identificati
 
 ### Run Complete Evaluation
 ```bash
-python scripts/run_evaluation.py
+python scripts/run_experiments.py
 ```
 
 ### Run Quick Evaluation (Hybrid Only)
 ```bash
-python scripts/run_evaluation.py --quick
+python scripts/run_experiments.py --quick
 ```
 
 ### Run Baseline Comparison Only
 ```bash
-python scripts/run_evaluation.py --baseline-only
+python scripts/run_experiments.py --baseline-only
 ```
 
 ### Run Ablation Study Only
 ```bash
-python scripts/run_evaluation.py --ablation-only
+python scripts/run_experiments.py --ablation-only
 ```
 
 ## Dependencies

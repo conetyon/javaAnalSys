@@ -45,29 +45,19 @@ pip install -r requirements.txt
 ### Database Management
 
 ```bash
-# Database and code analysis are automatically handled when running main.py
-python main.py
+# Complete database setup (recommended for first-time use)
+python scripts/setup_database.py --all
+
+# Step-by-step operations
+python scripts/setup_database.py --init-schema      # Initialize tables
+python scripts/setup_database.py --load-kp          # Load knowledge points
+python scripts/setup_database.py --import-dataset   # Import CodeSearchNet dataset
 ```
 
 **Automated Process**:
 1. Database initialization (creates tables, inserts knowledge points)
-2. Code analysis (extracts features from `sample_code.java` and saves to DB)
+2. Code analysis (extracts features from code snippets and saves to DB)
 3. Both are idempotent - safe to run multiple times
-
-**Manual operations** (if needed):
-```bash
-# Initialize database schema only
-python scripts/init_data/init_schema.py
-
-# Load knowledge points only
-python scripts/init_data/load_knowledge_points.py
-
-# Analyze a specific Java file
-python scripts/init_data/analyze_sample_code.py
-
-# Check system status
-python scripts/init_data/check_status.py
-```
 
 **Note**:
 - All operations use `CREATE TABLE IF NOT EXISTS` (safe to re-run)
@@ -88,16 +78,16 @@ python run_api.py --port 8080 --host 0.0.0.0 --debug
 
 ```bash
 # Run complete evaluation (baseline comparison + ablation study)
-python scripts/run_evaluation.py
+python scripts/run_experiments.py
 
 # Quick evaluation (hybrid strategy only)
-python scripts/run_evaluation.py --quick
+python scripts/run_experiments.py --quick
 
 # Run only baseline comparison
-python scripts/run_evaluation.py --baseline-only
+python scripts/run_experiments.py --baseline-only
 
 # Run only ablation study
-python scripts/run_evaluation.py --ablation-only
+python scripts/run_experiments.py --ablation-only
 
 # Run unit tests for matching strategies
 python tests/test_matching_strategies.py
@@ -112,47 +102,11 @@ python tests/test_matching_strategies.py
 - Results: Saved to `experiments/results/report.md` and `report.json`
 - **Key Finding**: Keyword 是最重要特征（单独 53.54%），AST 需要与其他特征组合发挥作用
 
-### Offline Testing (`main.py`)
-
-**Test by commenting/uncommenting scenarios (no CLI arguments needed)**
-
-```bash
-# Run directly (complete automation pipeline)
-python main.py
-```
-
-**Automated Pipeline** (runs automatically on every execution):
-1. **Initialize Database** - Create table schema and insert preset knowledge points
-2. **Analyze Sample Code** - Extract code snippet features from `sample_code.java` and save to database
-3. **Run Test Scenario** - Execute selected matching test
-
-**How to use**:
-1. Open `main.py`
-2. Find the scenario selection area in Step 3 of `if __name__ == "__main__":`
-3. Uncomment the desired scenario (remove `#`)
-4. Modify `kp_ids` within scenario functions to test different knowledge points
-5. Run `python main.py`
-
-**Available scenarios**:
-- **Scenario 1**: `run_single_test()` - Single knowledge point matching
-- **Scenario 2**: `run_multiple_test()` - Composite knowledge point matching (find code involving multiple KPs)
-- **Utility Functions**: `run_utility_functions()` - View KP hierarchy, analyze other code files
-
-**Features**:
-- All steps are idempotent (safe to run multiple times)
-- Fully automated pipeline, no manual initialization needed
-- Analyzes `./sample_code.java` by default (can be replaced)
-- Configuration: `config/db.yaml`
-
 **Example knowledge point IDs**: `10010, 10011, 10031, 10034, 10083` (print-related)
 
-**Available utility scripts**:
-- `scripts/init_data/init_schema.py` - Initialize database schema
-- `scripts/init_data/load_knowledge_points.py` - Load knowledge points from kp_dml.sql
-- `scripts/init_data/analyze_sample_code.py` - Analyze sample_code.java
-- `scripts/init_data/check_status.py` - View system data status
+**Available scripts**:
+- `scripts/setup_database.py` - Unified database setup entry point
 - `scripts/run_experiments.py` - Run complete experiment pipeline
-- `scripts/run_evaluation.py` - Run evaluation experiments
 
 ## Architecture Overview
 
@@ -161,11 +115,11 @@ python main.py
 The codebase follows a clean separation of concerns across 4 main layers:
 
 ```
-Entry Points (run_api.py, main.py)
+Entry Points (run_api.py, scripts/)
     ↓
-API Layer (api/) + Offline Scripts (scripts/)
+API Layer (api/) + CLI Scripts (scripts/)
     ↓
-Service Layer (src/services/) - shared by both API and offline
+Service Layer (src/services/) - shared by both API and scripts
     ↓
 Data/Analysis Layers (src/db_manager/, src/java_analyzer/, src/matching/)
     ↓
@@ -448,8 +402,8 @@ The repository includes both unit tests and a comprehensive evaluation framework
 2. Update `calculate_match_score()` to call your function
 3. Add new weight parameter to `WEIGHT_DEFAULTS` if needed
 4. Update API schema in `api/schemas/match.py` to accept new parameters
-5. Test via offline script: Uncomment relevant scenario in `main.py` and run `python main.py`
-6. Run evaluation to measure impact: `python scripts/run_evaluation.py`
+5. Test via API: `curl -X POST http://localhost:5000/api/match -H "Content-Type: application/json" -d '{"kp_id": 10011}'`
+6. Run evaluation to measure impact: `python scripts/run_experiments.py`
 
 ### Running and Validating Evaluations
 
@@ -477,20 +431,11 @@ The repository includes both unit tests and a comprehensive evaluation framework
 1. Update `src/java_analyzer/analyzer.py` (extraction logic)
 2. Update `src/java_analyzer/constants.py` (node types, keywords, aliases)
 3. Update `src/matching/strategies.py` (NODE_MAPPING if templates change)
-4. Re-analyze existing code files: `python scripts/init_data/analyze_sample_code.py`
+4. Re-analyze existing code files: `python scripts/setup_database.py --import-project ./code_repos`
 
 ### Using Composite Knowledge Point Matching
 
 **When to use**: Find code snippets that demonstrate multiple programming concepts simultaneously.
-
-**Steps**:
-1. Open `main.py` and uncomment Scenario 2 (Composite matching)
-2. Set `kp_ids` to list of relevant KPs (e.g., `[10011, 10012, 10034]`)
-3. Choose aggregation strategy:
-   - `average`: Balanced match across all KPs (recommended for general use)
-   - `min`: Strict match - code must satisfy ALL KPs well
-   - `sum`: Prefers code with broader KP coverage
-4. Run `python main.py`
 
 **API usage**:
 ```bash
@@ -499,11 +444,16 @@ curl -X POST http://localhost:5000/api/match/composite \
   -d '{"kp_ids": [10011, 10012], "score_aggregation": "average"}'
 ```
 
+**Aggregation strategies**:
+- `average`: Balanced match across all KPs (recommended for general use)
+- `min`: Strict match - code must satisfy ALL KPs well
+- `sum`: Prefers code with broader KP coverage
+
 ### Database Schema Changes
 
 1. Modify table definitions in `src/db_manager/database.py` (`_init_tables()`)
 2. Update manager classes in `src/db_manager/` for new fields
-3. Run `python scripts/init_data/init_schema.py` to create/update tables
+3. Run `python scripts/setup_database.py --init-schema` to create/update tables
 4. For clean reinstallation, drop the database first: `DROP DATABASE javalearningsys;`
 
 **Note**: All table definitions include complete schema with all fields. The system uses `CREATE TABLE IF NOT EXISTS`, so it's safe to re-run initialization. For adding new fields to existing tables, consider dropping and recreating the database for experimental setups.
@@ -564,6 +514,11 @@ For experimental configurations (e.g., pure semantic matching), override via API
 ```
 
 ## Recent Major Changes
+
+**v1.3.1** (2026-01-31):
+- **移除异步导入 API**：删除 `api/routes/bulk_import.py` 和 `lib/background_jobs.py`
+- **简化架构**：CLI 脚本（`scripts/setup_database.py`）已足够满足项目导入需求
+- **清理数据库表**：移除 `bulk_import_jobs` 表定义
 
 **v1.3.0** (2026-01-25):
 - **修复基线评估 Bug**：基线方法从 ID 到 Hash 的转换缺失，导致评估结果全 0%

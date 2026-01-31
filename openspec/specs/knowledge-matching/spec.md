@@ -178,7 +178,7 @@ The system SHALL find code snippets demonstrating multiple knowledge points simu
 
 ## Performance Metrics
 
-### Current Performance (v1.3.0, CodeSearchNet dataset)
+### Current Performance (v1.3.1, CodeSearchNet dataset)
 - **Top-1 Accuracy**: 96.97%
 - **Mean Reciprocal Rank (MRR)**: 0.9832
 - **Precision@10**: 49.91%

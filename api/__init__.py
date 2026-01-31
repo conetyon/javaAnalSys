@@ -11,13 +11,12 @@ from api.middleware import register_error_handlers
 from api.middleware.metrics import init_metrics_middleware
 from api.middleware.request_logger import init_request_logging
 from lib.globals import api_logger as log
-from lib.background_jobs import start_worker
 
 
 def create_app(config_object=None) -> Flask:
     """
     Flask 应用工厂函数
-    
+
     :param config_object: 配置对象（可选）
     :return: Flask 应用实例
     """
@@ -50,16 +49,13 @@ def create_app(config_object=None) -> Flask:
     # 注册路由
     register_routes(app)
 
-    # 启动后台任务队列工作线程
-    start_worker()
-
     # 根路由 - 健康检查
     @app.route('/')
     def index():
         return {
             "code": 200,
             "message": "Java Knowledge Matching API",
-            "version": "1.3.0",
+            "version": "1.3.1",
             "endpoints": {
                 "health": "GET /api/health",
                 "metrics": "GET /api/metrics",
@@ -69,9 +65,7 @@ def create_app(config_object=None) -> Flask:
                 "match": "POST /api/match",
                 "batch_match": "POST /api/match/batch",
                 "composite_match": "POST /api/match/composite",
-                "match_health": "GET /api/match/health",
-                "bulk_import": "POST /api/bulk-import",
-                "bulk_import_status": "GET /api/bulk-import/{job_id}"
+                "match_health": "GET /api/match/health"
             }
         }
 
