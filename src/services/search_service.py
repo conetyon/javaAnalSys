@@ -355,7 +355,7 @@ class SearchService:
             kp_row = self.kp_mgr.get_by_id(kp_id)
             if not kp_row:
                 log.warning("[SearchService.composite_search] 知识点不存在: kp_id=%d", kp_id)
-                continue
+                raise KnowledgePointNotFoundError(kp_id)
 
             kp_cfg = self.kp_mgr.parse_kp_config(kp_row)
             need_nodes = extract_required_nodes(kp_cfg.get("ast"))
@@ -378,10 +378,8 @@ class SearchService:
                      kp_id, kp_cfg.get("name"), need_nodes, kp_keywords_norm)
 
         if not kp_configs:
+            # 防御性检查：正常情况下不会到达这里（空 kp_ids 已在上面处理，无效 kp_id 会抛异常）
             log.warning("[SearchService.composite_search] 没有有效的知识点配置")
-            # 如果传入了 kp_ids 但全部不存在，抛出异常
-            if kp_ids:
-                raise KnowledgePointNotFoundError(kp_ids[0])
             return []
 
         # 2. 获取候选片段（合并所有知识点的候选集）
@@ -446,12 +444,15 @@ class SearchService:
             else:
                 composite_score = sum(kp_scores) / len(kp_scores) if kp_scores else 0
 
-            # 过滤：如果综合得分过低，跳过
+            # 过滤：综合得分过低，跳过
             if composite_score < 0.1:
                 continue
 
-            log.debug("[SearchService.composite_search] 片段 #%s: composite=%.3f, kp_scores=%s",
-                      snip_id, composite_score, [round(s, 2) for s in kp_scores])
+            # 判断是否所有 KP 都有匹配（严格模式条件）
+            all_kp_matched = all(s > 0 for s in kp_scores)
+
+            log.debug("[SearchService.composite_search] 片段 #%s: composite=%.3f, kp_scores=%s, all_matched=%s",
+                      snip_id, composite_score, [round(s, 2) for s in kp_scores], all_kp_matched)
 
             results.append({
                 "id": snip.get("id"),
@@ -461,14 +462,35 @@ class SearchService:
                 "kp_details": kp_details,
                 "score_aggregation": score_aggregation,
                 "file_path": snip.get("file_path") or snip.get("source_path"),
+                "_all_kp_matched": all_kp_matched,  # 内部标记，用于分层过滤
             })
 
-        # 排序并返回 top-k
-        results.sort(key=lambda x: x["composite_score"], reverse=True)
-        final_results = results[:max(1, int(top_k))]
+        # 分层过滤：优先返回严格匹配结果，无结果时降级到宽松模式
+        strict_results = [r for r in results if r.get("_all_kp_matched")]
 
-        log.info("[SearchService.composite_search] 综合匹配完成: 候选=%d, 通过=%d, 返回=%d",
-                 len(candidates), len(results), len(final_results))
+        if strict_results:
+            # 严格模式有结果
+            final_pool = strict_results
+            fallback_used = False
+            log.info("[SearchService.composite_search] 严格模式: %d 个片段与所有 KP 都匹配", len(strict_results))
+        else:
+            # 降级到宽松模式
+            final_pool = results
+            fallback_used = True
+            log.warning("[SearchService.composite_search] 严格模式无结果，降级到宽松模式（部分 KP 匹配）: %d 个候选", len(results))
+
+        # 清理内部标记
+        for r in final_pool:
+            r.pop("_all_kp_matched", None)
+            if fallback_used:
+                r["partial_match"] = True  # 标记为部分匹配
+
+        # 排序并返回 top-k
+        final_pool.sort(key=lambda x: x["composite_score"], reverse=True)
+        final_results = final_pool[:max(1, int(top_k))]
+
+        log.info("[SearchService.composite_search] 综合匹配完成: 候选=%d, 严格=%d, 宽松=%d, 返回=%d",
+                 len(candidates), len(strict_results), len(results), len(final_results))
 
         if final_results:
             log.info("[SearchService.composite_search] Top结果: %s",
