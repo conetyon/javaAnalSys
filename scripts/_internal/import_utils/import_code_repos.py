@@ -43,12 +43,14 @@ class ImportProgress:
     """Track import progress and statistics."""
 
     def __init__(self):
-        self.total_files = 0
-        self.processed_files = 0
-        self.total_snippets = 0
-        self.inserted_snippets = 0
-        self.replaced_snippets = 0
-        self.failed_files = 0
+        self.total_files = 0           # 发现的文件总数
+        self.files_with_methods = 0    # 有方法的文件数（已导入）
+        self.files_no_methods = 0      # 无方法的文件数（跳过）
+        self.files_all_duplicates = 0  # 全部重复的文件数（不创建文件记录）
+        self.failed_files = 0          # 失败的文件数
+        self.total_snippets = 0        # 提取的片段总数
+        self.unique_snippets = 0       # 唯一片段数（新增）
+        self.duplicate_snippets = 0    # 重复片段数（去重）
         self.errors = []
 
     def add_error(self, file_path: str, error: str):
@@ -59,22 +61,27 @@ class ImportProgress:
     def print_summary(self):
         """Print import summary."""
         logger.info("=" * 60)
-        logger.info("IMPORT SUMMARY")
+        logger.info("导入统计")
         logger.info("=" * 60)
-        logger.info(f"Total files: {self.total_files}")
-        logger.info(f"Processed files: {self.processed_files}")
-        logger.info(f"Failed files: {self.failed_files}")
-        logger.info(f"Total snippets extracted: {self.total_snippets}")
-        logger.info(f"Snippets imported: {self.inserted_snippets + self.replaced_snippets}")
-        logger.info(f"  - New insertions: {self.inserted_snippets}")
-        logger.info(f"  - Replacements (same hash): {self.replaced_snippets}")
+
+        # 文件统计
+        logger.info(f"发现文件: {self.total_files}")
+        logger.info(f"  ├─ 有新片段: {self.files_with_methods} (已导入)")
+        logger.info(f"  ├─ 无方法: {self.files_no_methods} (跳过)")
+        logger.info(f"  ├─ 全重复: {self.files_all_duplicates} (不创建文件记录)")
+        logger.info(f"  └─ 失败: {self.failed_files}")
+
+        # 片段统计
+        logger.info(f"提取片段: {self.total_snippets}")
+        logger.info(f"  ├─ 新增: {self.unique_snippets}")
+        logger.info(f"  └─ 已存在: {self.duplicate_snippets} (去重/更新)")
 
         if self.errors:
-            logger.warning(f"\nErrors ({len(self.errors)}):")
+            logger.warning(f"\n错误详情 ({len(self.errors)}):")
             for err in self.errors[:10]:  # Show first 10 errors
                 logger.warning(f"  - {err['file']}: {err['error']}")
             if len(self.errors) > 10:
-                logger.warning(f"  ... and {len(self.errors) - 10} more errors")
+                logger.warning(f"  ... 还有 {len(self.errors) - 10} 个错误")
 
         logger.info("=" * 60)
 
@@ -93,43 +100,61 @@ def analyze_java_file(file_path: str, analyzer: JavaAnalyzer) -> List[Dict]:
     Raises:
         Exception if file cannot be parsed
     """
-    snippets = analyzer.analyze_file(file_path)
+    # 读取文件内容
+    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+        java_code = f.read()
+
+    # 传入代码内容（而非文件路径）
+    snippets = analyzer.analyze_file(java_code)
 
     # Add file_path and content_hash to each snippet
     for snippet in snippets:
         snippet['file_path'] = file_path
         snippet['content_hash'] = compute_snippet_hash(
-            file_path,
             snippet.get('content', '')
         )
 
     return snippets
 
 
-def import_snippet_to_db(client: MySQLClient, snippet: Dict, file_id: int) -> bool:
+def import_snippet_to_db(client: MySQLClient, snippet: Dict, file_id: int, skip_check: bool = False) -> bool:
     """
-    Import a single snippet to database using REPLACE INTO.
+    Import a single snippet to database using INSERT ... ON DUPLICATE KEY UPDATE.
 
     Args:
         client: MySQL client
         snippet: Snippet dictionary
         file_id: Foreign key to code_files table
+        skip_check: If True, skip the existence check (caller already verified it's new)
 
     Returns:
-        True if inserted (new), False if replaced (existing)
+        True if inserted (new), False if updated (existing)
     """
-    # Check if snippet already exists
-    existing = client.fetch_one(
-        "SELECT id FROM code_snippets WHERE content_hash = %s",
-        (snippet['content_hash'],)
-    )
+    # Check if snippet already exists (unless caller says skip)
+    if not skip_check:
+        existing = client.fetch_one(
+            "SELECT id FROM code_snippets WHERE content_hash = %s",
+            (snippet['content_hash'],)
+        )
+        if existing:
+            return False
 
-    # Use REPLACE INTO for idempotency
+    # Use INSERT ... ON DUPLICATE KEY UPDATE for idempotency
+    # This is better than REPLACE INTO because it doesn't delete+insert (which changes IDs)
     sql = """
-        REPLACE INTO code_snippets (
+        INSERT INTO code_snippets (
             file_id, content, content_hash, file_path,
             ast_features, keywords, complexity_score, start_line, end_line
         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            file_id = VALUES(file_id),
+            content = VALUES(content),
+            file_path = VALUES(file_path),
+            ast_features = VALUES(ast_features),
+            keywords = VALUES(keywords),
+            complexity_score = VALUES(complexity_score),
+            start_line = VALUES(start_line),
+            end_line = VALUES(end_line)
     """
 
     values = (
@@ -146,7 +171,33 @@ def import_snippet_to_db(client: MySQLClient, snippet: Dict, file_id: int) -> bo
 
     client.execute(sql, values)
 
-    return existing is None  # True if new insert, False if replacement
+    return True
+
+
+def extract_file_metadata(file_path: str) -> tuple:
+    """
+    Extract filename and repo_name from file path.
+
+    Args:
+        file_path: Full path to the file
+
+    Returns:
+        Tuple of (filename, repo_name)
+    """
+    from pathlib import Path
+    path = Path(file_path)
+    filename = path.name
+
+    # Try to extract repo_name from path
+    # Look for 'code_repos' in path and get the next directory
+    repo_name = ''
+    parts = path.parts
+    for i, part in enumerate(parts):
+        if part == 'code_repos' and i + 1 < len(parts):
+            repo_name = parts[i + 1]
+            break
+
+    return filename, repo_name
 
 
 def get_or_create_file_record(client: MySQLClient, file_path: str) -> int:
@@ -169,15 +220,22 @@ def get_or_create_file_record(client: MySQLClient, file_path: str) -> int:
     if result:
         return result['id']
 
-    # Create new file record (code_files table uses 'filepath')
+    # Extract metadata from path
+    filename, repo_name = extract_file_metadata(file_path)
+
+    # Create new file record using INSERT IGNORE (safe for concurrent access)
+    # Note: We use INSERT IGNORE instead of INSERT + LAST_INSERT_ID() because
+    # connection pooling may give different connections for execute() and fetch_one(),
+    # making LAST_INSERT_ID() return 0 (wrong session).
     client.execute(
-        "INSERT INTO code_files (filepath) VALUES (%s)",
-        (file_path,)
+        "INSERT IGNORE INTO code_files (filepath, filename, repo_name) VALUES (%s, %s, %s)",
+        (file_path, filename, repo_name)
     )
 
-    # Get the inserted ID
+    # Re-fetch the ID (either just inserted or existed from concurrent insert)
     result = client.fetch_one(
-        "SELECT LAST_INSERT_ID() as id"
+        "SELECT id FROM code_files WHERE filepath = %s",
+        (file_path,)
     )
     return result['id'] if result else 0
 
@@ -199,8 +257,9 @@ def import_java_file(
         progress: Progress tracker
         show_progress: Whether to print progress
     """
+    current = progress.files_with_methods + progress.files_no_methods + progress.files_all_duplicates + progress.failed_files + 1
     if show_progress:
-        logger.info(f"[{progress.processed_files + 1}/{progress.total_files}] Analyzing {file_path}")
+        logger.info(f"[{current}/{progress.total_files}] Analyzing {file_path}")
 
     try:
         # Analyze file
@@ -208,44 +267,62 @@ def import_java_file(
 
         if not snippets:
             logger.debug(f"No snippets extracted from {file_path}")
-            progress.processed_files += 1
+            progress.files_no_methods += 1
             return
 
-        # Get or create file record
+        # First pass: check which snippets are new (without creating file record)
+        new_snippets = []
+        duplicate_count = 0
+
+        for snippet in snippets:
+            existing = client.fetch_one(
+                "SELECT id FROM code_snippets WHERE content_hash = %s",
+                (snippet['content_hash'],)
+            )
+            if existing is None:
+                new_snippets.append(snippet)
+            else:
+                duplicate_count += 1
+
+        # Update statistics
+        progress.total_snippets += len(snippets)
+        progress.duplicate_snippets += duplicate_count
+
+        # If all snippets are duplicates, don't create file record
+        if not new_snippets:
+            logger.debug(f"All {len(snippets)} snippets from {file_path} already exist, skipping file record")
+            progress.files_all_duplicates += 1
+            return
+
+        # Only create file record when we have new snippets
         file_id = get_or_create_file_record(client, file_path)
 
-        # Import each snippet
-        for snippet in snippets:
-            is_new = import_snippet_to_db(client, snippet, file_id)
+        # Import only new snippets (skip_check=True since we already verified)
+        for snippet in new_snippets:
+            import_snippet_to_db(client, snippet, file_id, skip_check=True)
+            progress.unique_snippets += 1
 
-            if is_new:
-                progress.inserted_snippets += 1
-            else:
-                progress.replaced_snippets += 1
-
-            progress.total_snippets += 1
-
-        progress.processed_files += 1
+        progress.files_with_methods += 1
 
     except Exception as e:
         logger.error(f"Failed to process {file_path}: {e}")
         progress.add_error(file_path, str(e))
-        progress.processed_files += 1
 
 
-def import_repository(repo_path: str, show_progress: bool = True) -> ImportProgress:
+def import_repository(repo_path: str, show_progress: bool = True, flat_mode: bool = False) -> ImportProgress:
     """
     Import a single Java repository.
 
     Args:
         repo_path: Path to repository root
         show_progress: Whether to print progress
+        flat_mode: If True, only scan direct files (non-recursive)
 
     Returns:
         ImportProgress object with statistics
     """
     logger.info("=" * 60)
-    logger.info(f"IMPORTING REPOSITORY: {repo_path}")
+    logger.info(f"IMPORTING REPOSITORY: {repo_path}" + (" (flat)" if flat_mode else ""))
     logger.info("=" * 60)
 
     # Initialize components
@@ -256,7 +333,11 @@ def import_repository(repo_path: str, show_progress: bool = True) -> ImportProgr
     # Discover Java files
     logger.info("Discovering Java files...")
     try:
-        java_files = discover_java_files(repo_path)
+        if flat_mode:
+            from scripts._internal.import_utils.file_discovery import discover_java_files_flat
+            java_files = discover_java_files_flat(repo_path)
+        else:
+            java_files = discover_java_files(repo_path)
     except Exception as e:
         logger.error(f"Failed to discover files: {e}")
         return progress
@@ -311,16 +392,23 @@ def import_all_repositories(root_path: str = "code_repos") -> ImportProgress:
     combined_progress = ImportProgress()
 
     for i, project in enumerate(projects, 1):
-        logger.info(f"\n--- Project {i}/{len(projects)}: {project} ---")
+        # Check for flat mode marker
+        flat_mode = project.endswith("::FLAT")
+        if flat_mode:
+            project = project[:-6]  # Remove "::FLAT" suffix
 
-        progress = import_repository(project, show_progress=True)
+        logger.info(f"\n--- Project {i}/{len(projects)}: {project}" + (" (flat)" if flat_mode else "") + " ---")
+
+        progress = import_repository(project, show_progress=True, flat_mode=flat_mode)
 
         # Combine statistics
         combined_progress.total_files += progress.total_files
-        combined_progress.processed_files += progress.processed_files
+        combined_progress.files_with_methods += progress.files_with_methods
+        combined_progress.files_no_methods += progress.files_no_methods
+        combined_progress.files_all_duplicates += progress.files_all_duplicates
         combined_progress.total_snippets += progress.total_snippets
-        combined_progress.inserted_snippets += progress.inserted_snippets
-        combined_progress.replaced_snippets += progress.replaced_snippets
+        combined_progress.unique_snippets += progress.unique_snippets
+        combined_progress.duplicate_snippets += progress.duplicate_snippets
         combined_progress.failed_files += progress.failed_files
         combined_progress.errors.extend(progress.errors)
 

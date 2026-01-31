@@ -50,13 +50,12 @@ class DatabaseInitializer(BaseManager):
 
             ('''CREATE TABLE IF NOT EXISTS code_files
                 (
-                    id       INT PRIMARY KEY AUTO_INCREMENT,
-                    filename TEXT,
-                    filepath TEXT,
-                    content  LONGTEXT,
-                    source   VARCHAR(50) DEFAULT 'manual',
+                    id        INT PRIMARY KEY AUTO_INCREMENT,
+                    filename  VARCHAR(255),
+                    filepath  TEXT,
+                    source    VARCHAR(50) DEFAULT 'manual',
                     repo_name VARCHAR(255) DEFAULT '',
-                    language VARCHAR(20) DEFAULT 'java'
+                    language  VARCHAR(20) DEFAULT 'java'
                 )''', ()),
 
             ('''CREATE TABLE IF NOT EXISTS code_snippets

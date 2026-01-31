@@ -87,6 +87,7 @@ def discover_java_files(root_path: str) -> List[str]:
 def discover_java_projects(root_path: str) -> List[str]:
     """
     Discover Java projects (subdirectories) in a root directory.
+    Also includes the root directory itself if it contains Java files directly (not in subdirs).
 
     Args:
         root_path: Root directory containing multiple Java projects
@@ -97,7 +98,7 @@ def discover_java_projects(root_path: str) -> List[str]:
     Example:
         >>> projects = discover_java_projects('code_repos')
         >>> projects
-        ['code_repos/spring-boot', 'code_repos/my-project']
+        ['code_repos', 'code_repos/spring-boot', 'code_repos/my-project']
     """
     root = Path(root_path).resolve()
 
@@ -105,6 +106,12 @@ def discover_java_projects(root_path: str) -> List[str]:
         raise FileNotFoundError(f"Directory not found: {root}")
 
     projects = []
+
+    # First check if root directory itself has Java files directly (not in subdirs)
+    root_java_files = [f for f in root.iterdir() if f.is_file() and f.suffix == '.java']
+    if root_java_files:
+        # Mark root as a "flat" project (only direct files, no recursion)
+        projects.append(str(root) + "::FLAT")
 
     # Look for subdirectories that contain Java files
     for item in root.iterdir():
@@ -119,6 +126,32 @@ def discover_java_projects(root_path: str) -> List[str]:
                 continue
 
     return sorted(projects)
+
+
+def discover_java_files_flat(root_path: str) -> List[str]:
+    """
+    Discover Java files directly in a directory (non-recursive).
+
+    Args:
+        root_path: Directory to search
+
+    Returns:
+        List of absolute paths to Java files in this directory only
+    """
+    root = Path(root_path).resolve()
+
+    if not root.exists():
+        raise FileNotFoundError(f"Directory not found: {root}")
+
+    if not root.is_dir():
+        raise NotADirectoryError(f"Not a directory: {root}")
+
+    java_files = []
+    for item in root.iterdir():
+        if item.is_file() and item.suffix == '.java':
+            java_files.append(str(item))
+
+    return sorted(java_files)
 
 
 if __name__ == "__main__":

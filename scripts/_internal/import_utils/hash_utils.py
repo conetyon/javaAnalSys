@@ -2,7 +2,7 @@
 Content Hash Utilities
 
 Provides functions to compute deterministic hashes for code snippets.
-Used for idempotent imports (same file = same hash = same database state).
+Used for idempotent imports and deduplication.
 
 Author: System Refactoring v1.3.0
 Created: 2026-01-24
@@ -11,35 +11,27 @@ Created: 2026-01-24
 import hashlib
 
 
-def compute_snippet_hash(file_path: str, content: str) -> str:
+def compute_snippet_hash(content: str) -> str:
     """
-    Compute SHA256 hash for a code snippet.
+    Compute SHA256 hash for a code snippet based on content only.
 
-    The hash includes both file path and content to ensure uniqueness:
-    - Different files with same content get different hashes
-    - Same file with same content always gets same hash
+    Same content always produces the same hash, regardless of file path.
+    This enables deduplication of identical code across different files.
 
     Args:
-        file_path: Path to the source file
         content: Code snippet content
 
     Returns:
         64-character hexadecimal hash string
 
     Example:
-        >>> hash1 = compute_snippet_hash("App.java", "public void main() {}")
-        >>> hash2 = compute_snippet_hash("App.java", "public void main() {}")
+        >>> hash1 = compute_snippet_hash("public void main() {}")
+        >>> hash2 = compute_snippet_hash("public void main() {}")
         >>> hash1 == hash2
         True
-        >>> hash3 = compute_snippet_hash("Other.java", "public void main() {}")
-        >>> hash1 == hash3
-        False
     """
-    # Combine file path and content with delimiter
-    combined = f"{file_path}::{content}"
-
-    # Compute SHA256 hash
-    hash_bytes = hashlib.sha256(combined.encode('utf-8')).digest()
+    # Compute SHA256 hash of content only
+    hash_bytes = hashlib.sha256(content.encode('utf-8')).digest()
 
     # Convert to hexadecimal string
     return hash_bytes.hex()
@@ -78,13 +70,12 @@ def verify_hash_determinism():
         True if hashes are deterministic
     """
     # Test data
-    file_path = "test/Example.java"
     content = "public class Example { public static void main() {} }"
 
     # Compute hash multiple times
-    hash1 = compute_snippet_hash(file_path, content)
-    hash2 = compute_snippet_hash(file_path, content)
-    hash3 = compute_snippet_hash(file_path, content)
+    hash1 = compute_snippet_hash(content)
+    hash2 = compute_snippet_hash(content)
+    hash3 = compute_snippet_hash(content)
 
     # All hashes should be identical
     deterministic = (hash1 == hash2 == hash3)
@@ -102,30 +93,31 @@ def verify_hash_determinism():
 
 def verify_hash_uniqueness():
     """
-    Test function to verify different inputs produce different hashes.
+    Test function to verify different content produces different hashes.
+    Same content from different files should produce the SAME hash.
 
     Returns:
-        True if hashes are unique
+        True if hashes behave correctly
     """
-    # Different file paths, same content
-    hash1 = compute_snippet_hash("FileA.java", "int x = 5;")
-    hash2 = compute_snippet_hash("FileB.java", "int x = 5;")
+    # Same content should produce same hash (deduplication)
+    hash1 = compute_snippet_hash("int x = 5;")
+    hash2 = compute_snippet_hash("int x = 5;")
 
-    # Same file path, different content
-    hash3 = compute_snippet_hash("FileA.java", "int x = 5;")
-    hash4 = compute_snippet_hash("FileA.java", "int y = 10;")
+    # Different content should produce different hash
+    hash3 = compute_snippet_hash("int x = 5;")
+    hash4 = compute_snippet_hash("int y = 10;")
 
-    unique_paths = (hash1 != hash2)
-    unique_content = (hash3 != hash4)
+    same_content_same_hash = (hash1 == hash2)
+    diff_content_diff_hash = (hash3 != hash4)
 
-    if unique_paths and unique_content:
-        print(f"✓ Hash uniqueness verified")
-        print(f"  Different paths: {hash1[:16]}... != {hash2[:16]}...")
+    if same_content_same_hash and diff_content_diff_hash:
+        print(f"✓ Hash behavior verified")
+        print(f"  Same content: {hash1[:16]}... == {hash2[:16]}...")
         print(f"  Different content: {hash3[:16]}... != {hash4[:16]}...")
     else:
-        print(f"✗ Hash uniqueness failed!")
+        print(f"✗ Hash behavior failed!")
 
-    return unique_paths and unique_content
+    return same_content_same_hash and diff_content_diff_hash
 
 
 if __name__ == "__main__":

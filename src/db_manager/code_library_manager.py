@@ -13,11 +13,10 @@ class CodeLibraryManager(BaseManager):
         """
         幂等插入预置的基线代码数据（Demo.java + 若干片段）。
         - 通过 filename 确保单个文件的稳定 file_id（存在则复用，不存在则插入）。
-        - 通过 content 作为“片段唯一键”执行 UPDATE-or-INSERT，避免重复插入导致自增主键增长。
+        - 通过 content 作为"片段唯一键"执行 UPDATE-or-INSERT，避免重复插入导致自增主键增长。
         - 不清表，不破坏现有 sample.java 等其他文件数据。
         """
         baseline_filename = "Demo.java"
-        baseline_file_content = "Wrapper Content"
 
         # 预置片段（可按需增删改）
         baseline_snippets = [
@@ -71,21 +70,16 @@ class CodeLibraryManager(BaseManager):
             try:
                 # 1) 文件幂等：用 filename 锁定文件，存在则复用 ID，不存在则插入
                 cursor.execute(
-                    "SELECT id, content FROM code_files WHERE filename = %s ORDER BY id ASC LIMIT 1 FOR UPDATE",
+                    "SELECT id FROM code_files WHERE filename = %s ORDER BY id ASC LIMIT 1 FOR UPDATE",
                     (baseline_filename,)
                 )
                 row = cursor.fetchone()
                 if row:
-                    file_id, db_content = row
-                    if db_content != baseline_file_content:
-                        cursor.execute(
-                            "UPDATE code_files SET content = %s WHERE id = %s",
-                            (baseline_file_content, file_id)
-                        )
+                    file_id = row[0]
                 else:
                     cursor.execute(
-                        "INSERT INTO code_files (filename, content) VALUES (%s, %s)",
-                        (baseline_filename, baseline_file_content)
+                        "INSERT INTO code_files (filename) VALUES (%s)",
+                        (baseline_filename,)
                     )
                     file_id = cursor.lastrowid
                     if not file_id:
@@ -135,12 +129,16 @@ class CodeLibraryManager(BaseManager):
             finally:
                 cursor.close()
 
-    def save_analyzed_results(self, filename: str, file_content: str, snippets: list):
+    def save_analyzed_results(self, filename: str, snippets: list, filepath: str = None):
         """
         幂等地保存文件分析结果：
-        1. 检查文件是否存在。
-        2. 若存在且内容未变，直接跳过（防止 ID 跳变和重复片段）。
-        3. 若内容变更或文件不存在，更新/插入片段。
+        1. 检查文件是否存在（通过 filename 或 filepath）。
+        2. 若存在则更新片段，不存在则插入。
+
+        Args:
+            filename: 文件名
+            snippets: 代码片段列表
+            filepath: 可选，文件完整路径
         """
         if not snippets:
             log.debug(f"文件 '{filename}' 中未检测到可保存的片段，跳过保存")
@@ -149,31 +147,21 @@ class CodeLibraryManager(BaseManager):
         with self._get_client(autocommit=False) as tx:
             cursor = tx._conn.cursor()
             try:
-                # 1) 文件幂等
+                # 1) 文件幂等：用 filename 查找
                 cursor.execute(
-                    "SELECT id, content FROM code_files WHERE filename = %s FOR UPDATE",
+                    "SELECT id FROM code_files WHERE filename = %s FOR UPDATE",
                     (filename,)
                 )
                 row = cursor.fetchone()
-                file_id = None
 
                 if row:
-                    db_id, db_content = row
-                    if db_content == file_content:
-                        # 内容完全一致，不做任何 DB 写入，避免 ID 自增
-                        return
-
-                    file_id = db_id
-                    log.info(f"检测到 '{filename}' 内容变更，正在更新数据库...")
-                    cursor.execute(
-                        "UPDATE code_files SET content = %s WHERE id = %s",
-                        (file_content, file_id)
-                    )
+                    file_id = row[0]
+                    log.info(f"文件 '{filename}' 已存在 (ID: {file_id})，更新片段...")
                     cursor.execute("DELETE FROM code_snippets WHERE file_id = %s", (file_id,))
                 else:
                     cursor.execute(
-                        "INSERT INTO code_files (filename, content) VALUES (%s, %s)",
-                        (filename, file_content)
+                        "INSERT INTO code_files (filename, filepath) VALUES (%s, %s)",
+                        (filename, filepath or '')
                     )
                     file_id = cursor.lastrowid
                     if not file_id:

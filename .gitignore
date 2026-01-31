@@ -25,3 +25,4 @@ config/
 /scripts/logs/
 /logs/
 /.claude/
+/code_repos/

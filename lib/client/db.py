@@ -121,13 +121,24 @@ class MySQLClient:
         执行单条 DML/DDL 语句。事务模式下，需要手动 commit，简单模式下自动提交。
         """
         conn = self._get_conn()
-        cur = conn.cursor(dictionary=dictionary)
-        cur.execute(sql, params)
-        cur.close()
-        # 简单模式下每次都提交并关闭
-        if not self._conn:
-            conn.commit()
-            conn.close()
+        cur = None
+        try:
+            cur = conn.cursor(dictionary=dictionary)
+            cur.execute(sql, params)
+            # 简单模式下每次都提交
+            if not self._conn:
+                conn.commit()
+        except Exception as e:
+            log.error("[MySQLClient.execute] 执行失败: %s", e)
+            if not self._conn:
+                conn.rollback()
+            raise
+        finally:
+            if cur:
+                cur.close()
+            # 简单模式下关闭连接归还池
+            if not self._conn:
+                conn.close()
 
     def fetch_one(self, sql: str, params: Tuple[Any, ...] = ()) -> Optional[Dict[str, Any]]:
         """

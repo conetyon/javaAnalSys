@@ -110,8 +110,7 @@ def import_dataset():
 
     try:
         # 导入内部实现
-        sys.path.insert(0, str(project_root / "scripts" / "_internal" / "import_utils"))
-        from import_codesearchnet_to_db import import_codesearchnet_to_db
+        from scripts._internal.import_utils.import_codesearchnet_to_db import import_codesearchnet_to_db
         from lib.client.db import MySQLClient
         from config import DB_NAME
 
@@ -197,19 +196,121 @@ def import_project(project_path: str):
             print(f"[ERROR] 项目路径不存在: {project_path}")
             return False
 
+        # 确保数据库表存在（幂等）
+        print("[INFO] 检查数据库表结构...")
+        from src.db_manager.database import DatabaseInitializer
+        from config import DB_NAME
+        db_init = DatabaseInitializer(db_name=DB_NAME)
+        db_init.init_db()
+        print("[OK] 数据库表结构已就绪")
+
         # 导入内部实现
-        sys.path.insert(0, str(project_root / "scripts" / "_internal" / "import_utils"))
-        from import_code_repos import import_repository
+        from scripts._internal.import_utils.import_code_repos import import_repository
 
         print(f"[INFO] 扫描项目: {project_path}")
-        import_repository(project_path_obj)
+        progress = import_repository(str(project_path_obj))
 
-        print("[OK] 项目导入完成")
-        return True
+        if progress.total_files == 0:
+            print(f"[WARN] 未发现任何 Java 文件")
+            return True
+
+        # 显示统计信息
+        if progress.unique_snippets > 0:
+            dup_info = f" ({progress.duplicate_snippets} 内容重复跳过)" if progress.duplicate_snippets > 0 else ""
+            file_info = f"{progress.files_with_methods} 文件"
+            if progress.files_all_duplicates > 0:
+                file_info += f" ({progress.files_all_duplicates} 全重复跳过)"
+            print(f"[OK] 导入完成: {file_info}, {progress.unique_snippets} 新片段{dup_info}")
+        else:
+            # 全部已存在时，显示扫描数量
+            print(f"[OK] 导入完成: 扫描 {progress.total_snippets} 个片段, 全部内容已存在于数据库")
+        return progress.failed_files == 0
 
     except Exception as e:
         print(f"[ERROR] 项目导入失败: {e}")
         log.error(f"项目导入失败", exc_info=True)
+        return False
+
+
+def import_all_projects(repos_dir: str = "code_repos"):
+    """一键导入所有代码项目（支持单个文件或目录）"""
+    print("\n" + "=" * 70)
+    print(f"[4] 一键导入所有项目: {repos_dir}")
+    print("=" * 70)
+
+    try:
+        repos_path = Path(repos_dir)
+        if not repos_path.exists():
+            print(f"[ERROR] 路径不存在: {repos_dir}")
+            return False
+
+        # 确保数据库表存在（幂等）
+        print("[INFO] 检查数据库表结构...")
+        from src.db_manager.database import DatabaseInitializer
+        from config import DB_NAME
+        db_init = DatabaseInitializer(db_name=DB_NAME)
+        db_init.init_db()
+        print("[OK] 数据库表结构已就绪")
+
+        # 判断是单个文件还是目录
+        if repos_path.is_file():
+            if not repos_path.suffix == '.java':
+                print(f"[ERROR] 不是 Java 文件: {repos_dir}")
+                return False
+
+            print(f"[INFO] 导入单个文件: {repos_path.name}")
+
+            # 使用 import_repository 导入单个文件所在目录（flat 模式）
+            from scripts._internal.import_utils.import_code_repos import import_java_file, ImportProgress
+            from src.java_analyzer.analyzer import JavaAnalyzer
+            from lib.client.db import MySQLClient
+
+            analyzer = JavaAnalyzer()
+            client = MySQLClient(db=DB_NAME)
+            progress = ImportProgress()
+            progress.total_files = 1
+
+            import_java_file(str(repos_path), analyzer, client, progress, show_progress=True)
+
+            # 显示统计信息
+            if progress.unique_snippets > 0:
+                print(f"[OK] 导入完成: 1 文件, {progress.unique_snippets} 新片段")
+            elif progress.files_all_duplicates > 0:
+                print(f"[OK] 导入完成: 文件内容已全部存在于数据库")
+            elif progress.files_no_methods > 0:
+                print(f"[OK] 导入完成: 文件无可提取的方法")
+            else:
+                print(f"[OK] 导入完成: 扫描 {progress.total_snippets} 个片段, 全部内容已存在于数据库")
+            return progress.failed_files == 0
+
+        # 目录模式：走原有逻辑
+        # 导入内部实现
+        from scripts._internal.import_utils.import_code_repos import import_all_repositories
+
+        print(f"[INFO] 扫描目录: {repos_dir}")
+        print("[INFO] 递归发现所有 .java 文件（自动跳过 target/build/.git 等目录）")
+
+        progress = import_all_repositories(str(repos_path))
+
+        if progress.total_files == 0:
+            print(f"[WARN] 未发现任何 Java 文件")
+            return True  # 不算失败
+
+        # 显示统计信息
+        if progress.unique_snippets > 0:
+            dup_info = f" ({progress.duplicate_snippets} 内容重复跳过)" if progress.duplicate_snippets > 0 else ""
+            file_info = f"{progress.files_with_methods} 文件"
+            if progress.files_all_duplicates > 0:
+                file_info += f" ({progress.files_all_duplicates} 全重复跳过)"
+            print(f"[OK] 导入完成: {file_info}, {progress.unique_snippets} 新片段{dup_info}")
+        else:
+            # 全部已存在时，显示扫描数量
+            print(f"[OK] 导入完成: 扫描 {progress.total_snippets} 个片段, 全部内容已存在于数据库")
+        return progress.failed_files == 0
+
+    except Exception as e:
+        print(f"[ERROR] 批量导入失败: {e}")
+        log.error(f"批量导入失败", exc_info=True)
         return False
 
 
@@ -225,8 +326,7 @@ def analyze_sample_code():
             print("[SKIP] 示例代码文件不存在，跳过")
             return True
 
-        sys.path.insert(0, str(project_root / "scripts" / "_internal" / "init"))
-        from analyze_sample_code import analyze_sample_code as analyze_func
+        from scripts._internal.init.analyze_sample_code import analyze_sample_code as analyze_func
 
         print(f"[INFO] 分析 {sample_code.name}...")
         success = analyze_func()
@@ -288,6 +388,10 @@ def main():
 
   导入用户项目:
     python scripts/setup_database.py --import-project /path/to/project
+
+  一键导入 code_repos 所有项目:
+    python scripts/setup_database.py --import-all-projects
+    python scripts/setup_database.py --import-all-projects --repos-dir ./my_repos
         """
     )
 
@@ -299,13 +403,18 @@ def main():
                        help="导入CodeSearchNet数据集")
     parser.add_argument("--import-project", type=str, metavar="PATH",
                        help="导入指定的代码项目")
+    parser.add_argument("--import-all-projects", action="store_true",
+                       help="一键导入 code_repos 目录下所有项目")
+    parser.add_argument("--repos-dir", type=str, default="code_repos",
+                       help="指定项目根目录（默认: code_repos）")
     parser.add_argument("--all", action="store_true",
                        help="完整初始化（推荐）")
 
     args = parser.parse_args()
 
-    # 如果没有任何参数，显示帮助
-    if not any(vars(args).values()):
+    # 如果没有任何操作参数，显示帮助（排除有默认值的参数）
+    action_args = {k: v for k, v in vars(args).items() if k != 'repos_dir'}
+    if not any(action_args.values()):
         parser.print_help()
         return 1
 
@@ -323,6 +432,8 @@ def main():
                 success = success and import_dataset()
             if args.import_project:
                 success = success and import_project(args.import_project)
+            if args.import_all_projects:
+                success = success and import_all_projects(args.repos_dir)
 
         return 0 if success else 1
 

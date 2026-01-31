@@ -27,19 +27,17 @@ from src.java_analyzer.analyzer import JavaAnalyzer
 from config import DB_NAME
 
 
-def compute_content_hash(file_path: str, content: str) -> str:
+def compute_content_hash(content: str) -> str:
     """
-    Compute SHA256 hash for a code snippet.
+    Compute SHA256 hash for a code snippet based on content only.
 
     Args:
-        file_path: Path to the source file
         content: Snippet content
 
     Returns:
         64-character hex hash string
     """
-    combined = f"{file_path}::{content}"
-    return hashlib.sha256(combined.encode('utf-8')).hexdigest()
+    return hashlib.sha256(content.encode('utf-8')).hexdigest()
 
 
 def analyze_sample_code():
@@ -116,19 +114,13 @@ def analyze_sample_code():
                 file_id = row[0]
                 print(f"File '{filename}' already exists (ID: {file_id})")
                 logger.info(f"File '{filename}' already exists (ID: {file_id})")
-
-                # Update file content
-                cursor.execute(
-                    "UPDATE code_files SET content = %s WHERE id = %s",
-                    (java_code, file_id)
-                )
-                print("Updated file content")
+                # File already exists, no need to update (content field removed)
             else:
                 print(f"Inserting new file: {filename}")
                 logger.info(f"Inserting new file: {filename}")
                 cursor.execute(
-                    "INSERT INTO code_files (filename, filepath, content) VALUES (%s, %s, %s)",
-                    (filename, str(sample_file), java_code)
+                    "INSERT INTO code_files (filename, filepath) VALUES (%s, %s)",
+                    (filename, str(sample_file))
                 )
                 file_id = cursor.lastrowid
 
@@ -141,7 +133,7 @@ def analyze_sample_code():
             print(f"Storing {len(snippets)} snippets...")
             for i, snippet in enumerate(snippets, 1):
                 content = snippet['content']
-                content_hash = compute_content_hash(str(sample_file), content)
+                content_hash = compute_content_hash(content)
 
                 # REPLACE INTO: If hash exists, replace; otherwise insert
                 cursor.execute("""

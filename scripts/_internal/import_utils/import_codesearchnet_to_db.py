@@ -228,13 +228,12 @@ def import_codesearchnet_to_db(
             'filepath': file_path,
             'repo_name': 'CodeSearchNet',
             'source': 'codesearchnet',
-            'language': 'java',
-            'content': ''  # Virtual file, no actual content
+            'language': 'java'
         }
 
         insert_file_query = """
-            INSERT INTO code_files (filename, filepath, repo_name, source, language, content)
-            VALUES (%(filename)s, %(filepath)s, %(repo_name)s, %(source)s, %(language)s, %(content)s)
+            INSERT INTO code_files (filename, filepath, repo_name, source, language)
+            VALUES (%(filename)s, %(filepath)s, %(repo_name)s, %(source)s, %(language)s)
         """
 
         db_client.execute(insert_file_query, file_data)
