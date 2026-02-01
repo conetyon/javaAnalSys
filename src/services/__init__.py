@@ -3,11 +3,12 @@
 服务层模块
 封装业务逻辑，供 API 和离线任务共用
 """
-from .search_service import SearchService, KnowledgePointNotFoundError
+from .search_service import SearchService, KnowledgePointNotFoundError, NonLeafKnowledgePointError
 from .knowledge_service import KnowledgeService
 
 __all__ = [
     "SearchService",
     "KnowledgeService",
     "KnowledgePointNotFoundError",
+    "NonLeafKnowledgePointError",
 ]

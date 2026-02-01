@@ -22,6 +22,15 @@ class KnowledgePointNotFoundError(Exception):
         self.kp_id = kp_id
         super().__init__(f"Knowledge point not found: {kp_id}")
 
+
+class NonLeafKnowledgePointError(Exception):
+    """非叶子节点不支持匹配异常"""
+    def __init__(self, kp_id: int, level: int, name: str = ""):
+        self.kp_id = kp_id
+        self.level = level
+        self.name = name
+        super().__init__(f"Knowledge point {kp_id} ('{name}') is not a leaf node (level={level}). Only leaf nodes (level=3) support matching.")
+
 # 优先从 java_analyzer.constants 导入别名表；若不可用，使用内置最小表
 try:
     from src.java_analyzer.constants import CANONICAL_ALIASES as _CANONICAL_ALIASES
@@ -110,7 +119,13 @@ class SearchService:
         if not kp_row:
             log.warning("[SearchService.search] 知识点不存在: kp_id=%d", kp_id)
             raise KnowledgePointNotFoundError(kp_id)
-        
+
+        # 校验：只有叶子节点（level=3）才支持匹配
+        kp_level = kp_row.get("level")
+        if kp_level != 3:
+            log.warning("[SearchService.search] 非叶子节点不支持匹配: kp_id=%d, level=%s", kp_id, kp_level)
+            raise NonLeafKnowledgePointError(kp_id, kp_level, kp_row.get("name", ""))
+
         log.debug("[SearchService.search] 知识点原始数据: %s", kp_row)
 
         # 2. 解析知识点配置
@@ -356,6 +371,12 @@ class SearchService:
             if not kp_row:
                 log.warning("[SearchService.composite_search] 知识点不存在: kp_id=%d", kp_id)
                 raise KnowledgePointNotFoundError(kp_id)
+
+            # 校验：只有叶子节点（level=3）才支持匹配
+            kp_level = kp_row.get("level")
+            if kp_level != 3:
+                log.warning("[SearchService.composite_search] 非叶子节点不支持匹配: kp_id=%d, level=%s", kp_id, kp_level)
+                raise NonLeafKnowledgePointError(kp_id, kp_level, kp_row.get("name", ""))
 
             kp_cfg = self.kp_mgr.parse_kp_config(kp_row)
             need_nodes = extract_required_nodes(kp_cfg.get("ast"))

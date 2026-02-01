@@ -6,7 +6,7 @@ from flask import jsonify, request
 from pydantic import ValidationError
 from . import api_bp
 from src.services import SearchService
-from src.services.search_service import KnowledgePointNotFoundError
+from src.services.search_service import KnowledgePointNotFoundError, NonLeafKnowledgePointError
 from api.schemas.match import (
     MatchRequest,
     BatchMatchRequest,
@@ -122,6 +122,11 @@ def match_knowledge():
             message=f"知识点不存在: {e.kp_id}",
             error=f"Knowledge point {e.kp_id} not found"
         )
+    except NonLeafKnowledgePointError as e:
+        raise BadRequestException(
+            message=f"知识点 {e.kp_id} ('{e.name}') 是分类节点，不支持匹配",
+            error=f"Knowledge point {e.kp_id} is not a leaf node (level={e.level}). Only leaf nodes (level=3) support matching."
+        )
     except BadRequestException:
         raise
     except Exception as e:
@@ -210,6 +215,10 @@ def batch_match_knowledge():
                 log.warning(f"[POST] /api/match/batch - kp_id={kp_id} 不存在")
                 results[str(kp_id)] = []
                 errors[str(kp_id)] = "Knowledge point not found"
+            except NonLeafKnowledgePointError as e:
+                log.warning(f"[POST] /api/match/batch - kp_id={kp_id} 是非叶子节点")
+                results[str(kp_id)] = []
+                errors[str(kp_id)] = f"Non-leaf node (level={e.level}), only leaf nodes support matching"
             except Exception as e:
                 log.warning(f"[POST] /api/match/batch - kp_id={kp_id} 匹配失败: {str(e)}")
                 results[str(kp_id)] = []
@@ -384,6 +393,11 @@ def composite_match_knowledge():
         raise NotFoundException(
             message=f"知识点不存在: {e.kp_id}",
             error=f"Knowledge point {e.kp_id} not found"
+        )
+    except NonLeafKnowledgePointError as e:
+        raise BadRequestException(
+            message=f"知识点 {e.kp_id} ('{e.name}') 是分类节点，不支持匹配",
+            error=f"Knowledge point {e.kp_id} is not a leaf node (level={e.level}). Only leaf nodes (level=3) support matching."
         )
     except BadRequestException:
         raise
