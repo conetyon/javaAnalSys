@@ -1,147 +1,69 @@
 {
-  "single_evaluation": {
-    "method": "Hybrid (AST + Keyword + Difficulty)",
-    "top1_accuracy": 0.9797979797979798,
-    "precision@5": 0.9555555555555555,
-    "precision@10": 0.49913419913419915,
-    "recall@5": 0.9555555555555555,
-    "recall@10": 0.993939393939394,
-    "f1@5": 0.9555555555555554,
-    "f1@10": 0.6645474753332103,
-    "mrr": 0.9882154882154883,
-    "map": 0.9727785794452463,
-    "avg_execution_time_ms": 364.65505397681034,
-    "num_test_cases": 99
+  "generated_at": "2026-02-07T20:08:02.036420",
+  "mode": "pilot",
+  "evaluation": {
+    "evaluated_kps": 5,
+    "total_kps": 5,
+    "no_results_kps": [],
+    "total_snippets": 50,
+    "G2": 10,
+    "G1": 40,
+    "G0": 0,
+    "graded_precision": 0.6,
+    "binary_precision": 1.0,
+    "avg_ndcg": 0.8662317054714377,
+    "kp_results": [
+      {
+        "kp_id": 10010,
+        "name": "For Loop",
+        "G2": 0,
+        "G1": 10,
+        "G0": 0,
+        "graded_precision": 0.5,
+        "binary_precision": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "kp_id": 10011,
+        "name": "While Loop",
+        "G2": 2,
+        "G1": 8,
+        "G0": 0,
+        "graded_precision": 0.6,
+        "binary_precision": 1.0,
+        "ndcg": 0.8178354838404451
+      },
+      {
+        "kp_id": 10031,
+        "name": "Try-Catch",
+        "G2": 5,
+        "G1": 5,
+        "G0": 0,
+        "graded_precision": 0.75,
+        "binary_precision": 1.0,
+        "ndcg": 0.7594801751869266
+      },
+      {
+        "kp_id": 10017,
+        "name": "Inheritance",
+        "G2": 0,
+        "G1": 10,
+        "G0": 0,
+        "graded_precision": 0.5,
+        "binary_precision": 1.0,
+        "ndcg": 1.0
+      },
+      {
+        "kp_id": 10037,
+        "name": "ArrayList",
+        "G2": 3,
+        "G1": 7,
+        "G0": 0,
+        "graded_precision": 0.65,
+        "binary_precision": 1.0,
+        "ndcg": 0.7538428683298163
+      }
+    ]
   },
-  "num_test_cases": 99,
-  "baseline_comparison": [
-    {
-      "method": "Hybrid (AST + Keyword + Difficulty)",
-      "top1_accuracy": 0.9797979797979798,
-      "precision@5": 0.9555555555555555,
-      "precision@10": 0.49913419913419915,
-      "recall@5": 0.9555555555555555,
-      "recall@10": 0.993939393939394,
-      "f1@5": 0.9555555555555554,
-      "f1@10": 0.6645474753332103,
-      "mrr": 0.9882154882154883,
-      "map": 0.9727785794452463,
-      "avg_execution_time_ms": 460.90501727479875,
-      "num_test_cases": 99
-    },
-    {
-      "method": "TF-IDF",
-      "top1_accuracy": 0.0,
-      "precision@5": 0.00808080808080808,
-      "precision@10": 0.006060606060606061,
-      "recall@5": 0.00808080808080808,
-      "recall@10": 0.012121212121212121,
-      "f1@5": 0.00808080808080808,
-      "f1@10": 0.00808080808080808,
-      "mrr": 0.01658249158249158,
-      "map": 0.003316498316498317,
-      "avg_execution_time_ms": 384.1912144362324,
-      "num_test_cases": 99
-    },
-    {
-      "method": "Pure AST",
-      "top1_accuracy": 0.0,
-      "precision@5": 0.0,
-      "precision@10": 0.0,
-      "recall@5": 0.0,
-      "recall@10": 0.0,
-      "f1@5": 0.0,
-      "f1@10": 0.0,
-      "mrr": 0.0,
-      "map": 0.0,
-      "avg_execution_time_ms": 450.54873071535667,
-      "num_test_cases": 99
-    },
-    {
-      "method": "Random",
-      "top1_accuracy": 0.0,
-      "precision@5": 0.0,
-      "precision@10": 0.0,
-      "recall@5": 0.0,
-      "recall@10": 0.0,
-      "f1@5": 0.0,
-      "f1@10": 0.0,
-      "mrr": 0.0,
-      "map": 0.0,
-      "avg_execution_time_ms": 8.633926661327632,
-      "num_test_cases": 99
-    }
-  ],
-  "ablation_study": [
-    {
-      "method": "Full (AST+KW+DIFF)",
-      "weights": "AST=0.5, KW=0.4, DIFF=0.1",
-      "top1_accuracy": 0.9797979797979798,
-      "precision@10": 0.49913419913419915,
-      "recall@10": 0.993939393939394,
-      "mrr": 0.9882154882154883,
-      "map": 0.9727785794452463,
-      "avg_execution_time_ms": 346.6833890086473
-    },
-    {
-      "method": "AST + Keyword",
-      "weights": "AST=0.7, KW=0.3, DIFF=0.0",
-      "top1_accuracy": 0.5050505050505051,
-      "precision@10": 0.24862914862914873,
-      "recall@10": 0.4929292929292931,
-      "mrr": 0.5856902356902356,
-      "map": 0.35660734327401006,
-      "avg_execution_time_ms": 384.9456045362685
-    },
-    {
-      "method": "Keyword + Difficulty",
-      "weights": "AST=0.0, KW=0.9, DIFF=0.1",
-      "top1_accuracy": 0.7272727272727273,
-      "precision@10": 0.4021645021645021,
-      "recall@10": 0.8,
-      "mrr": 0.7770322270322271,
-      "map": 0.7228739778739777,
-      "avg_execution_time_ms": 355.80205194877857
-    },
-    {
-      "method": "AST + Difficulty",
-      "weights": "AST=0.9, KW=0.0, DIFF=0.1",
-      "top1_accuracy": 0.5454545454545454,
-      "precision@10": 0.3183261183261183,
-      "recall@10": 0.6323232323232323,
-      "mrr": 0.6260582010582012,
-      "map": 0.5513804713804713,
-      "avg_execution_time_ms": 342.2403166992496
-    },
-    {
-      "method": "AST Only",
-      "weights": "AST=1.0, KW=0.0, DIFF=0.0",
-      "top1_accuracy": 0.12121212121212122,
-      "precision@10": 0.10418470418470419,
-      "recall@10": 0.20404040404040408,
-      "mrr": 0.18653198653198647,
-      "map": 0.12046496713163381,
-      "avg_execution_time_ms": 340.79088345922605
-    },
-    {
-      "method": "Keyword Only",
-      "weights": "AST=0.0, KW=1.0, DIFF=0.0",
-      "top1_accuracy": 0.36363636363636365,
-      "precision@10": 0.16176046176046174,
-      "recall@10": 0.3191919191919192,
-      "mrr": 0.42158489658489656,
-      "map": 0.23227192560525892,
-      "avg_execution_time_ms": 388.6882993910048
-    },
-    {
-      "method": "Difficulty Only",
-      "weights": "AST=0.0, KW=0.0, DIFF=1.0",
-      "top1_accuracy": 0.31313131313131315,
-      "precision@10": 0.17388167388167386,
-      "recall@10": 0.3434343434343434,
-      "mrr": 0.3542929292929293,
-      "map": 0.29145342312008976,
-      "avg_execution_time_ms": 347.6176671307497
-    }
-  ]
+  "ablation": null
 }

@@ -192,79 +192,172 @@ class CodeLibraryManager(BaseManager):
             finally:
                 cursor.close()
 
-    def get_all_snippets(self, limit: int = None):
+    def get_all_snippets(self, limit: int = None, source: str = None):
         """
         获取数据库中所有的代码片段
         供 Matcher 使用
 
         Args:
             limit: 可选，限制返回的最大记录数（安全网，防止大表导致 OOM）
+            source: 可选，数据来源过滤 ('codesearchnet', 'manual', None=全部)
         """
-        log.debug("[CodeLibraryManager.get_all_snippets] 开始获取所有代码片段")
-        sql = "SELECT * FROM code_snippets"
-        if limit and limit > 0:
-            sql += f" LIMIT {limit}"
-            log.warning("[CodeLibraryManager.get_all_snippets] 使用 LIMIT %d 限制结果集", limit)
-        client = self._get_client()
-        result = client.fetch_all(sql)
-        log.info("[CodeLibraryManager.get_all_snippets] 获取到 %d 条代码片段", len(result) if result else 0)
+        log.debug("[CodeLibraryManager.get_all_snippets] 开始获取所有代码片段, source=%s", source)
+
+        if source:
+            # 使用 JOIN 按数据来源过滤
+            sql = """
+                SELECT s.* FROM code_snippets s
+                JOIN code_files f ON s.file_id = f.id
+                WHERE f.source = %s
+            """
+            params = [source]
+            if limit and limit > 0:
+                sql += f" LIMIT {limit}"
+                log.warning("[CodeLibraryManager.get_all_snippets] 使用 LIMIT %d 限制结果集", limit)
+            client = self._get_client()
+            result = client.fetch_all(sql, params)
+        else:
+            sql = "SELECT * FROM code_snippets"
+            if limit and limit > 0:
+                sql += f" LIMIT {limit}"
+                log.warning("[CodeLibraryManager.get_all_snippets] 使用 LIMIT %d 限制结果集", limit)
+            client = self._get_client()
+            result = client.fetch_all(sql)
+
+        log.info("[CodeLibraryManager.get_all_snippets] 获取到 %d 条代码片段 (source=%s)",
+                 len(result) if result else 0, source or 'all')
         return result
 
-    def find_snippet_candidates(self, keywords: list, ast_nodes: list, limit: int = 1000):
+    def find_snippet_candidates(self, keywords: list, ast_nodes: list, limit: int = 1000, source: str = None):
         """
         根据关键词和 AST 节点预筛选候选代码片段（性能优化）
 
-        策略：
-        1. 如果提供了关键词，在 keywords 字段中 LIKE 匹配（JSON 字符串模糊匹配）
-        2. 如果提供了 AST 节点，在 ast_features 字段中 LIKE 匹配
-        3. 使用 OR 连接，满足任一条件即可（高召回）
-        4. LIMIT 限制结果集大小
+        策略（改进版 v1.3.4）：
+        1. 优先查找同时包含所有核心关键词的片段（AND 匹配）
+        2. 如果 AND 匹配不足，再用 OR 匹配补充
+        3. 最后用特定 AST 节点补充
+
+        核心关键词识别：排除过于通用的词（stream, list, map 等），优先匹配特定 API 名
 
         Args:
             keywords: 关键词列表（已规范化）
             ast_nodes: AST 节点类型列表
             limit: 最大返回记录数（默认 1000）
+            source: 可选，数据来源过滤 ('codesearchnet', 'manual', None=全部)
 
         Returns:
             List[Dict]: 匹配的代码片段列表
         """
-        log.debug("[CodeLibraryManager.find_snippet_candidates] keywords=%s, ast_nodes=%s, limit=%d",
-                  keywords[:3] if keywords else [], ast_nodes[:3] if ast_nodes else [], limit)
+        log.debug("[CodeLibraryManager.find_snippet_candidates] keywords=%s, ast_nodes=%s, limit=%d, source=%s",
+                  keywords[:3] if keywords else [], ast_nodes[:3] if ast_nodes else [], limit, source)
 
-        where_conditions = []
-        params = []
+        # 过于通用的关键词，不作为 AND 匹配的核心词
+        GENERIC_KEYWORDS = {
+            'stream', 'list', 'map', 'set', 'get', 'add', 'remove', 'new', 'return',
+            'int', 'string', 'object', 'class', 'method', 'void', 'public', 'private'
+        }
 
-        # 关键词匹配：在 keywords JSON 字符串中模糊查找
-        if keywords:
-            # 对每个关键词生成 LIKE 条件（OR 连接）
-            keyword_conditions = []
-            for kw in keywords[:10]:  # 限制前10个关键词，避免 SQL 过长
-                keyword_conditions.append("keywords LIKE %s")
-                params.append(f'%"{kw}"%')  # JSON 中关键词以 "keyword" 形式存在
-
-            if keyword_conditions:
-                where_conditions.append("(" + " OR ".join(keyword_conditions) + ")")
-
-        # AST 节点匹配：在 ast_features JSON 字符串中模糊查找
-        if ast_nodes:
-            ast_conditions = []
-            for node in ast_nodes[:10]:  # 限制前10个节点
-                ast_conditions.append("ast_features LIKE %s")
-                params.append(f'%"{node}"%')
-
-            if ast_conditions:
-                where_conditions.append("(" + " OR ".join(ast_conditions) + ")")
-
-        # 如果没有任何过滤条件，回退到 get_all_snippets
-        if not where_conditions:
-            log.warning("[CodeLibraryManager.find_snippet_candidates] 无过滤条件，回退到 get_all_snippets")
-            return self.get_all_snippets(limit=limit)
-
-        # 构建 SQL
-        sql = "SELECT * FROM code_snippets WHERE " + " OR ".join(where_conditions)
-        sql += f" LIMIT {limit}"
+        # 过于通用的 AST 节点，不用于预筛选（几乎匹配所有代码）
+        GENERIC_AST_NODES = {
+            'method_invocation', 'field_access', 'type_identifier',
+            'identifier', 'local_variable_declaration', 'method_declaration',
+            'formal_parameters', 'block', 'expression_statement'
+        }
 
         client = self._get_client()
-        result = client.fetch_all(sql, params)
-        log.info("[CodeLibraryManager.find_snippet_candidates] 预筛选获取 %d 条候选", len(result) if result else 0)
-        return result if result else []
+        results = []
+        existing_ids = set()
+
+        if keywords:
+            # 识别核心关键词（非通用的特定词）
+            core_keywords = [kw for kw in keywords if kw.lower() not in GENERIC_KEYWORDS]
+            general_keywords = [kw for kw in keywords if kw.lower() in GENERIC_KEYWORDS]
+
+            # 步骤1：优先用 AND 逻辑匹配核心关键词
+            if core_keywords:
+                and_conditions = []
+                params = []
+                for kw in core_keywords[:5]:  # 限制核心词数量
+                    and_conditions.append("LOWER(s.keywords) LIKE %s")
+                    params.append(f'%"{kw.lower()}"%')
+
+                if and_conditions:
+                    if source:
+                        sql = """
+                            SELECT s.* FROM code_snippets s
+                            JOIN code_files f ON s.file_id = f.id
+                            WHERE f.source = %s AND """ + " AND ".join(and_conditions) + f" LIMIT {limit}"
+                        params = [source] + params
+                    else:
+                        sql = "SELECT s.* FROM code_snippets s WHERE " + " AND ".join(and_conditions) + f" LIMIT {limit}"
+
+                    results = client.fetch_all(sql, params) or []
+                    existing_ids = {r['id'] for r in results}
+                    log.info("[CodeLibraryManager.find_snippet_candidates] AND 匹配核心词 %s 获取 %d 条",
+                             core_keywords[:3], len(results))
+
+            # 步骤2：如果 AND 匹配不足，用 OR 匹配补充
+            if len(results) < limit:
+                remaining = limit - len(results)
+                or_conditions = []
+                params = []
+                for kw in keywords[:10]:
+                    or_conditions.append("LOWER(s.keywords) LIKE %s")
+                    params.append(f'%"{kw.lower()}"%')
+
+                if or_conditions:
+                    if source:
+                        sql = """
+                            SELECT s.* FROM code_snippets s
+                            JOIN code_files f ON s.file_id = f.id
+                            WHERE f.source = %s AND (""" + " OR ".join(or_conditions) + f") LIMIT {remaining + len(existing_ids)}"
+                        params = [source] + params
+                    else:
+                        sql = "SELECT s.* FROM code_snippets s WHERE (" + " OR ".join(or_conditions) + f") LIMIT {remaining + len(existing_ids)}"
+
+                    or_results = client.fetch_all(sql, params) or []
+                    for r in or_results:
+                        if r['id'] not in existing_ids and len(results) < limit:
+                            results.append(r)
+                            existing_ids.add(r['id'])
+
+                    log.info("[CodeLibraryManager.find_snippet_candidates] OR 匹配补充后共 %d 条", len(results))
+
+        # 步骤3：如果关键词匹配不足，用特定 AST 节点补充
+        if len(results) < limit and ast_nodes:
+            specific_nodes = [n for n in ast_nodes if n.lower() not in GENERIC_AST_NODES]
+
+            if specific_nodes:
+                remaining = limit - len(results)
+                ast_conditions = []
+                params = []
+                for node in specific_nodes[:10]:
+                    ast_conditions.append("s.ast_features LIKE %s")
+                    params.append(f'%"{node}"%')
+
+                if ast_conditions:
+                    if source:
+                        sql = """
+                            SELECT s.* FROM code_snippets s
+                            JOIN code_files f ON s.file_id = f.id
+                            WHERE f.source = %s AND (""" + " OR ".join(ast_conditions) + f") LIMIT {remaining + len(existing_ids)}"
+                        params = [source] + params
+                    else:
+                        sql = "SELECT s.* FROM code_snippets s WHERE (" + " OR ".join(ast_conditions) + f") LIMIT {remaining + len(existing_ids)}"
+
+                    ast_results = client.fetch_all(sql, params) or []
+                    for r in ast_results:
+                        if r['id'] not in existing_ids and len(results) < limit:
+                            results.append(r)
+                            existing_ids.add(r['id'])
+
+                    log.info("[CodeLibraryManager.find_snippet_candidates] AST 补充后共 %d 条", len(results))
+
+        # 步骤4：如果仍然不足，回退到全量
+        if not results:
+            log.warning("[CodeLibraryManager.find_snippet_candidates] 无有效过滤条件，回退到 get_all_snippets")
+            return self.get_all_snippets(limit=limit, source=source)
+
+        log.info("[CodeLibraryManager.find_snippet_candidates] 最终获取 %d 条候选 (source=%s)",
+                 len(results), source or 'all')
+        return results

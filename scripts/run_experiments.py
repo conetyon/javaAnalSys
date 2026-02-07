@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 """
-实验主入口脚本 - 一键运行完整实验流程
+实验主入口脚本 - 一键运行分级评估实验
 
 功能：
 1. 检查数据库连接
 2. 自动初始化数据（如果需要）
-3. 生成测试标注（如果不存在）
-4. 运行评估实验
-5. 生成报告
+3. 运行分级评估实验
+4. 生成报告
 
 用法：
-    python scripts/run_experiments.py              # 完整实验
+    python scripts/run_experiments.py              # 完整实验（32 KP + 消融）
     python scripts/run_experiments.py --quick      # 快速评估（跳过消融实验）
+    python scripts/run_experiments.py --pilot      # 仅评估 Pilot KP（5个）
 """
 
 import sys
@@ -26,7 +26,7 @@ from lib.globals import core_logger as log
 
 def check_database_connection():
     """检查数据库连接和基础状态"""
-    print("\n[1/5] 检查数据库连接...")
+    print("\n[1/4] 检查数据库连接...")
     try:
         from lib.client.db import MySQLClient
         from config import DB_NAME
@@ -36,7 +36,6 @@ def check_database_connection():
         # 首先检查数据库本身是否存在
         db_cfg = Cfg.db.get(DB_NAME)
         try:
-            # 连接 MySQL Server（不指定数据库）
             conn = mysql.connector.connect(
                 host=db_cfg.host,
                 port=db_cfg.port,
@@ -51,16 +50,12 @@ def check_database_connection():
 
             if not db_exists:
                 print(f"[INFO] 数据库 '{db_cfg.db}' 不存在，将自动创建")
-                return True  # 继续执行，让初始化流程创建数据库
+                return True
             else:
                 print(f"[OK] 数据库 '{db_cfg.db}' 已存在")
 
         except Exception as e:
             print(f"[ERROR] MySQL连接失败: {e}")
-            print("\n请检查:")
-            print("  1. MySQL服务是否启动")
-            print("  2. config/db.yaml 配置是否正确")
-            print(f"  3. MySQL用户 '{db_cfg.user}' 权限是否正确")
             return False
 
         # 检查表是否存在
@@ -76,32 +71,22 @@ def check_database_connection():
             return True
 
         except Exception as e:
-            # 表不存在是正常的，继续初始化流程
             error_msg = str(e)
             if "doesn't exist" in error_msg or "1146" in error_msg:
                 print(f"[INFO] 数据表未初始化，将自动创建")
                 return True
             else:
-                # 其他错误则报告
                 print(f"[WARN] 检查表状态时出错: {e}")
-                return True  # 继续执行，让初始化流程处理
+                return True
 
     except Exception as e:
         print(f"[ERROR] 数据库检查失败: {e}")
-        print("\n请检查:")
-        print("  1. MySQL服务是否启动")
-        print("  2. config/db.yaml 配置是否正确")
         return False
 
 
 def initialize_data_if_needed():
-    """
-    如果数据不足，初始化数据
-
-    Returns:
-        tuple: (success: bool, data_was_initialized: bool)
-    """
-    print("\n[2/5] 检查数据完整性...")
+    """如果数据不足，初始化数据"""
+    print("\n[2/4] 检查数据完整性...")
 
     try:
         from lib.client.db import MySQLClient
@@ -123,8 +108,6 @@ def initialize_data_if_needed():
             error_msg = str(e)
             if "doesn't exist" in error_msg or "1146" in error_msg:
                 print(f"  知识点表不存在，需要初始化")
-            else:
-                print(f"  [WARN] 查询知识点数量时出错: {e}")
 
         # 检查CodeSearchNet数据
         print("  正在检查CodeSearchNet数据...")
@@ -132,8 +115,6 @@ def initialize_data_if_needed():
         try:
             with client as conn:
                 cursor = conn._conn.cursor()
-
-                # 先检查source字段是否存在
                 cursor.execute("SHOW COLUMNS FROM code_files LIKE 'source'")
                 has_source = cursor.fetchone() is not None
 
@@ -144,16 +125,12 @@ def initialize_data_if_needed():
                         WHERE f.source = 'codesearchnet'
                     """)
                     codesearchnet_count = cursor.fetchone()[0]
-                else:
-                    print("  [INFO] schema需要更新（将在初始化时自动处理）")
 
                 cursor.close()
         except Exception as e:
             error_msg = str(e)
             if "doesn't exist" in error_msg or "1146" in error_msg:
                 print(f"  code_snippets表不存在，需要初始化")
-            else:
-                print(f"  [WARN] 检查CodeSearchNet数据时出错: {e}")
 
         print(f"  CodeSearchNet数据: {codesearchnet_count} 片段")
 
@@ -172,56 +149,23 @@ def initialize_data_if_needed():
 
             if result.returncode != 0:
                 print("[ERROR] 数据初始化失败")
-                return False, False
+                return False
 
             print("\n[OK] 数据初始化完成")
-            return True, True  # 返回成功，并标记数据已初始化
+            return True
         else:
             print("[OK] 数据完整")
-            return True, False  # 返回成功，数据未初始化
+            return True
 
     except Exception as e:
         print(f"\n[ERROR] 数据检查失败: {e}")
         log.error(f"数据检查失败: {e}", exc_info=True)
-        return False, False
-
-
-def ensure_ground_truth(force_regenerate=False):
-    """
-    确保ground truth文件存在且有效
-
-    Args:
-        force_regenerate: 是否强制重新生成（当数据刚初始化时应设为True）
-    """
-    print("\n[3/5] 检查测试标注...")
-
-    ground_truth_path = project_root / "experiments" / "datasets" / "ground_truth" / "codesearchnet_v7.0-final.json"
-
-    # 如果不强制重新生成且文件存在，先验证一下
-    if not force_regenerate and ground_truth_path.exists():
-        print(f"[INFO] 测试标注已存在，验证snippet ID...")
-
-    init_exp_script = project_root / "scripts" / "_internal" / "init" / "init_experiment_data.py"
-    cmd = [sys.executable, str(init_exp_script)]
-
-    # 如果强制重新生成，先删除旧文件
-    if force_regenerate and ground_truth_path.exists():
-        print("[INFO] 数据已重新初始化，删除旧标注并重新生成...")
-        ground_truth_path.unlink()
-
-    result = subprocess.run(cmd, cwd=str(project_root))
-
-    if result.returncode != 0:
-        print("[ERROR] 测试标注生成/验证失败")
         return False
 
-    print("[OK] 测试标注已就绪")
-    return True
 
-
-def run_evaluation(quick_mode=False):
-    """运行评估实验"""
-    print("\n[4/5] 运行评估实验...")
+def run_evaluation(quick_mode=False, pilot_mode=False):
+    """运行分级评估实验"""
+    print("\n[3/4] 运行分级评估实验...")
 
     eval_script = project_root / "scripts" / "_internal" / "run_evaluation.py"
     cmd = [sys.executable, str(eval_script)]
@@ -231,6 +175,12 @@ def run_evaluation(quick_mode=False):
         print("  模式: 快速评估（跳过消融实验）")
     else:
         print("  模式: 完整评估（包含消融实验）")
+
+    if pilot_mode:
+        cmd.append("--pilot")
+        print("  范围: Pilot (5 KP)")
+    else:
+        print("  范围: Full (32 KP)")
 
     result = subprocess.run(cmd, cwd=str(project_root))
 
@@ -243,7 +193,7 @@ def run_evaluation(quick_mode=False):
 
 def show_summary():
     """显示结果摘要"""
-    print("\n[5/5] 实验完成摘要")
+    print("\n[4/4] 实验完成摘要")
     print("=" * 70)
 
     report_path = project_root / "experiments" / "results" / "report.md"
@@ -258,35 +208,35 @@ def show_summary():
             with open(json_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
-            if 'single_evaluation' in data:
-                top1 = data['single_evaluation'].get('top1_accuracy', 0)
-                mrr = data['single_evaluation'].get('mrr', 0)
-                print(f"\n[核心指标]")
-                print(f"  Top-1 Accuracy: {top1:.2%}")
-                print(f"  MRR: {mrr:.4f}")
+            if 'evaluation' in data:
+                eval_data = data['evaluation']
+                binary_prec = eval_data.get('binary_precision', 0)
+                graded_prec = eval_data.get('graded_precision', 0)
+                avg_ndcg = eval_data.get('avg_ndcg', 0)
+                g0_ratio = eval_data.get('G0', 0) / eval_data.get('total_snippets', 1)
 
-                target = 0.95
-                if top1 >= target:
-                    print(f"  状态: [OK] 达标 (目标: ≥{target:.0%})")
-                else:
-                    print(f"  状态: [WARN] 未达标 (目标: ≥{target:.0%})")
+                print(f"\n[核心指标]")
+                print(f"  Binary Precision: {binary_prec:.1%} (相关结果比例)")
+                print(f"  Graded Precision: {graded_prec:.1%}")
+                print(f"  Average nDCG@10: {avg_ndcg:.3f}")
+                print(f"  不相关比例: {g0_ratio:.1%}")
 
     print("\n" + "=" * 70)
     print("\n[提示]")
     print("  - 查看完整报告: cat experiments/results/report.md")
-    print("  - 查看数据状态: python scripts/init_data/check_status.py")
     print("  - 重新运行: python scripts/run_experiments.py")
 
 
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description="Java知识点匹配系统 - 完整实验流程")
+    parser = argparse.ArgumentParser(description="Java知识点匹配系统 - 分级评估实验")
     parser.add_argument("--quick", action="store_true", help="快速评估（跳过消融实验）")
+    parser.add_argument("--pilot", action="store_true", help="仅评估 Pilot KP（5个）")
     args = parser.parse_args()
 
     print("=" * 70)
-    print("[*] Java知识点匹配系统 - 实验流程")
+    print("[*] Java知识点匹配系统 - 分级评估实验")
     print("=" * 70)
 
     # Step 1: 检查数据库连接
@@ -294,19 +244,14 @@ def main():
         return 1
 
     # Step 2: 初始化数据（如果需要）
-    success, data_was_initialized = initialize_data_if_needed()
-    if not success:
+    if not initialize_data_if_needed():
         return 1
 
-    # Step 3: 确保ground truth存在（如果数据刚初始化，则强制重新生成）
-    if not ensure_ground_truth(force_regenerate=data_was_initialized):
+    # Step 3: 运行评估
+    if not run_evaluation(quick_mode=args.quick, pilot_mode=args.pilot):
         return 1
 
-    # Step 4: 运行评估
-    if not run_evaluation(quick_mode=args.quick):
-        return 1
-
-    # Step 5: 显示摘要
+    # Step 4: 显示摘要
     show_summary()
 
     print("\n[SUCCESS] 实验流程完成！\n")

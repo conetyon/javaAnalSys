@@ -1,10 +1,11 @@
 # src/services/search_service.py
 # 说明：
 # - 引入关键词归一化（CANONICAL_ALIASES）：对 KP 与片段关键词统一小写与别名映射，缓解 println vs System.out.println 等不一致
-# - 尝试用“候选检索”避免全库遍历：若 CodeLibraryManager 实现 find_snippet_candidates，则优先使用；否则回退到 get_all_snippets
+# - 尝试用"候选检索"避免全库遍历：若 CodeLibraryManager 实现 find_snippet_candidates，则优先使用；否则回退到 get_all_snippets
 # - 其它逻辑兼容既有 calculate_match_score 与阈值过滤
 
-from typing import List, Dict, Any
+import re
+from typing import List, Dict, Any, Tuple
 
 from src.db_manager import KnowledgePointManager, CodeLibraryManager
 from src.matching.utils import safe_read_json
@@ -14,6 +15,30 @@ from src.matching.strategies import (
     calculate_match_score,
     get_weight_defaults,
 )
+
+
+def _extract_method_info(content: str) -> Tuple[str, int]:
+    """
+    从代码内容中提取方法名和代码行数
+
+    Args:
+        content: 代码片段内容
+
+    Returns:
+        (method_name, lines_of_code) 元组
+    """
+    if not content:
+        return "", 0
+
+    # 计算非空行数
+    lines = content.split('\n')
+    lines_of_code = len([l for l in lines if l.strip()])
+
+    # 提取方法名：查找 method_name( 模式
+    method_match = re.search(r'\b(\w+)\s*\([^)]*\)\s*(?:throws|{|$)', content)
+    method_name = method_match.group(1) if method_match else ""
+
+    return method_name, lines_of_code
 
 
 class KnowledgePointNotFoundError(Exception):
@@ -96,6 +121,7 @@ class SearchService:
         w_ast: float = None,  # 可选：自定义AST权重（用于消融实验）
         w_keyword: float = None,  # 可选：自定义关键词权重
         w_difficulty: float = None,  # 可选：自定义难度权重
+        source: str = None,  # 可选：数据来源过滤 ('codesearchnet', 'manual', None=全部)
     ) -> List[Dict[str, Any]]:
         """
         使用新策略进行匹配与过滤：
@@ -109,8 +135,8 @@ class SearchService:
           - keyword_min_score: 关键词得分最低阈值，低于此值的候选被过滤（默认0.4）
           - 评估实验时可设为0.0以测试最大召回能力
         """
-        log.info("[SearchService.search] 开始搜索: kp_id=%d, target_diff=%.2f, top_k=%d, ast_min=%.2f, kw_min=%.2f, diff_mode=%s",
-                 kp_id, target_difficulty, top_k, ast_min_ratio, keyword_min_score, difficulty_mode)
+        log.info("[SearchService.search] 开始搜索: kp_id=%d, target_diff=%.2f, top_k=%d, ast_min=%.2f, kw_min=%.2f, diff_mode=%s, source=%s",
+                 kp_id, target_difficulty, top_k, ast_min_ratio, keyword_min_score, difficulty_mode, source or 'all')
         log.info("[SearchService.search] 参数验证 - 接收到的阈值: ast_min_ratio=%.2f, keyword_min_score=%.2f",
                  ast_min_ratio, keyword_min_score)
         
@@ -134,15 +160,32 @@ class SearchService:
         if not need_nodes and kp_cfg.get("required_nodes"):
             need_nodes = set(kp_cfg["required_nodes"])
 
+        # 显式必需节点（用于硬性过滤，不使用 NODE_MAPPING 扩展）
+        ast_tpl = kp_cfg.get("ast") or {}
+        explicit_required_nodes = set()
+        if isinstance(ast_tpl, dict):
+            explicit_nodes = ast_tpl.get("required_nodes") or ast_tpl.get("template_nodes") or []
+            if isinstance(explicit_nodes, list):
+                explicit_required_nodes = {str(n).lower() for n in explicit_nodes}
+
         # 归一化知识点关键词
         kp_keywords_norm = normalize_keywords_list(kp_cfg.get("keywords", []))
-        
-        log.info("[SearchService.search] 知识点配置: name=%s, need_nodes=%s, keywords=%s",
-                 kp_cfg.get("name"), need_nodes, kp_keywords_norm)
+
+        log.info("[SearchService.search] 知识点配置: name=%s, need_nodes=%s, explicit_required=%s, keywords=%s",
+                 kp_cfg.get("name"), need_nodes, explicit_required_nodes, kp_keywords_norm)
 
         # 3. 候选检索（如不可用则回退到全表）
-        candidates = self._fetch_candidates(kp_keywords_norm, need_nodes, limit=self.candidate_limit)
+        candidates = self._fetch_candidates(kp_keywords_norm, need_nodes, limit=self.candidate_limit, source=source)
         log.info("[SearchService.search] 获取候选片段数量: %d", len(candidates))
+
+        # 预先构建自定义权重（移到循环外，避免 fallback 时未定义）
+        custom_weights = get_weight_defaults()
+        if w_ast is not None:
+            custom_weights["ast"] = w_ast
+        if w_keyword is not None:
+            custom_weights["keyword"] = w_keyword
+        if w_difficulty is not None:
+            custom_weights["difficulty"] = w_difficulty
 
         results = []
         filtered_count = 0
@@ -164,6 +207,18 @@ class SearchService:
             else:
                 snip_ast_nodes = ast_raw or []
 
+            # === 硬性过滤：必须包含至少一个显式必需 AST 节点 ===
+            # 这是结构相关性的最低要求，即使 ast_min_ratio=0.0 也强制执行
+            # 使用 explicit_required_nodes（不含 NODE_MAPPING 扩展）
+            if explicit_required_nodes:
+                snip_ast_set = set(n.lower() if isinstance(n, str) else str(n).lower() for n in snip_ast_nodes)
+                has_required_node = bool(explicit_required_nodes & snip_ast_set)
+                if not has_required_node:
+                    filtered_count += 1
+                    log.debug("[SearchService.search] 片段 #%s 不含必需 AST 节点，跳过 (need=%s, has=%s)",
+                              snip_id, explicit_required_nodes, snip_ast_set)
+                    continue
+
             # 关键词（归一化）
             kws_raw = snip.get("keywords")
             snip_keywords_norm = normalize_keywords_list(kws_raw)
@@ -176,17 +231,7 @@ class SearchService:
             log.debug("[SearchService.search] 处理片段 #%s: ast=%s, kw=%s, diff=%s",
                       snip_id, snip_ast_nodes, snip_keywords_norm, snip_difficulty)
 
-            # 4. 打分（将归一化关键词传入策略）
-            # 构建自定义权重（如果提供）
-            custom_weights = get_weight_defaults()
-            if w_ast is not None:
-                custom_weights["ast"] = w_ast
-            if w_keyword is not None:
-                custom_weights["keyword"] = w_keyword
-            if w_difficulty is not None:
-                custom_weights["difficulty"] = w_difficulty
-
-            # 第一个片段时输出权重配置（避免重复输出）
+            # 4. 打分（第一个片段时输出权重配置）
             if idx == 0:
                 total_w = custom_weights["ast"] + custom_weights["keyword"] + custom_weights["difficulty"]
                 w_ast_pct = custom_weights["ast"] / total_w * 100 if total_w > 0 else 0
@@ -217,11 +262,21 @@ class SearchService:
             
             log.debug("[SearchService.search] 片段 #%s 通过, score=%.3f", snip_id, r["final_score"])
 
+            # 从 content 提取 method_name 和 lines_of_code (数据库无此列)
+            snip_content = snip.get("content", "")
+            snip_method_name, snip_loc = _extract_method_info(snip_content)
+
             results.append({
                 "id": snip.get("id"),
                 "content_hash": snip.get("content_hash"),  # 添加稳定标识符
-                "content": snip.get("content", ""),
+                "content": snip_content,
                 "score": round(r["final_score"], 3),
+
+                # 用于分级评估的原始字段
+                "ast_features": snip_ast_nodes,
+                "keywords": snip_keywords_norm,
+                "method_name": snip_method_name,
+                "lines_of_code": snip_loc,
 
                 # 结构化指标
                 "ast_ratio": round(r["ast_score"], 2),
@@ -289,11 +344,22 @@ class SearchService:
                 )
 
                 if not r.get("filtered"):
+                    # 从 content 提取 method_name 和 lines_of_code (数据库无此列)
+                    fb_content = snip.get("content", "")
+                    fb_method_name, fb_loc = _extract_method_info(fb_content)
+
                     fallback_results.append({
                         "id": snip.get("id"),
                         "content_hash": snip.get("content_hash"),  # 添加稳定标识符
-                        "content": snip.get("content", ""),
+                        "content": fb_content,
                         "score": round(r["final_score"], 3),
+
+                        # 用于分级评估的原始字段
+                        "ast_features": snip_ast_nodes,
+                        "keywords": snip_keywords_norm,
+                        "method_name": fb_method_name,
+                        "lines_of_code": fb_loc,
+
                         "ast_ratio": round(r["ast_score"], 2),
                         "ast_coverage": round(r["ast_coverage"], 2),
                         "keyword_score": round(r["keyword_score"], 2),
@@ -521,29 +587,29 @@ class SearchService:
 
     # ---------------- internal helpers ----------------
 
-    def _fetch_candidates(self, kp_keywords_norm, need_nodes, *, limit: int):
+    def _fetch_candidates(self, kp_keywords_norm, need_nodes, *, limit: int, source: str = None):
         """
         候选检索优先调用索引方法；不存在则回退到全量。
         约定优先级：
-          - CodeLibraryManager.find_snippet_candidates(keywords, ast_nodes, limit) [已实现]
-          - CodeLibraryManager.get_all_snippets(limit) [安全回退]
+          - CodeLibraryManager.find_snippet_candidates(keywords, ast_nodes, limit, source) [已实现]
+          - CodeLibraryManager.get_all_snippets(limit, source) [安全回退]
         """
-        log.debug("[SearchService._fetch_candidates] 开始检索候选, keywords=%s, nodes=%s, limit=%d",
-                  kp_keywords_norm, need_nodes, limit)
+        log.debug("[SearchService._fetch_candidates] 开始检索候选, keywords=%s, nodes=%s, limit=%d, source=%s",
+                  kp_keywords_norm, need_nodes, limit, source or 'all')
 
         # 优先使用预筛选检索（已实现）
         if hasattr(self.code_mgr, "find_snippet_candidates"):
             try:
                 log.debug("[SearchService._fetch_candidates] 使用 find_snippet_candidates 预筛选")
-                result = self.code_mgr.find_snippet_candidates(kp_keywords_norm, list(need_nodes or []), limit=limit)
-                log.info("[SearchService._fetch_candidates] 预筛选获取 %d 条候选", len(result))
+                result = self.code_mgr.find_snippet_candidates(kp_keywords_norm, list(need_nodes or []), limit=limit, source=source)
+                log.info("[SearchService._fetch_candidates] 预筛选获取 %d 条候选 (source=%s)", len(result), source or 'all')
                 return result
             except Exception as e:
                 log.error("[SearchService._fetch_candidates] find_snippet_candidates 失败: %s，回退到全量检索", e, exc_info=True)
 
         # 回退：全量检索（带 LIMIT 安全网）
         fallback_limit = min(limit * 2, 5000)  # 最多 5000 条，避免 OOM
-        log.warning("[SearchService._fetch_candidates] 回退到全量检索 get_all_snippets (limit=%d)", fallback_limit)
-        result = self.code_mgr.get_all_snippets(limit=fallback_limit)
+        log.warning("[SearchService._fetch_candidates] 回退到全量检索 get_all_snippets (limit=%d, source=%s)", fallback_limit, source or 'all')
+        result = self.code_mgr.get_all_snippets(limit=fallback_limit, source=source)
         log.info("[SearchService._fetch_candidates] 全量检索获取 %d 条", len(result))
         return result

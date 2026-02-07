@@ -107,10 +107,10 @@ INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords
   '{"template":"Class","required_nodes":["type_identifier","method_invocation"]}',
   '["string","substring","indexof","length","java.lang.string","charat"]', NULL),
 (10004, 'StringBuilder and StringBuffer', 101, 3,
-  '{"template":"Class","required_nodes":["object_creation_expression","method_invocation","type_identifier"]}',
-  '["stringbuilder","stringbuffer","append","tostring","java.lang","new"]', NULL),
+  '{"template":"StringBuilder","required_nodes":["type_identifier","object_creation_expression"]}',
+  '["stringbuilder","stringbuffer","append","tostring","java.lang"]', NULL),
 (10005, 'Arrays basics', 102, 3,
-  '{"template":"Class","required_nodes":["array_creation_expression","array_type"]}',
+  '{"template":"Arrays","required_nodes":["array_creation_expression","array_type"]}',
   '["array","new","length","index","element"]', NULL),
 (10006, 'var and local type inference', 102, 3,
   '{"template":"Class","required_nodes":["local_variable_declaration"]}',
@@ -135,7 +135,7 @@ INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords
   '{"template":"ControlFlow","required_nodes":["switch_expression"]}',
   '["switch","expression","case","yield"]', NULL),
 (10010, 'for loop', 202, 3,
-  '{"template":"ForStatement","required_nodes":["for_statement"]}',
+  '{"template":"ForStatement","required_nodes":["for_statement","enhanced_for_statement"]}',
   '["for","loop","iteration"]', NULL),
 (10011, 'while loop', 202, 3,
   '{"template":"WhileStatement","required_nodes":["while_statement"]}',
@@ -166,8 +166,8 @@ INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords
   '{"template":"Class","required_nodes":["method_declaration"]}',
   '["this","super","reference"]', NULL),
 (10017, 'Inheritance: extends', 302, 3,
-  '{"template":"Inheritance","required_nodes":["extends_clause"]}',
-  '["extends","superclass","inheritance"]', NULL),
+  '{"template":"Inheritance","required_nodes":["method_invocation"]}',
+  '["super","extends","superclass","inheritance"]', NULL),
 (10018, 'Method overriding and @Override', 302, 3,
   '{"template":"Polymorphism","required_nodes":["method_declaration","annotation"]}',
   '["override","@override","polymorphism","method"]', NULL),
@@ -244,10 +244,10 @@ INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords
   '{"template":"Exception","required_nodes":["finally_clause","try_statement"]}',
   '["finally","cleanup","exception"]', NULL),
 (10033, 'throw and throws', 601, 3,
-  '{"template":"Exception","required_nodes":["throw_statement","throws"]}',
+  '{"template":"Exception","required_nodes":["throw_statement"]}',
   '["throw","throws","exception"]', NULL),
 (10034, 'try-with-resources', 602, 3,
-  '{"required_nodes":["resource_specification"]}',
+  '{"required_nodes":["resource_specification","try_with_resources_statement"]}',
   '["bufferedreader","filereader","filewriter","connection","preparedstatement","resultset","autocloseable"]', NULL),
 (10035, 'Custom exception class', 602, 3,
   '{"template":"Class","required_nodes":["class_declaration","extends_clause"]}',
@@ -268,11 +268,11 @@ ON DUPLICATE KEY UPDATE
 -- List
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
 (10037, 'ArrayList basics', 701, 3,
-  '{"template":"Declare<List>","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
-  '["java.util.list","arraylist","add","get","remove","list","new"]', NULL),
+  '{"template":"ArrayList","required_nodes":["type_identifier"]}',
+  '["arraylist","java.util.list","add","get","remove","list","new"]', NULL),
 (10038, 'LinkedList basics', 701, 3,
-  '{"template":"Declare<List>","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
-  '["java.util.list","linkedlist","add","remove","get","list","new"]', NULL),
+  '{"template":"LinkedList","required_nodes":["type_identifier"]}',
+  '["linkedlist","java.util.list","add","remove","get","list","new"]', NULL),
 (10039, 'List add/remove/get', 701, 3,
   '{"template":"Declare<List>","required_nodes":["method_invocation"]}',
   '["java.util.list","add","remove","get","list"]', NULL),
@@ -290,8 +290,8 @@ ON DUPLICATE KEY UPDATE
 -- Set
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
 (10041, 'HashSet basics', 702, 3,
-  '{"template":"Declare<Set>","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
-  '["java.util.set","hashset","add","contains","remove","set","new"]', NULL),
+  '{"template":"HashSet","required_nodes":["type_identifier"]}',
+  '["hashset","java.util.set","add","contains","remove","set","new"]', NULL),
 (10042, 'TreeSet basics', 702, 3,
   '{"template":"Declare<Set>","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
   '["java.util.set","treeset","comparator","add","remove","set","new"]', NULL),
@@ -312,8 +312,8 @@ ON DUPLICATE KEY UPDATE
 -- Map
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
 (10045, 'HashMap basics', 703, 3,
-  '{"template":"Class","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
-  '["java.util.map","hashmap","put","get","containskey","map","new"]', NULL),
+  '{"template":"HashMap","required_nodes":["type_identifier"]}',
+  '["hashmap","java.util.map","put","get","containskey","map","new"]', NULL),
 (10046, 'LinkedHashMap basics', 703, 3,
   '{"template":"Class","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
   '["java.util.map","linkedhashmap","order","put","get","map","new"]', NULL),
@@ -321,8 +321,8 @@ INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords
   '{"template":"Class","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
   '["java.util.map","treemap","comparator","put","get","map","new"]', NULL),
 (10048, 'Map entrySet iteration', 703, 3,
-  '{"template":"Class","required_nodes":["method_invocation","enhanced_for_statement"]}',
-  '["java.util.map","entryset","iterator","foreach","map"]', NULL)
+  '{"template":"MapEntrySet","required_nodes":["enhanced_for_statement","method_invocation"]}',
+  '["entryset","entry","java.util.map","iterator","foreach","map"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
   parent_id=VALUES(parent_id),
@@ -357,11 +357,11 @@ ON DUPLICATE KEY UPDATE
 -- Streams
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
 (10053, 'Stream pipeline creation', 801, 3,
-  '{"template":"Stream","required_nodes":["method_invocation"]}',
-  '["stream","pipeline","collection"]', NULL),
+  '{"template":"StreamPipeline","required_nodes":["method_invocation"]}',
+  '["stream","pipeline","collection","java.util.stream"]', NULL),
 (10054, 'Intermediate operations: map/filter', 801, 3,
-  '{"template":"Stream","required_nodes":["method_invocation"]}',
-  '["stream","map","filter"]', NULL),
+  '{"template":"StreamMapFilter","required_nodes":["method_invocation"]}',
+  '["filter","map","stream","transform","java.util.stream"]', NULL),
 (10055, 'flatMap', 801, 3,
   '{"template":"Stream","required_nodes":["method_invocation"]}',
   '["stream","flatmap"]', NULL),
@@ -379,8 +379,8 @@ ON DUPLICATE KEY UPDATE
 -- Collectors & Terminal
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
 (10057, 'collect toList/toSet', 802, 3,
-  '{"template":"Stream","required_nodes":["method_invocation","method_reference"]}',
-  '["stream","collect","collectors","tolist","toset"]', NULL),
+  '{"template":"StreamCollect","required_nodes":["method_invocation"]}',
+  '["collect","collectors","tolist","toset","stream","java.util.stream"]', NULL),
 (10058, 'reduce', 802, 3,
   '{"template":"Stream","required_nodes":["method_invocation"]}',
   '["stream","reduce"]', NULL),
@@ -402,8 +402,8 @@ ON DUPLICATE KEY UPDATE
 -- Lambda
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
 (10061, 'Lambda expression basics', 901, 3,
-  '{"template":"Lambda","required_nodes":["lambda_expression"]}',
-  '["lambda","functional","expression"]', NULL),
+  '{"template":"LambdaExpression","required_nodes":["lambda_expression"]}',
+  '["lambda","functional","expression","arrow"]', NULL),
 (10062, 'Functional interfaces', 901, 3,
   '{"template":"Class","required_nodes":["interface_declaration"]}',
   '["functional_interface","@functionalinterface","interface"]', NULL),
@@ -424,8 +424,8 @@ ON DUPLICATE KEY UPDATE
 -- Method References & Functional Utilities
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
 (10065, 'Method references', 902, 3,
-  '{"template":"Class","required_nodes":["method_reference"]}',
-  '["method_reference","lambda"]', NULL),
+  '{"template":"MethodReference","required_nodes":["method_reference"]}',
+  '["method_reference","lambda","::"]', NULL),
 (10066, 'Consumer and Supplier', 902, 3,
   '{"template":"Class","required_nodes":["type_identifier"]}',
   '["consumer","supplier","java.util.function"]', NULL),
@@ -469,17 +469,17 @@ ON DUPLICATE KEY UPDATE
 -- Threads & Synchronization
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
 (10073, 'Thread creation: Thread/Runnable', 1101, 3,
-  '{"template":"Class","required_nodes":["object_creation_expression","method_invocation"]}',
-  '["thread","runnable","start"]', NULL),
+  '{"template":"ThreadCreation","required_nodes":["object_creation_expression","method_invocation"]}',
+  '["thread","runnable","start","run","execute"]', NULL),
 (10074, 'synchronized keyword', 1101, 3,
-  '{"template":"Class","required_nodes":["synchronized_statement"]}',
-  '["synchronized","lock"]', NULL),
+  '{"template":"Synchronized","required_nodes":["synchronized_statement"]}',
+  '["synchronized","lock","thread","concurrency"]', NULL),
 (10075, 'volatile variable', 1101, 3,
   '{"template":"Class","required_nodes":["field_declaration","modifiers"]}',
   '["volatile","memory_visibility"]', NULL),
 (10076, 'wait and notify', 1101, 3,
-  '{"template":"Class","required_nodes":["synchronized_statement","method_invocation"]}',
-  '["wait","notify","notifyall"]', NULL)
+  '{"template":"WaitNotify","required_nodes":["synchronized_statement","method_invocation"]}',
+  '["wait","notify","notifyall","synchronized","monitor"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
   parent_id=VALUES(parent_id),
@@ -517,11 +517,11 @@ INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords
   '{"template":"Class","required_nodes":["object_creation_expression","method_invocation"]}',
   '["fileinputstream","fileoutputstream","read","write","io"]', NULL),
 (10082, 'BufferedReader and BufferedWriter', 1201, 3,
-  '{"template":"Class","required_nodes":["object_creation_expression","method_invocation"]}',
-  '["bufferedreader","bufferedwriter","readline","io"]', NULL),
+  '{"template":"BufferedReaderWriter","required_nodes":["type_identifier","object_creation_expression"]}',
+  '["bufferedreader","bufferedwriter","readline","read","write","io"]', NULL),
 (10083, 'PrintStream println', 1201, 3,
-  '{"template":"Class","required_nodes":["method_invocation","field_access"]}',
-  '["println","system.out","system.err","print","printf"]', NULL),
+  '{"template":"PrintStream","required_nodes":["method_invocation","field_access"]}',
+  '["println","print","printf","system.out","system.err","printstream"]', NULL),
 (10084, 'Charset and encoding', 1201, 3,
   '{"template":"Class","required_nodes":["type_identifier","method_invocation"]}',
   '["charset","standardcharsets","encoding"]', NULL)
@@ -553,8 +553,8 @@ ON DUPLICATE KEY UPDATE
 -- Core Time Types
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
 (10087, 'LocalDate', 1301, 3,
-  '{"template":"Class","required_nodes":["type_identifier","method_invocation"]}',
-  '["localdate","java.time","date"]', NULL),
+  '{"template":"LocalDate","required_nodes":["type_identifier","method_invocation"]}',
+  '["localdate","java.time","date","now","parse","format"]', NULL),
 (10088, 'LocalDateTime', 1301, 3,
   '{"template":"Class","required_nodes":["type_identifier","method_invocation"]}',
   '["localdatetime","java.time","datetime"]', NULL),
@@ -592,8 +592,8 @@ ON DUPLICATE KEY UPDATE
 -- Annotations
 INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
 (10093, '@Override and @Deprecated usage', 1401, 3,
-  '{"template":"Class","required_nodes":["annotation"]}',
-  '["@override","@deprecated","annotation"]', NULL),
+  '{"template":"Annotations","required_nodes":["marker_annotation","normal_annotation"]}',
+  '["@override","@deprecated","annotation","override","deprecated"]', NULL),
 (10094, 'Custom annotation declaration', 1401, 3,
   '{"template":"Class","required_nodes":["annotation_declaration"]}',
   '["annotation","@interface","declaration"]', NULL),

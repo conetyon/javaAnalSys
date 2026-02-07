@@ -1,107 +1,92 @@
 # Evaluation Framework Capability
 
 ## Purpose
-Comprehensive testing and evaluation system for measuring matching algorithm performance using ground truth datasets, multiple metrics, and ablation studies.
+Graded rule-based evaluation system for measuring matching algorithm performance using defined rules, multiple metrics, and ablation studies.
 
 ## Requirements
 
-### Requirement: Ground Truth Dataset Management
-The system SHALL maintain a curated dataset with manually annotated code snippet relevance for knowledge point evaluation.
+### Requirement: Graded Rule-Based Evaluation
+The system SHALL use rule-based grading (Grade 0/1/2) instead of manual Ground Truth annotation.
 
-#### Scenario: Load ground truth dataset
-- **WHEN** evaluation script loads ground truth from JSON file
-- **THEN** dataset contains test cases with kp_id, kp_name, and relevant_snippet_ids
-- **AND** relevant snippet IDs reference actual snippets in the code library
+#### Scenario: Grade calculation based on rules
+- **WHEN** a code snippet is evaluated against a KP rule
+- **THEN** system assigns Grade 2 (highly relevant), Grade 1 (partially relevant), or Grade 0 (not relevant)
+- **AND** grading uses AST features, keywords, method names, and code length
 
-#### Scenario: Validate ground truth integrity
-- **WHEN** ground truth dataset is loaded
-- **THEN** system verifies all referenced snippet IDs exist in database
-- **AND** system reports any missing or invalid references
+#### Scenario: Grade 2 determination
+- **WHEN** snippet has explicit naming match OR high density (≥10%) OR multiple occurrences
+- **AND** snippet is within acceptable length range
+- **THEN** snippet is graded as Grade 2 (highly relevant)
 
-### Requirement: Top-1 Accuracy Metric
-The system SHALL calculate Top-1 Accuracy as the percentage of queries where the most relevant snippet is ranked first.
+#### Scenario: Grade 1 determination
+- **WHEN** snippet contains required AST nodes and keywords
+- **BUT** doesn't meet Grade 2 criteria
+- **THEN** snippet is graded as Grade 1 (partially relevant)
 
-#### Scenario: Calculate Top-1 with all correct
-- **WHEN** all test queries return a relevant snippet as rank 1
-- **THEN** Top-1 Accuracy is 100%
+#### Scenario: Grade 0 determination
+- **WHEN** snippet lacks required AST nodes OR required keywords
+- **THEN** snippet is graded as Grade 0 (not relevant)
 
-#### Scenario: Calculate Top-1 with some incorrect
-- **WHEN** 96 out of 99 test queries return relevant snippet as rank 1
-- **THEN** Top-1 Accuracy is 96.97%
+### Requirement: Binary Precision Metric
+The system SHALL calculate Binary Precision as the proportion of relevant results (G1+G2) among all results.
 
-#### Scenario: Calculate Top-1 with none correct
-- **WHEN** no test queries return relevant snippet as rank 1
-- **THEN** Top-1 Accuracy is 0.00%
+#### Scenario: Calculate Binary Precision
+- **WHEN** top-10 results contain 9 relevant snippets (G1 or G2) and 1 irrelevant (G0)
+- **THEN** Binary Precision is 90%
 
-### Requirement: Precision@K Metric
-The system SHALL calculate Precision@K as the proportion of relevant snippets among the top-K results.
+#### Scenario: Perfect Binary Precision
+- **WHEN** all results are G1 or G2 (no G0)
+- **THEN** Binary Precision is 100%
 
-#### Scenario: Calculate Precision@5
-- **WHEN** top-5 results contain 3 relevant snippets out of 5
-- **THEN** Precision@5 is 0.60 (60%)
+### Requirement: Graded Precision Metric
+The system SHALL calculate Graded Precision as (2×G2 + G1) / (2×K).
 
-#### Scenario: Calculate Precision@10
-- **WHEN** top-10 results contain 5 relevant snippets out of 10
-- **THEN** Precision@10 is 0.50 (50%)
+#### Scenario: Calculate Graded Precision with mixed grades
+- **WHEN** top-10 results contain G2=2, G1=7, G0=1
+- **THEN** Graded Precision is (2×2 + 7) / (2×10) = 11/20 = 55%
 
-### Requirement: Recall@K Metric
-The system SHALL calculate Recall@K as the proportion of relevant snippets retrieved among all relevant snippets.
+#### Scenario: Calculate Graded Precision with all G2
+- **WHEN** all 10 results are Grade 2
+- **THEN** Graded Precision is (2×10 + 0) / (2×10) = 100%
 
-#### Scenario: Calculate Recall@10 with full retrieval
-- **WHEN** ground truth has 5 relevant snippets AND all 5 appear in top-10
-- **THEN** Recall@10 is 1.00 (100%)
+#### Scenario: Calculate Graded Precision with all G1
+- **WHEN** all 10 results are Grade 1
+- **THEN** Graded Precision is (2×0 + 10) / (2×10) = 50%
 
-#### Scenario: Calculate Recall@10 with partial retrieval
-- **WHEN** ground truth has 5 relevant snippets AND 3 appear in top-10
-- **THEN** Recall@10 is 0.60 (60%)
+### Requirement: nDCG@K Metric
+The system SHALL calculate nDCG@K to measure ranking quality with graded relevance.
 
-### Requirement: F1@K Metric
-The system SHALL calculate F1@K as the harmonic mean of Precision@K and Recall@K.
+#### Scenario: Calculate nDCG@10
+- **WHEN** results have grades [2, 2, 1, 1, 1, 1, 1, 0, 0, 0]
+- **THEN** system calculates DCG and ideal DCG
+- **AND** nDCG = DCG / IDCG
 
-#### Scenario: Calculate F1@10
-- **WHEN** Precision@10 is 0.50 AND Recall@10 is 1.00
-- **THEN** F1@10 is 2 × (0.50 × 1.00) / (0.50 + 1.00) = 0.6667 (66.67%)
+#### Scenario: Perfect ranking
+- **WHEN** all G2 results are ranked before G1, all G1 before G0
+- **THEN** nDCG is 1.0
 
-### Requirement: Mean Reciprocal Rank (MRR)
-The system SHALL calculate MRR as the average of reciprocal ranks of the first relevant snippet across all queries.
-
-#### Scenario: Calculate MRR with first-rank matches
-- **WHEN** 3 queries have first relevant snippet at ranks [1, 1, 1]
-- **THEN** MRR is (1/1 + 1/1 + 1/1) / 3 = 1.00
-
-#### Scenario: Calculate MRR with varied ranks
-- **WHEN** 3 queries have first relevant snippet at ranks [1, 2, 3]
-- **THEN** MRR is (1/1 + 1/2 + 1/3) / 3 = 0.6111
-
-#### Scenario: Calculate MRR with no relevant results
-- **WHEN** query returns no relevant snippets
-- **THEN** reciprocal rank for that query is 0
-
-### Requirement: Mean Average Precision (MAP)
-The system SHALL calculate MAP as the mean of Average Precision scores across all queries.
-
-#### Scenario: Calculate MAP
-- **WHEN** Query 1 has AP=0.8 AND Query 2 has AP=0.6
-- **THEN** MAP is (0.8 + 0.6) / 2 = 0.70
-
-### Requirement: Ablation Study - Component Isolation
-The system SHALL support ablation studies testing individual and combined matching components.
-
-#### Scenario: Test AST-only configuration
-- **WHEN** weights are set to `w_ast=1.0, w_keyword=0.0, w_difficulty=0.0`
-- **THEN** system evaluates matching performance using only AST features
-
-#### Scenario: Test Keyword-only configuration
-- **WHEN** weights are set to `w_ast=0.0, w_keyword=1.0, w_difficulty=0.0`
-- **THEN** system evaluates matching performance using only keywords
-
-#### Scenario: Test AST+Keyword configuration
-- **WHEN** weights are set to `w_ast=0.7, w_keyword=0.3, w_difficulty=0.0`
-- **THEN** system evaluates combined AST and keyword matching without difficulty
+### Requirement: Ablation Study - Weight Configurations
+The system SHALL support ablation studies testing different weight configurations.
 
 #### Scenario: Test Full configuration
-- **WHEN** weights are set to `w_ast=0.5, w_keyword=0.4, w_difficulty=0.1`
-- **THEN** system evaluates complete hybrid strategy
+- **WHEN** weights are `w_ast=0.2, w_keyword=0.7, w_difficulty=0.1`
+- **THEN** system evaluates with production configuration
+
+#### Scenario: Test AST + Keyword configuration
+- **WHEN** weights are `w_ast=0.3, w_keyword=0.7, w_difficulty=0.0`
+- **THEN** system evaluates without difficulty component
+
+#### Scenario: Test Keyword + Difficulty configuration
+- **WHEN** weights are `w_ast=0.0, w_keyword=0.9, w_difficulty=0.1`
+- **THEN** system evaluates without AST component
+
+#### Scenario: Test AST Only configuration
+- **WHEN** weights are `w_ast=1.0, w_keyword=0.0, w_difficulty=0.0`
+- **THEN** system evaluates structural matching only
+
+#### Scenario: Test Keyword Only configuration
+- **WHEN** weights are `w_ast=0.0, w_keyword=1.0, w_difficulty=0.0`
+- **THEN** system evaluates semantic matching only
 
 ### Requirement: Evaluation Report Generation
 The system SHALL generate comprehensive evaluation reports in both Markdown and JSON formats.
@@ -109,115 +94,102 @@ The system SHALL generate comprehensive evaluation reports in both Markdown and 
 #### Scenario: Generate Markdown report
 - **WHEN** evaluation completes
 - **THEN** report is saved to `experiments/results/report.md`
-- **AND** report includes sections for each ablation configuration
-- **AND** report includes performance comparison tables
+- **AND** report includes Binary Precision, Graded Precision, nDCG
+- **AND** report includes grade distribution (G2, G1, G0 counts)
 
 #### Scenario: Generate JSON report
 - **WHEN** evaluation completes
 - **THEN** report is saved to `experiments/results/report.json`
-- **AND** report contains machine-readable metrics for all configurations
+- **AND** report contains per-KP metrics and ablation results
+
+#### Scenario: Save to database
+- **WHEN** evaluation completes
+- **THEN** results are saved to `experiment_runs` table
+- **AND** results include config, metrics, and timestamp
 
 ### Requirement: Quick Evaluation Mode
 The system SHALL support a quick evaluation mode that skips ablation studies.
 
 #### Scenario: Run quick evaluation
 - **WHEN** script is run with `--quick` flag
-- **THEN** only hybrid strategy with default weights is evaluated
-- **AND** execution completes in <5 minutes
+- **THEN** only main evaluation is run (no ablation)
+- **AND** execution completes faster
 
-### Requirement: Selective Evaluation Modes
-The system SHALL support running only ablation studies via command-line flags.
+### Requirement: Pilot Evaluation Mode
+The system SHALL support evaluating only Pilot KPs for rapid testing.
 
-#### Scenario: Run ablation-only evaluation
-- **WHEN** script is run with `--ablation-only` flag
-- **THEN** only ablation configurations are evaluated
-
-### Requirement: Dataset Version Management
-The system SHALL use content-based hashing to ensure stable snippet identification across dataset versions.
-
-#### Scenario: Identify snippet by content hash
-- **WHEN** ground truth references snippet by content_hash
-- **THEN** system looks up snippet using hash value
-- **AND** snippet is correctly retrieved regardless of snippet_id changes
-
-#### Scenario: Handle hash collisions
-- **WHEN** multiple snippets have identical content (rare)
-- **THEN** system uses first matching snippet or reports ambiguity
+#### Scenario: Run pilot evaluation
+- **WHEN** script is run with `--pilot` flag
+- **THEN** only 5 Pilot KPs are evaluated
+- **AND** results validate rule definitions
 
 ## Implementation Details
 
 ### Evaluation Scripts
-- Main evaluation runner: scripts/run_experiments.py:1
-- Internal evaluation: scripts/_internal/run_evaluation.py:1
-- Experiment orchestrator: experiments/evaluation/experiment.py:1
+- Main entry: `scripts/run_experiments.py`
+- Internal runner: `scripts/_internal/run_evaluation.py`
 
-### Metrics Implementation
-- All metrics: experiments/evaluation/metrics.py:1
-- Functions: `calculate_precision_at_k()`, `calculate_recall_at_k()`, `calculate_f1_at_k()`, `calculate_mrr()`, `calculate_map()`
+### Rules Implementation
+- Rule definitions: `experiments/evaluation/rules.py`
+- 56 KP rules with Grade 0/1/2 criteria
+- Functions: `calculate_feature_grade()`, `get_all_kp_ids()`, `KP_RULES`
 
-### Experiment Orchestration
-- Experiment runner: experiments/evaluation/experiment.py:1
-- Configuration management: Supports weight tuning and ablation studies
-
-### Ground Truth Dataset
-- Location: experiments/datasets/ground_truth/codesearchnet_v7.0-final.json
-- Format:
-  ```json
-  [
-    {
-      "kp_id": 10011,
-      "kp_name": "For loop",
-      "relevant_snippet_ids": [1, 5, 8, 12, 15]
-    }
-  ]
-  ```
-- Current dataset: 99 test cases, 495 annotated snippets, 20,022 total snippets
+### Configuration
+- Weight configuration: `config/matching.yaml`
+- Default weights: AST=0.2, Keyword=0.7, Difficulty=0.1
 
 ### Results Storage
-- Markdown reports: experiments/results/report.md
-- JSON reports: experiments/results/report.json
-- Evaluation history: Timestamped reports for trend analysis
+- Markdown reports: `experiments/results/report.md`
+- JSON reports: `experiments/results/report.json`
+- Database: `experiment_runs` table
 
 ## Current Performance Benchmarks (v1.3.4, 2026-02-07)
 
-### Hybrid Strategy (Default)
-- **Top-1 Accuracy**: 96.97%
-- **MRR**: 0.9832
-- **Precision@10**: 49.91%
-- **Recall@10**: 99.39%
-- **F1@10**: 66.49%
+### Production Configuration (AST=0.2, KW=0.7, DIFF=0.1)
+- **Binary Precision**: 98.0%
+- **Graded Precision**: 58.4%
+- **nDCG@10**: 0.874
+- **G0 (Irrelevant)**: 2.0% (11/554)
+
+### Grade Distribution
+- **G2 (Highly Relevant)**: 18.8% (104 snippets)
+- **G1 (Partially Relevant)**: 79.2% (439 snippets)
+- **G0 (Not Relevant)**: 2.0% (11 snippets)
 
 ### Ablation Study Results
-- **AST-only**: 0.00% Top-1 Accuracy
-- **Keyword-only**: 53.54% Top-1 Accuracy
-- **AST + Keyword**: 63.64% Top-1 Accuracy
-- **Full (AST + Keyword + Difficulty)**: 96.97% Top-1 Accuracy
+| Config | Binary P | Graded P | G2 | G1 | G0 |
+|--------|----------|----------|----|----|-----|
+| Full (AST+KW+DIFF) | 98.0% | 58.4% | 104 | 439 | 11 |
+| AST + Keyword | 98.0% | 58.5% | 105 | 438 | 11 |
+| Keyword + Difficulty | 97.5% | 57.8% | 100 | 440 | 14 |
+| Keyword Only | 97.7% | 59.2% | 115 | 426 | 13 |
+| AST + Difficulty | 57.4% | 32.4% | 41 | 277 | 236 |
+| AST Only | 55.8% | 32.3% | 49 | 260 | 245 |
 
 ### Key Insights
-- **Keyword is most important feature**: 53.54% standalone performance
-- **Difficulty contributes +33.33 percentage points**: From 63.64% to 96.97%
-- **AST requires combination**: 0.00% standalone but essential in combination
-- **P@10 ≈ 50% is near-optimal**: Ground truth averages 5 relevant snippets per KP (theoretical max 50%)
+- **Keyword is most important feature**: 97.7% Binary Precision standalone
+- **AST adds limited value alone**: 55.8% Binary Precision
+- **Full config stable**: 98.0% with good ranking quality (nDCG=0.874)
 
 ## Command-Line Usage
 
 ### Run Complete Evaluation
 ```bash
-python scripts/run_experiments.py
+python scripts/_internal/run_evaluation.py
 ```
 
-### Run Quick Evaluation (Hybrid Only)
+### Run Quick Evaluation (Skip Ablation)
 ```bash
-python scripts/run_experiments.py --quick
+python scripts/_internal/run_evaluation.py --quick
 ```
 
-### Run Ablation Study Only
+### Run Pilot Evaluation (5 KPs Only)
 ```bash
-python scripts/run_experiments.py --ablation-only
+python scripts/_internal/run_evaluation.py --pilot
 ```
 
 ## Dependencies
-- Ground truth dataset: experiments/datasets/ground_truth/codesearchnet_v7.0-final.json
-- Code library: MySQL database with code_snippets table
-- Matching strategy: src/matching/strategies.py
-- Search service: src/services/search_service.py
+- Rules: `experiments/evaluation/rules.py`
+- Code library: MySQL database with `code_snippets` table
+- Matching strategy: `src/matching/strategies.py`
+- Search service: `src/services/search_service.py`

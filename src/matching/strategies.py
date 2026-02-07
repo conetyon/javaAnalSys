@@ -477,7 +477,7 @@ def calculate_keyword_score(kp_kws: Any, snip_kws: Any, kp_name: Optional[str] =
         # 使用松弛检查：支持类型层级匹配（ArrayList → List, HashSet → Set）
         if not _check_domain_anchors_relaxed(kp_anchors, snip_tokens):
             anchor_penalty = 0.3  # 未满足锚点：降低到30%
-            log.info("[KW] 领域锚点约束未满足（软惩罚）: 需要锚点=%s, 应用惩罚系数=%.1f", kp_anchors, anchor_penalty)
+            log.debug("[KW] 领域锚点约束未满足（软惩罚）: 需要锚点=%s, 应用惩罚系数=%.1f", kp_anchors, anchor_penalty)
         else:
             log.debug("[KW] 领域锚点约束满足: 需要锚点=%s ✓", kp_anchors)
 

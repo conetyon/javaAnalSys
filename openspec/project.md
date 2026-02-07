@@ -3,7 +3,7 @@
 ## Purpose
 Java knowledge point matching system for educational purposes. The system analyzes Java code using AST (Abstract Syntax Tree) parsing and matches code snippets to specific programming concepts through a hybrid scoring algorithm. Built as a graduation project for BUPT (2026).
 
-**Core Value Proposition**: Automatically identify which Java programming concepts (e.g., loops, exception handling, collections) are demonstrated in code snippets with 96.97% accuracy.
+**Core Value Proposition**: Automatically identify which Java programming concepts (e.g., loops, exception handling, collections) are demonstrated in code snippets with 98.0% accuracy.
 
 ## Tech Stack
 - **Language**: Python 3.8+
@@ -50,12 +50,12 @@ Java knowledge point matching system for educational purposes. The system analyz
 
 ### Testing Strategy
 - **Unit Tests**: Core matching logic (`tests/test_matching_strategies.py`)
-- **Evaluation Framework**: Comprehensive metrics with ground truth dataset
-  - Dataset: CodeSearchNet subset (99 test cases, 495 annotated snippets, 20,022 total snippets)
-  - Metrics: Top-1 Accuracy, Precision@K, Recall@K, F1@K, MRR, MAP
-  - Current performance: 96.97% Top-1 Accuracy (v1.3.3)
-- **Baselines**: TF-IDF (1.01%), Pure AST (0.00%), Random (0.00%)
-- **Ablation Studies**: Test individual components (AST-only, Keyword-only, Full)
+- **Evaluation Framework**: Graded rule-based evaluation system
+  - Dataset: CodeSearchNet subset (20,022 total snippets)
+  - Rules: 56 KP rules defining Grade 0/1/2 criteria
+  - Metrics: Binary Precision, Graded Precision, nDCG@10
+  - Current performance: 98.0% Binary Precision, 58.4% Graded Precision (v1.3.4)
+- **Ablation Studies**: Test weight configurations (Full, AST+KW, KW+DIFF, etc.)
 - **Idempotent Operations**: Database init and data loading safe to re-run
 
 ### Git Workflow
@@ -78,16 +78,16 @@ Java knowledge point matching system for educational purposes. The system analyz
   - Parent-child relationships
 
 ### Matching Algorithm (Hybrid Strategy)
-**Three components with weights**:
-1. **AST Matching (w_ast=0.5)**: Structural similarity
+**Three components with weights** (v1.3.4 optimized):
+1. **AST Matching (w_ast=0.2)**: Structural similarity (reduced weight to avoid noise)
    - Maps templates to tree-sitter node types via `NODE_MAPPING`
    - Requires domain anchors for collection types (prevents false positives)
    - Calculates coverage ratio (matched nodes / template nodes)
-2. **Keyword Matching (w_keyword=0.4)**: Semantic similarity
+2. **Keyword Matching (w_keyword=0.7)**: Semantic similarity (most important feature)
    - Weighted scoring: Core keywords (2.0x), General (1.0x), Ambiguous (0.5x)
    - Alias normalization (e.g., `System.out.println` → `println`)
    - Name tokens from KP names (0.8x weight)
-3. **Difficulty Matching (w_difficulty=0.1)**: Complexity alignment
+3. **Difficulty Matching (w_difficulty=0.1)**: Complexity alignment (UX enhancement)
    - Calculates complexity from AST nodes and line count
    - Supports exact or relaxed matching modes
 
@@ -118,9 +118,9 @@ Java knowledge point matching system for educational purposes. The system analyz
 - **Concurrent Requests**: Flask development server (single-threaded)
 
 ### Data Constraints
-- **Knowledge Points**: Pre-populated via `kp_dml.sql` (53 KPs in baseline)
+- **Knowledge Points**: Pre-populated via `kp_dml.sql` (100+ KPs in baseline)
 - **Code Snippets**: Extracted at method level with features stored in DB
-- **Ground Truth**: 99 test cases with 495 manually annotated snippets
+- **Evaluation Rules**: 56 KP rules for graded evaluation (Grade 0/1/2)
 
 ## External Dependencies
 
@@ -155,7 +155,8 @@ Java knowledge point matching system for educational purposes. The system analyz
 - `config/` - Configuration files (db.yaml, logger.yaml)
 
 ### Data Directories
-- `experiments/datasets/` - Ground truth and processed datasets
+- `experiments/datasets/` - Processed datasets
+- `experiments/evaluation/` - Graded evaluation rules (rules.py)
 - `experiments/results/` - Evaluation reports and metrics
 - `src/logs/` - Core business logic logs
 - `api/logs/` - API request/response logs
