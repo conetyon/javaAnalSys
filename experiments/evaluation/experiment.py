@@ -3,10 +3,9 @@
 实验运行和报告生成模块
 
 提供完整的评估实验流程：
-1. 单一方法评估
-2. 基线方法对比
-3. 消融实验
-4. 实验报告生成
+1. 单一方法评估（混合策略）
+2. 消融实验
+3. 实验报告生成
 """
 
 import json
@@ -23,7 +22,6 @@ from .metrics import (
     calculate_map,
     calculate_f1_score,
 )
-from .baselines import TFIDFMatcher, PureASTMatcher, RandomMatcher
 from lib.globals import core_logger as log
 from lib.client.db import MySQLClient
 from lib.client.db import MySQLClient
@@ -240,209 +238,6 @@ def run_single_evaluation(
     return results
 
 
-def run_baseline_comparison(
-    search_service,
-    test_cases: List[Dict[str, Any]],
-    all_snippets: List[Dict[str, Any]],
-    top_k: int = 10,
-    sample_size: int = None  # Deprecated parameter, kept for backward compatibility
-) -> List[Dict[str, Any]]:
-    """
-    运行基线方法对比实验
-
-    Args:
-        search_service: SearchService 实例（用于混合方法）
-        test_cases: 测试用例列表
-        all_snippets: 所有代码片段（用于基线方法）
-        top_k: 评估的截断位置
-        sample_size: 已废弃，所有方法现在使用完整候选集以确保公平对比
-
-    Returns:
-        List[Dict]: 所有方法的评估结果
-    """
-    log.info("=" * 60)
-    log.info("[Baseline Comparison] 开始基线方法对比实验")
-    log.info(f"[Baseline Comparison] 候选集大小: {len(all_snippets)} (所有方法使用完整候选集)")
-    log.info("=" * 60)
-
-    results_list = []
-
-    # 1. 混合策略（当前系统）
-    print("\n[评估] 混合策略（使用完整数据集）...")
-    hybrid_results = run_single_evaluation(search_service, test_cases, top_k)
-    results_list.append(hybrid_results)
-
-    # 2-4. 基线方法 - 同样使用完整数据集确保公平对比
-    baseline_methods = ["TF-IDF", "Pure AST", "Random"]
-
-    for method in baseline_methods:
-        print(f"\n[评估] {method} 基线方法（使用完整数据集）...")
-        log.info("\n" + "=" * 60)
-        log.info(f"[Baseline] 评估 {method} 匹配器")
-        log.info("=" * 60)
-
-        baseline_results = _evaluate_baseline_method(
-            test_cases, all_snippets, method, top_k
-        )
-        results_list.append(baseline_results)
-
-    return results_list
-
-
-def _evaluate_baseline_method(
-    test_cases: List[Dict[str, Any]],
-    all_snippets: List[Dict[str, Any]],
-    method_name: str,
-    top_k: int
-) -> Dict[str, Any]:
-    """
-    评估单个基线方法
-
-    Args:
-        test_cases: 测试用例
-        all_snippets: 所有代码片段
-        method_name: 方法名称 ("TF-IDF", "Pure AST", "Random")
-        top_k: 截断位置
-
-    Returns:
-        Dict: 评估结果
-    """
-    from src.db_manager import KnowledgePointManager
-
-    # 初始化匹配器
-    if method_name == "TF-IDF":
-        matcher = TFIDFMatcher()
-    elif method_name == "Pure AST":
-        matcher = PureASTMatcher()
-    elif method_name == "Random":
-        matcher = RandomMatcher()
-    else:
-        raise ValueError(f"未知的基线方法: {method_name}")
-
-    kp_manager = KnowledgePointManager()
-    predictions = []
-    ground_truths = []
-    execution_times = []
-
-    # 检测Ground Truth使用的标识符类型（全局检测）
-    use_hash = "relevant_snippet_hashes" in test_cases[0] if test_cases else False
-
-    # 如果使用hash格式，创建 id -> hash 映射表（避免每次查询）
-    id_to_hash = {}
-    if use_hash:
-        for snippet in all_snippets:
-            sid = snippet.get("id")
-            shash = snippet.get("content_hash")
-            if sid and shash:
-                id_to_hash[sid] = shash
-        log.info(f"[{method_name}] 创建ID->Hash映射: {len(id_to_hash)} 条记录")
-
-    for i, test_case in enumerate(test_cases, start=1):
-        kp_id = test_case["kp_id"]
-
-        # 支持两种标识符：content_hash或id
-        if "relevant_snippet_hashes" in test_case:
-            relevant_ids = set(test_case["relevant_snippet_hashes"])
-        else:
-            relevant_ids = set(test_case["relevant_snippet_ids"])
-
-        # 添加进度显示
-        if i % 10 == 0 or i == len(test_cases):
-            print(f"  进度: {i}/{len(test_cases)} ({100*i/len(test_cases):.0f}%)")
-
-        log.debug(f"[{method_name}] 测试用例 {i}/{len(test_cases)}: KP {kp_id}")
-
-        start_time = time.time()
-        try:
-            # 获取知识点信息
-            kp_info = kp_manager.get_by_id(kp_id)
-            if not kp_info:
-                log.warning(f"  知识点 {kp_id} 不存在")
-                predictions.append([])
-                ground_truths.append(relevant_ids)
-                execution_times.append(0.0)
-                continue
-
-            # 根据方法类型执行匹配
-            if method_name == "TF-IDF":
-                kp_keywords_raw = kp_info.get("keywords", [])
-                if isinstance(kp_keywords_raw, str):
-                    kp_keywords_raw = json.loads(kp_keywords_raw)
-                pred_ids = matcher.match(kp_keywords_raw, all_snippets, top_k)
-
-            elif method_name == "Pure AST":
-                kp_ast_raw = kp_info.get("ast_template", {})
-                if isinstance(kp_ast_raw, str):
-                    kp_ast_raw = json.loads(kp_ast_raw)
-                kp_ast_nodes = kp_ast_raw.get("required_nodes", []) if isinstance(kp_ast_raw, dict) else []
-                pred_ids = matcher.match(kp_ast_nodes, all_snippets, top_k)
-
-            elif method_name == "Random":
-                pred_ids = matcher.match(all_snippets, top_k)
-
-            elapsed = time.time() - start_time
-            execution_times.append(elapsed)
-
-            # 【BUG FIX】如果Ground Truth使用hash，将预测ID转换为hash
-            # 基线方法返回整数ID，但Ground Truth使用字符串hash，需要转换
-            if use_hash:
-                pred_identifiers = [id_to_hash.get(pid) for pid in pred_ids if pid in id_to_hash]
-            else:
-                pred_identifiers = pred_ids
-
-            predictions.append(pred_identifiers)
-            ground_truths.append(relevant_ids)
-
-            log.debug(f"  预测: {pred_identifiers[:5]}... (耗时: {elapsed:.3f}s)")
-
-        except Exception as e:
-            log.error(f"[{method_name}] 测试用例 {i} 执行失败: {e}", exc_info=True)
-            predictions.append([])
-            ground_truths.append(relevant_ids)
-            execution_times.append(0.0)
-
-    # 计算评估指标
-    top1_acc = calculate_top1_accuracy(predictions, ground_truths)
-    p_at_5, _ = calculate_precision_at_k(predictions, ground_truths, k=5)
-    p_at_10, _ = calculate_precision_at_k(predictions, ground_truths, k=10)
-    r_at_5, _ = calculate_recall_at_k(predictions, ground_truths, k=5)
-    r_at_10, _ = calculate_recall_at_k(predictions, ground_truths, k=10)
-    mrr, _ = calculate_mrr(predictions, ground_truths)
-    map_score, _ = calculate_map(predictions, ground_truths)
-
-    f1_at_5 = calculate_f1_score(p_at_5, r_at_5)
-    f1_at_10 = calculate_f1_score(p_at_10, r_at_10)
-
-    avg_time = sum(execution_times) / len(execution_times) if execution_times else 0.0
-
-    results = {
-        "method": method_name,
-        "top1_accuracy": top1_acc,
-        "precision@5": p_at_5,
-        "precision@10": p_at_10,
-        "recall@5": r_at_5,
-        "recall@10": r_at_10,
-        "f1@5": f1_at_5,
-        "f1@10": f1_at_10,
-        "mrr": mrr,
-        "map": map_score,
-        "avg_execution_time_ms": avg_time * 1000,
-        "num_test_cases": len(test_cases),
-    }
-
-    log.info("\n" + "-" * 60)
-    log.info(f"[{method_name}] 评估结果:")
-    log.info("-" * 60)
-    for key, value in results.items():
-        if isinstance(value, float):
-            if key == "avg_execution_time_ms":
-                log.info(f"  {key}: {value:.2f} ms")
-            else:
-                log.info(f"  {key}: {value:.4f}")
-
-    return results
-
-
 def run_ablation_study(
     search_service,
     test_cases: List[Dict[str, Any]],
@@ -593,7 +388,6 @@ def _generate_conclusion_section(all_results: Dict[str, Any]) -> str:
     top1_acc = all_results.get("single_evaluation", {}).get("top1_accuracy", 0)
     num_cases = all_results.get("num_test_cases", 0)
     ablation_results = all_results.get("ablation_study", [])
-    baseline_results = all_results.get("baseline_comparison", [])
 
     # 找到最优配置
     best_config = None
@@ -635,7 +429,6 @@ def _generate_conclusion_section(all_results: Dict[str, Any]) -> str:
 #### 评估目的与局限性
 - ✅ **验证实现正确性**：确认系统能够找到相关代码片段
 - ✅ **组件贡献度分析**：通过消融实验揭示各组件的作用
-- ✅ **基线方法对比**：证明混合策略优于传统方法
 - ⚠️ **局限性**：Ground Truth 非人工标注，评估结果主要反映系统内部一致性
 
 ### 3.2 性能分析
@@ -653,61 +446,6 @@ def _generate_conclusion_section(all_results: Dict[str, Any]) -> str:
   - 说明：看似较低（49.91%），但实际**接近理论最优**
   - 原因：Ground Truth 每个知识点平均仅 5 个相关片段，理论 P@10 上限 = 5/10 = 50%
   - 结论：系统已经找到了几乎所有相关代码（Recall@10=99.39%），P@10 低是数据分布特性，非性能缺陷
-
-#### 基线方法对比
-"""
-
-    # 基线对比
-    if baseline_results and len(baseline_results) > 1:
-        hybrid_result = baseline_results[0]  # 第一个是Hybrid方法
-        conclusion += "\n混合策略相比传统方法的优势：\n"
-        for baseline in baseline_results[1:]:
-            method = baseline["method"]
-            base_acc = baseline["top1_accuracy"]
-            improvement = (hybrid_result["top1_accuracy"] - base_acc) * 100
-            conclusion += f"- **vs {method}**: +{improvement:.2f}个百分点 ({hybrid_result['top1_accuracy']:.2%} vs {base_acc:.2%})\n"
-
-        conclusion += "\n**基线方法性能分析**：\n\n"
-
-        # 提取各基线方法的指标
-        for baseline in baseline_results[1:]:
-            method = baseline["method"]
-            acc = baseline["top1_accuracy"]
-            p10 = baseline.get("precision@10", 0)
-
-            if method == "TF-IDF":
-                conclusion += f"""**TF-IDF ({acc:.2%})**:
-- 使用简单的 TF-IDF 余弦相似度匹配
-- **无别名规范化**：无法识别 `System.out.println` 和 `println` 的等价性
-- **无权重分层**：所有关键词平等对待，无法区分核心关键词（extends、implements）和普通关键词
-- P@10={p10:.2%} 说明有微小匹配能力，但无法精确定位最相关代码
-
-"""
-            elif method == "Pure AST":
-                conclusion += f"""**Pure AST ({acc:.2%})**:
-- 使用简单的 Jaccard 相似度（集合交并比）
-- **无节点映射**：无法理解 `interface` 模板对应 `interface_declaration` 节点
-- **无领域锚点**：无法区分 ArrayList 和 HashMap（都包含泛型节点）
-- P@10={p10:.2%} 说明极少数情况有随机匹配，但 Top-1=0% 证明无法精确匹配
-
-"""
-            elif method == "Random":
-                conclusion += f"""**Random ({acc:.2%})**:
-- 从 20,022 个候选片段中随机选择 10 个
-- **理论命中率**：单次命中概率 ≈ (10/20,022) × 5 ≈ 0.25%
-- **99 个测试用例**全部命中的概率 ≈ 0，所以 Top-1=0% 符合统计规律
-- 作为性能下界基准，证明混合策略的有效性
-
-"""
-
-        conclusion += """**结论**：简单基线方法无法应对 Java 代码匹配的复杂性，混合策略通过以下机制实现高准确率：
-1. **别名规范化** (CANONICAL_ALIASES)：统一处理 `System.out.println` → `println`
-2. **节点映射** (NODE_MAPPING)：理解模板与 AST 节点的对应关系
-3. **领域锚点** (DOMAIN_ANCHORS)：通过集合类型名称（arraylist/hashmap）区分不同数据结构
-4. **加权匹配**：核心关键词（extends/implements）权重 2.0，普通关键词 1.0，歧义词 0.5
-"""
-
-    conclusion += f"""
 
 #### 消融实验结果
 
@@ -864,21 +602,10 @@ def generate_experiment_report(
 
 """
 
-    # 如果有基线对比结果
-    if "baseline_comparison" in all_results:
-        report += """
-### 2.2 基线方法对比
-
-| 方法 | Top-1 Acc | P@10 | R@10 | MRR | MAP | 时间(ms) |
-|------|-----------|------|------|-----|-----|----------|
-"""
-        for result in all_results["baseline_comparison"]:
-            report += f"| {result['method']} | {result['top1_accuracy']:.2%} | {result['precision@10']:.2%} | {result['recall@10']:.2%} | {result['mrr']:.4f} | {result['map']:.4f} | {result['avg_execution_time_ms']:.2f} |\n"
-
     # 如果有消融实验结果
     if "ablation_study" in all_results:
         report += """
-### 2.3 消融实验
+### 2.2 消融实验
 
 | 配置 | Top-1 Acc | P@10 | R@10 | MRR |
 |------|-----------|------|------|-----|

@@ -11,7 +11,7 @@
 
 用法：
     python scripts/run_experiments.py              # 完整实验
-    python scripts/run_experiments.py --quick      # 快速评估（跳过基线和消融）
+    python scripts/run_experiments.py --quick      # 快速评估（跳过消融实验）
 """
 
 import sys
@@ -228,9 +228,9 @@ def run_evaluation(quick_mode=False):
 
     if quick_mode:
         cmd.append("--quick")
-        print("  模式: 快速评估（跳过基线和消融）")
+        print("  模式: 快速评估（跳过消融实验）")
     else:
-        print("  模式: 完整评估（包含基线对比和消融实验）")
+        print("  模式: 完整评估（包含消融实验）")
 
     result = subprocess.run(cmd, cwd=str(project_root))
 
@@ -282,7 +282,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Java知识点匹配系统 - 完整实验流程")
-    parser.add_argument("--quick", action="store_true", help="快速评估（跳过基线和消融）")
+    parser.add_argument("--quick", action="store_true", help="快速评估（跳过消融实验）")
     args = parser.parse_args()
 
     print("=" * 70)

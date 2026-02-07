@@ -1,7 +1,7 @@
 # Evaluation Framework Capability
 
 ## Purpose
-Comprehensive testing and evaluation system for measuring matching algorithm performance using ground truth datasets, multiple metrics, baseline comparisons, and ablation studies.
+Comprehensive testing and evaluation system for measuring matching algorithm performance using ground truth datasets, multiple metrics, and ablation studies.
 
 ## Requirements
 
@@ -84,30 +84,6 @@ The system SHALL calculate MAP as the mean of Average Precision scores across al
 - **WHEN** Query 1 has AP=0.8 AND Query 2 has AP=0.6
 - **THEN** MAP is (0.8 + 0.6) / 2 = 0.70
 
-### Requirement: Baseline Comparison - TF-IDF
-The system SHALL implement a TF-IDF baseline using cosine similarity on code content and knowledge point keywords.
-
-#### Scenario: Evaluate TF-IDF baseline
-- **WHEN** TF-IDF baseline is run on ground truth dataset
-- **THEN** Top-1 Accuracy, Precision@K, Recall@K, F1@K, MRR, MAP are calculated
-- **AND** results are compared against hybrid strategy
-
-### Requirement: Baseline Comparison - Pure AST
-The system SHALL implement a Pure AST baseline using simple Jaccard similarity on AST node types.
-
-#### Scenario: Evaluate Pure AST baseline
-- **WHEN** Pure AST baseline is run on ground truth dataset
-- **THEN** Top-1 Accuracy, Precision@K, Recall@K, F1@K, MRR, MAP are calculated
-- **AND** results are compared against hybrid strategy
-
-### Requirement: Baseline Comparison - Random
-The system SHALL implement a Random baseline that returns randomly shuffled snippets.
-
-#### Scenario: Evaluate Random baseline
-- **WHEN** Random baseline is run on ground truth dataset
-- **THEN** Top-1 Accuracy, Precision@K, Recall@K, F1@K, MRR, MAP are calculated
-- **AND** results demonstrate worst-case performance
-
 ### Requirement: Ablation Study - Component Isolation
 The system SHALL support ablation studies testing individual and combined matching components.
 
@@ -133,7 +109,7 @@ The system SHALL generate comprehensive evaluation reports in both Markdown and 
 #### Scenario: Generate Markdown report
 - **WHEN** evaluation completes
 - **THEN** report is saved to `experiments/results/report.md`
-- **AND** report includes sections for each baseline and ablation configuration
+- **AND** report includes sections for each ablation configuration
 - **AND** report includes performance comparison tables
 
 #### Scenario: Generate JSON report
@@ -142,7 +118,7 @@ The system SHALL generate comprehensive evaluation reports in both Markdown and 
 - **AND** report contains machine-readable metrics for all configurations
 
 ### Requirement: Quick Evaluation Mode
-The system SHALL support a quick evaluation mode that skips baseline comparisons and ablation studies.
+The system SHALL support a quick evaluation mode that skips ablation studies.
 
 #### Scenario: Run quick evaluation
 - **WHEN** script is run with `--quick` flag
@@ -150,17 +126,11 @@ The system SHALL support a quick evaluation mode that skips baseline comparisons
 - **AND** execution completes in <5 minutes
 
 ### Requirement: Selective Evaluation Modes
-The system SHALL support running only baseline comparisons or only ablation studies via command-line flags.
-
-#### Scenario: Run baseline-only evaluation
-- **WHEN** script is run with `--baseline-only` flag
-- **THEN** only baseline methods (TF-IDF, Pure AST, Random) are evaluated
-- **AND** ablation studies are skipped
+The system SHALL support running only ablation studies via command-line flags.
 
 #### Scenario: Run ablation-only evaluation
 - **WHEN** script is run with `--ablation-only` flag
 - **THEN** only ablation configurations are evaluated
-- **AND** baseline comparisons are skipped
 
 ### Requirement: Dataset Version Management
 The system SHALL use content-based hashing to ensure stable snippet identification across dataset versions.
@@ -185,11 +155,6 @@ The system SHALL use content-based hashing to ensure stable snippet identificati
 - All metrics: experiments/evaluation/metrics.py:1
 - Functions: `calculate_precision_at_k()`, `calculate_recall_at_k()`, `calculate_f1_at_k()`, `calculate_mrr()`, `calculate_map()`
 
-### Baseline Implementations
-- TF-IDF baseline: experiments/evaluation/baselines.py:1 (`TFIDFBaseline`)
-- Pure AST baseline: experiments/evaluation/baselines.py:50 (`PureASTBaseline`)
-- Random baseline: experiments/evaluation/baselines.py:100 (`RandomBaseline`)
-
 ### Experiment Orchestration
 - Experiment runner: experiments/evaluation/experiment.py:1
 - Configuration management: Supports weight tuning and ablation studies
@@ -213,7 +178,7 @@ The system SHALL use content-based hashing to ensure stable snippet identificati
 - JSON reports: experiments/results/report.json
 - Evaluation history: Timestamped reports for trend analysis
 
-## Current Performance Benchmarks (v1.3.3, 2026-02-07)
+## Current Performance Benchmarks (v1.3.4, 2026-02-07)
 
 ### Hybrid Strategy (Default)
 - **Top-1 Accuracy**: 96.97%
@@ -221,11 +186,6 @@ The system SHALL use content-based hashing to ensure stable snippet identificati
 - **Precision@10**: 49.91%
 - **Recall@10**: 99.39%
 - **F1@10**: 66.49%
-
-### Baseline Comparisons
-- **TF-IDF**: 1.01% Top-1 Accuracy
-- **Pure AST**: 0.00% Top-1 Accuracy
-- **Random**: 0.00% Top-1 Accuracy
 
 ### Ablation Study Results
 - **AST-only**: 0.00% Top-1 Accuracy
@@ -251,11 +211,6 @@ python scripts/run_experiments.py
 python scripts/run_experiments.py --quick
 ```
 
-### Run Baseline Comparison Only
-```bash
-python scripts/run_experiments.py --baseline-only
-```
-
 ### Run Ablation Study Only
 ```bash
 python scripts/run_experiments.py --ablation-only
@@ -266,4 +221,3 @@ python scripts/run_experiments.py --ablation-only
 - Code library: MySQL database with code_snippets table
 - Matching strategy: src/matching/strategies.py
 - Search service: src/services/search_service.py
-- scikit-learn: For TF-IDF baseline (sklearn.feature_extraction.text.TfidfVectorizer)

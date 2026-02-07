@@ -2,7 +2,7 @@
 """
 Java 知识点匹配系统评估模块
 
-提供性能评估指标、基线方法对比、实验报告生成等功能。
+提供性能评估指标、消融实验、实验报告生成等功能。
 """
 
 from .metrics import (
@@ -16,7 +16,6 @@ from .metrics import (
 
 from .experiment import (
     run_single_evaluation,
-    run_baseline_comparison,
     run_ablation_study,
     generate_experiment_report,
 )
@@ -31,7 +30,6 @@ __all__ = [
     "calculate_map",
     # 实验运行
     "run_single_evaluation",
-    "run_baseline_comparison",
     "run_ablation_study",
     "generate_experiment_report",
 ]

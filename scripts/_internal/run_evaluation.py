@@ -4,9 +4,8 @@
 评估脚本 - 运行完整的评估实验并生成报告
 
 用法：
-    python scripts/run_evaluation.py                    # 运行完整评估（包括基线对比和消融实验）
+    python scripts/run_evaluation.py                    # 运行完整评估（包括消融实验）
     python scripts/run_evaluation.py --quick            # 快速评估（仅评估混合策略）
-    python scripts/run_evaluation.py --baseline-only    # 仅运行基线对比
     python scripts/run_evaluation.py --ablation-only    # 仅运行消融实验
 """
 
@@ -21,7 +20,6 @@ sys.path.insert(0, str(project_root))
 from experiments.evaluation.experiment import (
     load_ground_truth,
     run_single_evaluation,
-    run_baseline_comparison,
     run_ablation_study,
     generate_experiment_report,
 )
@@ -37,7 +35,6 @@ def main():
 
     parser = argparse.ArgumentParser(description="运行 Java 知识点匹配系统评估实验")
     parser.add_argument("--quick", action="store_true", help="快速评估（仅评估混合策略）")
-    parser.add_argument("--baseline-only", action="store_true", help="仅运行基线对比")
     parser.add_argument("--ablation-only", action="store_true", help="仅运行消融实验")
     parser.add_argument("--ground-truth", type=str, default=default_ground_truth,
                         help="标注数据集路径")
@@ -56,7 +53,7 @@ def main():
     print("=" * 80)
 
     # 1. 加载标注数据
-    print("\n[1/4] 加载标注数据集...")
+    print("\n[1/3] 加载标注数据集...")
     try:
         test_cases = load_ground_truth(args.ground_truth)
         print(f"[OK] 成功加载 {len(test_cases)} 个测试用例")
@@ -65,7 +62,7 @@ def main():
         return 1
 
     # 2. 初始化服务
-    print("\n[2/4] 初始化搜索服务...")
+    print("\n[2/3] 初始化搜索服务...")
     try:
         from config import DB_NAME
         search_service = SearchService(db_name=DB_NAME)
@@ -78,43 +75,21 @@ def main():
         return 1
 
     # 3. 运行评估实验
-    print("\n[3/4] 运行评估实验...")
+    print("\n[3/3] 运行评估实验...")
     all_results = {}
 
     try:
         # 3.1 混合策略评估（必须运行）
-        if not args.baseline_only and not args.ablation_only:
+        if not args.ablation_only:
             print("\n[实验 1] 混合策略评估...")
             single_results = run_single_evaluation(search_service, test_cases, args.top_k)
             all_results["single_evaluation"] = single_results
             all_results["num_test_cases"] = len(test_cases)
             print(f"[OK] 混合策略评估完成 - Top-1 Accuracy: {single_results['top1_accuracy']:.2%}")
 
-        # 3.2 基线对比（可选）
-        if not args.quick and not args.ablation_only:
-            print("\n[实验 2] 基线方法对比...")
-            all_snippets = code_manager.get_all_snippets()
-            baseline_results = run_baseline_comparison(
-                search_service, test_cases, all_snippets, args.top_k
-            )
-            all_results["baseline_comparison"] = baseline_results
-            print("[OK] 基线对比实验完成")
-
-            # 打印对比表格
-            print("\n" + "=" * 80)
-            print("基线对比结果汇总：")
-            print("-" * 80)
-            print(f"{'方法':<25} {'Top-1 Acc':>12} {'P@10':>10} {'MRR':>10} {'时间(ms)':>12}")
-            print("-" * 80)
-            for res in baseline_results:
-                print(f"{res['method']:<25} {res['top1_accuracy']:>11.2%} "
-                      f"{res['precision@10']:>9.2%} {res['mrr']:>10.4f} "
-                      f"{res['avg_execution_time_ms']:>11.2f}")
-            print("=" * 80)
-
-        # 3.3 消融实验（可选）
-        if not args.quick and not args.baseline_only:
-            print("\n[实验 3] 消融实验...")
+        # 3.2 消融实验（可选）
+        if not args.quick:
+            print("\n[实验 2] 消融实验...")
             ablation_results = run_ablation_study(search_service, test_cases, args.top_k)
             all_results["ablation_study"] = ablation_results
             print("[OK] 消融实验完成")

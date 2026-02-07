@@ -25,7 +25,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Java knowledge point matching system that uses AST (Abstract Syntax Tree) analysis and keyword matching to identify Java code snippets that correspond to specific programming concepts. Built for a graduation project at BUPT (2026).
 
-The system analyzes Java code files, extracts code snippets at the method level, and matches them against a knowledge point database using a hybrid scoring algorithm that combines:
+The system analyzes Java code files, extracts codegsnippets at the method level, and matches them against a knowledge point database using a hybrid scoring algorithm that combines:
 - AST feature matching (tree-sitter-java)
 - Keyword matching with alias normalization
 - Complexity/difficulty scoring
@@ -77,14 +77,11 @@ python run_api.py --port 8080 --host 0.0.0.0 --debug
 ### Evaluation and Testing
 
 ```bash
-# Run complete evaluation (baseline comparison + ablation study)
+# Run complete evaluation (hybrid strategy + ablation study)
 python scripts/run_experiments.py
 
 # Quick evaluation (hybrid strategy only)
 python scripts/run_experiments.py --quick
-
-# Run only baseline comparison
-python scripts/run_experiments.py --baseline-only
 
 # Run only ablation study
 python scripts/run_experiments.py --ablation-only
@@ -95,8 +92,7 @@ python tests/test_matching_strategies.py
 
 **Evaluation Framework**:
 - Ground truth dataset: `experiments/datasets/ground_truth/codesearchnet_v7.0-final.json` (99 test cases, 495 annotated snippets)
-- Baselines: TF-IDF (1.01%), Pure AST (0.00%), Random (0.00%)
-- Hybrid strategy: 96.97% Top-1 Accuracy (提升 95+ 个百分点)
+- Hybrid strategy: 96.97% Top-1 Accuracy
 - Ablation study: Tests AST-only, Keyword-only, AST+Keyword, Full (AST+Keyword+Difficulty)
 - Metrics: Top-1 Accuracy, Precision@K, Recall@K, F1@K, MRR, MAP
 - Results: Saved to `experiments/results/report.md` and `report.json`
@@ -368,19 +364,11 @@ The repository includes both unit tests and a comprehensive evaluation framework
 **Evaluation Framework** (`experiments/evaluation/`):
 - `ground_truth/codesearchnet_v7.0-final.json`: Auto-generated dataset (99 test cases, 495 snippets, using content_hash)
 - `metrics.py`: Precision@K, Recall@K, F1@K, MRR, MAP, Top-1 Accuracy
-- `baselines.py`: TF-IDF, Pure AST, Random baseline implementations
-- `experiment.py`: Orchestrates baseline comparison and ablation studies
+- `experiment.py`: Orchestrates ablation studies and report generation
 
 **Current Performance** (v7.0 dataset, 2026-01-25):
 - **Hybrid Strategy**: 96.97% Top-1 Accuracy, 0.9832 MRR, 99.39% Recall@10
-- **vs TF-IDF**: +95.96个百分点 (1.01% → 96.97%)
-- **vs Pure AST**: +96.97个百分点 (0.00% → 96.97%)
 - **P@10 = 49.91%**: 接近理论最优（每个KP平均5个相关片段，上限50%）
-
-**Baseline Analysis**:
-- TF-IDF (1.01%): 简单余弦相似度，无别名规范化，无权重分层
-- Pure AST (0.00%): 简单Jaccard，无节点映射，无领域锚点
-- Random (0.00%): 理论命中率~0.25%，统计上接近0%合理
 
 **Adding New Tests**:
 - Unit tests: Add to `tests/test_matching_strategies.py`
@@ -416,7 +404,6 @@ The repository includes both unit tests and a comprehensive evaluation framework
    - Recall@10: Should be ≥95%
    - **P@10 ≈ 50%**: 接近理论最优（Ground Truth 平均5个相关片段/KP）
 5. For ablation studies, verify that Full configuration achieves ~97% Top-1 Accuracy
-6. Baseline methods should show: TF-IDF ~1%, Pure AST ~0%, Random ~0%
 
 ### Adding a New API Endpoint
 
@@ -538,10 +525,9 @@ results = search_service.search(
 - **清理数据库表**：移除 `bulk_import_jobs` 表定义
 
 **v1.3.0** (2026-01-25):
-- **修复基线评估 Bug**：基线方法从 ID 到 Hash 的转换缺失，导致评估结果全 0%
 - **完整数据集评估**：使用 CodeSearchNet 子集（20,022 个片段，99 个测试用例）
-- **实验结果更新**：Hybrid 96.97%，TF-IDF 1.01%，Pure AST 0.00%，Random 0.00%
-- **文档更新**：增加详细的基线方法分析和 P@10 说明
+- **实验结果更新**：Hybrid 96.97% Top-1 Accuracy
+- **文档更新**：增加 P@10 说明
 
 **v1.2.6** (2026-01-18):
 - Added automatic fallback/retry logic when no results found
