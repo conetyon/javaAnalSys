@@ -10,7 +10,7 @@ The system SHALL calculate a final match score by combining AST score, keyword s
 
 #### Scenario: Calculate final score with default weights
 - **WHEN** a code snippet is matched against a knowledge point
-- **THEN** the final score is computed as: `0.6 × ast_score + 0.3 × keyword_score + 0.1 × difficulty_score`
+- **THEN** the final score is computed as: `0.5 × ast_score + 0.4 × keyword_score + 0.1 × difficulty_score`
 
 #### Scenario: Calculate final score with custom weights
 - **WHEN** API request specifies `w_ast=0.5, w_keyword=0.5, w_difficulty=0.0`
@@ -178,7 +178,7 @@ The system SHALL find code snippets demonstrating multiple knowledge points simu
 
 ## Performance Metrics
 
-### Current Performance (v1.3.1, CodeSearchNet dataset)
+### Current Performance (v1.3.3, CodeSearchNet dataset)
 - **Top-1 Accuracy**: 96.97%
 - **Mean Reciprocal Rank (MRR)**: 0.9832
 - **Precision@10**: 49.91%

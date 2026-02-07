@@ -124,7 +124,7 @@ The system SHALL support ablation studies testing individual and combined matchi
 - **THEN** system evaluates combined AST and keyword matching without difficulty
 
 #### Scenario: Test Full configuration
-- **WHEN** weights are set to `w_ast=0.6, w_keyword=0.3, w_difficulty=0.1`
+- **WHEN** weights are set to `w_ast=0.5, w_keyword=0.4, w_difficulty=0.1`
 - **THEN** system evaluates complete hybrid strategy
 
 ### Requirement: Evaluation Report Generation
@@ -213,7 +213,7 @@ The system SHALL use content-based hashing to ensure stable snippet identificati
 - JSON reports: experiments/results/report.json
 - Evaluation history: Timestamped reports for trend analysis
 
-## Current Performance Benchmarks (v1.3.1, 2026-01-31)
+## Current Performance Benchmarks (v1.3.3, 2026-02-07)
 
 ### Hybrid Strategy (Default)
 - **Top-1 Accuracy**: 96.97%

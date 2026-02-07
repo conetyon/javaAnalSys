@@ -53,7 +53,7 @@ Java knowledge point matching system for educational purposes. The system analyz
 - **Evaluation Framework**: Comprehensive metrics with ground truth dataset
   - Dataset: CodeSearchNet subset (99 test cases, 495 annotated snippets, 20,022 total snippets)
   - Metrics: Top-1 Accuracy, Precision@K, Recall@K, F1@K, MRR, MAP
-  - Current performance: 96.97% Top-1 Accuracy (v1.3.1)
+  - Current performance: 96.97% Top-1 Accuracy (v1.3.3)
 - **Baselines**: TF-IDF (1.01%), Pure AST (0.00%), Random (0.00%)
 - **Ablation Studies**: Test individual components (AST-only, Keyword-only, Full)
 - **Idempotent Operations**: Database init and data loading safe to re-run

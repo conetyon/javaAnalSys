@@ -1,7 +1,7 @@
 # Java 知识点匹配系统
 
 > For graduation-design-2026, BUPT
-> **Version**: v1.3.1
+> **Version**: v1.3.3
 
 一个基于 AST 分析和关键词匹配的 Java 代码知识点匹配系统。采用混合打分策略（AST 结构 + 关键词语义 + 难度评估），支持单点匹配和综合知识点匹配。
 

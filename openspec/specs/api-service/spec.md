@@ -59,15 +59,17 @@ The system SHALL provide an endpoint to match code snippets to a single knowledg
 
 #### Scenario: Match with default parameters
 - **WHEN** POST request to `/api/match` with body `{"kp_id": 10011}`
-- **THEN** system uses default weights (0.6, 0.3, 0.1) and thresholds (0.4, 0.4)
-- **AND** returns top-10 matching snippets by default
+- **THEN** system uses default weights (0.5, 0.4, 0.1) and thresholds (0.4, 0.4)
+- **AND** returns top-5 matching snippets by default
 - **AND** response status is 200 OK
 
-#### Scenario: Match with custom weights
-- **WHEN** POST request to `/api/match` with body `{"kp_id": 10011, "w_ast": 0.5, "w_keyword": 0.5, "w_difficulty": 0.0}`
-- **THEN** system uses specified custom weights
-- **AND** returns matching snippets with recalculated scores
+#### Scenario: Match with custom difficulty
+- **WHEN** POST request to `/api/match` with body `{"kp_id": 10011, "target_difficulty": 0.8}`
+- **THEN** system uses specified target difficulty for matching
+- **AND** returns matching snippets with difficulty-adjusted scores
 - **AND** response status is 200 OK
+
+**Note**: Custom weight parameters (`w_ast`, `w_keyword`, `w_difficulty`) are supported at the service layer for evaluation experiments but not exposed in the public API. The API uses production-optimized default weights from `config/matching.yaml`.
 
 #### Scenario: Match with custom thresholds
 - **WHEN** POST request to `/api/match` with body `{"kp_id": 10011, "ast_min_ratio": 0.3, "keyword_min_score": 0.3}`
@@ -95,8 +97,8 @@ The system SHALL provide an endpoint to match multiple knowledge points independ
 - **AND** response status is 200 OK
 
 #### Scenario: Batch match with shared parameters
-- **WHEN** POST request to `/api/match/batch` with `{"kp_ids": [10011, 10012], "top_k": 5, "w_ast": 0.5}`
-- **THEN** all knowledge points use the same parameters (top_k=5, w_ast=0.5)
+- **WHEN** POST request to `/api/match/batch` with `{"kp_ids": [10011, 10012], "top_k": 5, "ast_min_ratio": 0.5}`
+- **THEN** all knowledge points use the same parameters (top_k=5, ast_min_ratio=0.5)
 - **AND** response status is 200 OK
 
 ### Requirement: Composite Knowledge Point Matching
@@ -142,9 +144,9 @@ The system SHALL validate all incoming requests using Pydantic schemas and retur
 - **AND** response contains type validation error
 
 #### Scenario: Reject out-of-range values
-- **WHEN** POST request to `/api/match` with body `{"kp_id": 10011, "w_ast": 1.5}`
+- **WHEN** POST request to `/api/match` with body `{"kp_id": 10011, "ast_min_ratio": 1.5}`
 - **THEN** response status is 422 Unprocessable Entity
-- **AND** response contains range validation error (weights must be 0.0-1.0)
+- **AND** response contains range validation error (thresholds must be 0.0-1.0)
 
 ### Requirement: CORS Support
 The system SHALL support Cross-Origin Resource Sharing (CORS) to allow browser-based clients from different origins.
@@ -226,13 +228,13 @@ The system SHALL return structured error responses with consistent format for al
 
 ## Default Configuration
 
-### Matching Parameters (v1.2.6+)
-- `w_ast`: 0.5 (AST structure weight)
-- `w_keyword`: 0.4 (keyword semantic weight)
-- `w_difficulty`: 0.1 (difficulty alignment weight)
+### Matching Parameters (v1.3.3+)
+- `w_ast`: 0.5 (AST structure weight, not exposed in API)
+- `w_keyword`: 0.4 (keyword semantic weight, not exposed in API)
+- `w_difficulty`: 0.1 (difficulty alignment weight, not exposed in API)
 - `ast_min_ratio`: 0.4 (minimum AST coverage)
 - `keyword_min_score`: 0.4 (minimum keyword score)
-- `top_k`: 10 (maximum results)
+- `top_k`: 5 (maximum results)
 
 ### Composite Matching
 - `score_aggregation`: "average" (default aggregation strategy)

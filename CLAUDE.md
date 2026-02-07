@@ -339,7 +339,7 @@ The system includes a `difficulty` parameter (default weight 0.1) even though it
 - **Improvement**: Difficulty 提升 33.33 个百分点，证明其有效性
 - Real users have varying skill levels requiring difficulty-appropriate code examples
 - Evaluation datasets only measure semantic relevance, not user preferences for code complexity
-- For pure semantic matching, set `w_difficulty=0.0` in API requests
+- For pure semantic matching, set `w_difficulty=0.0` in evaluation scripts or service layer calls (weights not exposed via HTTP API)
 - The parameter adds valuable personalization capability for educational platforms
 
 ## Dependencies
@@ -466,7 +466,7 @@ When matching results are unexpected:
 2. **Verify thresholds**: Default `ast_min_ratio=0.4, keyword_min_score=0.4` - check if fallback logic triggered
 3. **Inspect domain anchors**: Look for "领域锚点约束未满足" in logs - this is normal and indicates protective filtering
 4. **Validate keywords**: Check if `CANONICAL_ALIASES` in `src/java_analyzer/constants.py` includes expected method names
-5. **Test without difficulty**: Set `w_difficulty=0.0` to isolate semantic matching issues
+5. **Test without difficulty**: In evaluation scripts, set `w_difficulty=0.0` to isolate semantic matching issues (weights not configurable via HTTP API)
 6. **Check AST templates**: Verify knowledge point `ast_template.required_nodes` in database match expected node types
 7. **Run unit tests**: `python tests/test_matching_strategies.py` to verify core logic
 
@@ -498,22 +498,39 @@ These warnings are **normal and expected**:
 - `w_keyword`: 0.4 (keyword semantic matching)
 - `w_difficulty`: 0.1 (difficulty scoring)
 
-**Note**: These defaults are consistent across:
-- API schemas (`api/schemas/match.py`)
-- Service layer (`src/services/search_service.py`)
-- Strategy layer (`src/matching/strategies.py`)
+**Note**: Weights are configured internally and NOT exposed via HTTP API:
+- Service layer (`src/services/search_service.py`) - uses defaults
+- Strategy layer (`src/matching/strategies.py`) - defines `WEIGHT_DEFAULTS`
+- Evaluation scripts can override weights programmatically
 
-For experimental configurations (e.g., pure semantic matching), override via API request parameters:
+**API-configurable parameters** (via HTTP request):
 ```json
 {
   "kp_id": 10011,
-  "w_ast": 0.5,
-  "w_keyword": 0.5,
-  "w_difficulty": 0.0
+  "target_difficulty": 0.5,
+  "top_k": 10,
+  "ast_min_ratio": 0.3,
+  "keyword_min_score": 0.3
 }
 ```
 
+For experimental weight tuning, modify evaluation scripts directly:
+```python
+# In scripts/run_experiments.py or direct service calls
+results = search_service.search(
+    kp_id=10011,
+    w_ast=0.5,
+    w_keyword=0.5,
+    w_difficulty=0.0  # Disable difficulty for pure semantic matching
+)
+```
+
 ## Recent Major Changes
+
+**v1.3.3** (2026-02-07):
+- **非叶子节点校验**：API 拒绝对分类节点（level!=3）进行匹配，返回明确错误信息
+- **数据库备份**：DDL/DML 脚本备份
+- **多知识点匹配修复**：修复 composite_search 的边界情况
 
 **v1.3.1** (2026-01-31):
 - **移除异步导入 API**：删除 `api/routes/bulk_import.py` 和 `lib/background_jobs.py`
