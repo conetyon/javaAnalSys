@@ -10,7 +10,9 @@ from src.services.search_service import KnowledgePointNotFoundError, NonLeafKnow
 from api.schemas.match import (
     MatchRequest,
     BatchMatchRequest,
-    CompositeMatchRequest
+    CompositeMatchRequest,
+    MatrixMatchRequest,
+    CompositeMatrixMatchRequest
 )
 from api.middleware.error_handler import BadRequestException, NotFoundException
 from lib.globals import api_logger as log
@@ -403,5 +405,189 @@ def composite_match_knowledge():
         raise
     except Exception as e:
         log.error(f"[POST] /api/match/composite - 异常: {str(e)}", exc_info=True)
+        raise
+
+
+@api_bp.route('/match/matrix', methods=['POST'])
+def matrix_match_knowledge():
+    """
+    矩阵匹配接口（按难度分级返回）
+    ---
+    POST /api/match/matrix
+
+    Request Body:
+        {
+            "kp_id": 10011,
+            "per_level": 5,
+            "ast_min_ratio": 0.4,
+            "keyword_min_score": 0.4
+        }
+
+    Response:
+        {
+            "code": 200,
+            "message": "success",
+            "kp_id": 10011,
+            "shape": [3, 5],
+            "levels": ["easy", "medium", "hard"],
+            "per_level": 5,
+            "matrix": {
+                "easy": [...],
+                "medium": [...],
+                "hard": [...]
+            },
+            "total": 12
+        }
+    """
+    log.info("[POST] /api/match/matrix - 开始处理矩阵匹配请求")
+
+    try:
+        json_data = request.get_json()
+        if not json_data:
+            raise BadRequestException(
+                message="请求体不能为空",
+                error="Request body is required"
+            )
+
+        try:
+            req = MatrixMatchRequest(**json_data)
+        except ValidationError as e:
+            errors = []
+            for error in e.errors():
+                field = ".".join(str(loc) for loc in error["loc"])
+                errors.append(f"{field}: {error['msg']}")
+            raise BadRequestException(
+                message="请求参数校验失败",
+                error="; ".join(errors)
+            )
+
+        log.info(f"[POST] /api/match/matrix - 参数: kp_id={req.kp_id}, per_level={req.per_level}")
+
+        service = get_search_service()
+        result = service.matrix_search(
+            kp_id=req.kp_id,
+            per_level=req.per_level,
+            ast_min_ratio=req.ast_min_ratio,
+            keyword_min_score=req.keyword_min_score
+        )
+
+        log.info(f"[POST] /api/match/matrix - 成功返回矩阵 shape={result['shape']}, total={result['total']}")
+
+        return jsonify({
+            "code": 200,
+            "message": "success",
+            **result
+        })
+
+    except KnowledgePointNotFoundError as e:
+        raise NotFoundException(
+            message=f"知识点不存在: {e.kp_id}",
+            error=f"Knowledge point {e.kp_id} not found"
+        )
+    except NonLeafKnowledgePointError as e:
+        raise BadRequestException(
+            message=f"知识点 {e.kp_id} ('{e.name}') 是分类节点，不支持匹配",
+            error=f"Knowledge point {e.kp_id} is not a leaf node (level={e.level})"
+        )
+    except BadRequestException:
+        raise
+    except Exception as e:
+        log.error(f"[POST] /api/match/matrix - 异常: {str(e)}", exc_info=True)
+        raise
+
+
+@api_bp.route('/match/composite/matrix', methods=['POST'])
+def composite_matrix_match_knowledge():
+    """
+    综合知识点矩阵匹配接口（按难度分级返回）
+    ---
+    POST /api/match/composite/matrix
+
+    Request Body:
+        {
+            "kp_ids": [10011, 10012],
+            "per_level": 5,
+            "ast_min_ratio": 0.4,
+            "keyword_min_score": 0.4,
+            "score_aggregation": "average"
+        }
+
+    Response:
+        {
+            "code": 200,
+            "message": "success",
+            "kp_ids": [10011, 10012],
+            "shape": [3, 5],
+            "levels": ["easy", "medium", "hard"],
+            "per_level": 5,
+            "matrix": {
+                "easy": [...],
+                "medium": [...],
+                "hard": [...]
+            },
+            "total": 10
+        }
+    """
+    log.info("[POST] /api/match/composite/matrix - 开始处理综合矩阵匹配请求")
+
+    try:
+        json_data = request.get_json()
+        if not json_data:
+            raise BadRequestException(
+                message="请求体不能为空",
+                error="Request body is required"
+            )
+
+        try:
+            req = CompositeMatrixMatchRequest(**json_data)
+        except ValidationError as e:
+            errors = []
+            for error in e.errors():
+                field = ".".join(str(loc) for loc in error["loc"])
+                errors.append(f"{field}: {error['msg']}")
+            raise BadRequestException(
+                message="请求参数校验失败",
+                error="; ".join(errors)
+            )
+
+        if not req.kp_ids:
+            raise BadRequestException(
+                message="知识点列表不能为空",
+                error="kp_ids is required and cannot be empty"
+            )
+
+        log.info(f"[POST] /api/match/composite/matrix - 参数: kp_ids={req.kp_ids}, per_level={req.per_level}")
+
+        service = get_search_service()
+        result = service.composite_matrix_search(
+            kp_ids=req.kp_ids,
+            per_level=req.per_level,
+            ast_min_ratio=req.ast_min_ratio,
+            keyword_min_score=req.keyword_min_score,
+            score_aggregation=req.score_aggregation
+        )
+
+        log.info(f"[POST] /api/match/composite/matrix - 成功返回矩阵 shape={result['shape']}, total={result['total']}")
+
+        return jsonify({
+            "code": 200,
+            "message": "success",
+            **result
+        })
+
+    except KnowledgePointNotFoundError as e:
+        raise NotFoundException(
+            message=f"知识点不存在: {e.kp_id}",
+            error=f"Knowledge point {e.kp_id} not found"
+        )
+    except NonLeafKnowledgePointError as e:
+        raise BadRequestException(
+            message=f"知识点 {e.kp_id} ('{e.name}') 是分类节点，不支持匹配",
+            error=f"Knowledge point {e.kp_id} is not a leaf node (level={e.level})"
+        )
+    except BadRequestException:
+        raise
+    except Exception as e:
+        log.error(f"[POST] /api/match/composite/matrix - 异常: {str(e)}", exc_info=True)
         raise
 

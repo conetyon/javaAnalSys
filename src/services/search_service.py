@@ -613,3 +613,419 @@ class SearchService:
         result = self.code_mgr.get_all_snippets(limit=fallback_limit, source=source)
         log.info("[SearchService._fetch_candidates] 全量检索获取 %d 条", len(result))
         return result
+
+    # ---------------- 矩阵匹配模式 ----------------
+
+    # 默认难度分级边界
+    DEFAULT_DIFFICULTY_LEVELS = [
+        {"name": "easy", "min_val": 0.0, "max_val": 0.33},
+        {"name": "medium", "min_val": 0.33, "max_val": 0.66},
+        {"name": "hard", "min_val": 0.66, "max_val": 1.01},  # 1.01 确保 1.0 被包含
+    ]
+
+    def _get_difficulty_bucket(self, difficulty: float) -> str:
+        """根据难度值返回对应的难度级别名称"""
+        for level in self.DEFAULT_DIFFICULTY_LEVELS:
+            if level["min_val"] <= difficulty < level["max_val"]:
+                return level["name"]
+        return "hard"  # 默认归入 hard
+
+    def _get_matrix_weights(self) -> dict:
+        """获取矩阵模式的归一化权重（移除难度权重）"""
+        # 基于生产配置 0.2/0.7 归一化
+        # 0.2 / (0.2 + 0.7) = 0.222...
+        # 0.7 / (0.2 + 0.7) = 0.778...
+        return {
+            "ast": 0.22,
+            "keyword": 0.78,
+            "difficulty": 0.0
+        }
+
+    def matrix_search(
+        self,
+        kp_id: int,
+        per_level: int = 5,
+        ast_min_ratio: float = 0.4,
+        keyword_min_score: float = 0.4,
+        source: str = None,
+    ) -> Dict[str, Any]:
+        """
+        矩阵匹配：按难度分级返回匹配结果
+
+        与 search() 的区别：
+        1. 难度作为分类维度（行标签），不参与打分
+        2. 使用归一化权重：w_ast=0.22, w_keyword=0.78, w_difficulty=0.0
+        3. 返回格式为矩阵：{level_name: [snippets]}
+
+        :param kp_id: 知识点 ID
+        :param per_level: 每个难度级别返回的片段数量
+        :param ast_min_ratio: AST 最低阈值
+        :param keyword_min_score: 关键词最低得分
+        :param source: 数据来源过滤
+        :return: 矩阵结构结果
+        """
+        log.info("[SearchService.matrix_search] 开始矩阵搜索: kp_id=%d, per_level=%d",
+                 kp_id, per_level)
+
+        # 1. 获取知识点
+        kp_row = self.kp_mgr.get_by_id(kp_id)
+        if not kp_row:
+            log.warning("[SearchService.matrix_search] 知识点不存在: kp_id=%d", kp_id)
+            raise KnowledgePointNotFoundError(kp_id)
+
+        kp_level = kp_row.get("level")
+        if kp_level != 3:
+            raise NonLeafKnowledgePointError(kp_id, kp_level, kp_row.get("name", ""))
+
+        # 2. 解析知识点配置
+        kp_cfg = self.kp_mgr.parse_kp_config(kp_row)
+        need_nodes = extract_required_nodes(kp_cfg.get("ast"))
+        if not need_nodes and kp_cfg.get("required_nodes"):
+            need_nodes = set(kp_cfg["required_nodes"])
+
+        kp_keywords_norm = normalize_keywords_list(kp_cfg.get("keywords", []))
+
+        # 3. 获取候选片段
+        candidates = self._fetch_candidates(kp_keywords_norm, need_nodes, limit=self.candidate_limit, source=source)
+        log.info("[SearchService.matrix_search] 获取候选片段数量: %d", len(candidates))
+
+        # 4. 使用矩阵模式权重打分
+        matrix_weights = self._get_matrix_weights()
+        log.info("[SearchService.matrix_search] 矩阵模式权重: AST=%.0f%%, 关键词=%.0f%%, 难度=%.0f%%",
+                 matrix_weights["ast"]*100, matrix_weights["keyword"]*100, matrix_weights["difficulty"]*100)
+
+        # 按难度分桶
+        buckets = {level["name"]: [] for level in self.DEFAULT_DIFFICULTY_LEVELS}
+
+        for snip in candidates:
+            snip_id = snip.get("id")
+
+            # 解析特征
+            ast_raw = snip.get("ast_features")
+            if isinstance(ast_raw, (str, bytes, bytearray)):
+                snip_ast_nodes = safe_read_json(ast_raw, default=[])
+            else:
+                snip_ast_nodes = ast_raw or []
+
+            snip_keywords_norm = normalize_keywords_list(snip.get("keywords"))
+            snip_difficulty = snip.get("complexity_score") or snip.get("difficulty") or 0.5
+
+            # 打分（不含难度权重）
+            r = calculate_match_score(
+                kp_ast_nodes=need_nodes,
+                snip_ast_nodes=snip_ast_nodes,
+                kp_keywords=kp_keywords_norm,
+                snip_keywords=snip_keywords_norm,
+                kp_name=kp_cfg.get("name"),
+                snip_difficulty=snip_difficulty,
+                target_difficulty=0.5,  # 矩阵模式下不使用目标难度
+                difficulty_mode="relaxed",
+                weights=matrix_weights,
+                ast_min_ratio=ast_min_ratio,
+                keyword_min_score=keyword_min_score,
+            )
+
+            if r.get("filtered"):
+                continue
+
+            # 确定难度桶
+            bucket_name = self._get_difficulty_bucket(snip_difficulty)
+
+            # 从 content 提取 method_name 和 lines_of_code
+            snip_content = snip.get("content", "")
+            snip_method_name, snip_loc = _extract_method_info(snip_content)
+
+            buckets[bucket_name].append({
+                "id": snip.get("id"),
+                "content_hash": snip.get("content_hash"),
+                "content": snip_content,
+                "score": round(r["final_score"], 3),
+                "ast_ratio": round(r["ast_score"], 2),
+                "keyword_score": round(r["keyword_score"], 2),
+                "difficulty": round(snip_difficulty, 2),
+                "method_name": snip_method_name,
+                "lines_of_code": snip_loc,
+                "file_path": snip.get("file_path") or snip.get("source_path"),
+            })
+
+        # 5. 每个桶内按得分排序并截取
+        matrix = {}
+        total = 0
+        for level_name, items in buckets.items():
+            # 按得分降序，ID 升序（稳定排序）
+            items.sort(key=lambda x: (-x["score"], x["id"]))
+            matrix[level_name] = items[:per_level]
+            total += len(matrix[level_name])
+
+        levels = [level["name"] for level in self.DEFAULT_DIFFICULTY_LEVELS]
+        shape = [len(levels), per_level]
+
+        # 6. 兜底逻辑：如果结果为空，降低阈值重试
+        if total == 0 and candidates and (ast_min_ratio > 0.0 or keyword_min_score > 0.0):
+            log.warning("[SearchService.matrix_search] 矩阵结果为空，启用兜底逻辑（降低阈值重试）")
+            fallback_ast_ratio = max(0.0, ast_min_ratio * 0.5)
+            fallback_kw_score = max(0.0, keyword_min_score * 0.5)
+
+            fallback_buckets = {level["name"]: [] for level in self.DEFAULT_DIFFICULTY_LEVELS}
+
+            for snip in candidates:
+                ast_raw = snip.get("ast_features")
+                if isinstance(ast_raw, (str, bytes, bytearray)):
+                    snip_ast_nodes = safe_read_json(ast_raw, default=[])
+                else:
+                    snip_ast_nodes = ast_raw or []
+
+                snip_keywords_norm = normalize_keywords_list(snip.get("keywords"))
+                snip_difficulty = snip.get("complexity_score") or snip.get("difficulty") or 0.5
+
+                r = calculate_match_score(
+                    kp_ast_nodes=need_nodes,
+                    snip_ast_nodes=snip_ast_nodes,
+                    kp_keywords=kp_keywords_norm,
+                    snip_keywords=snip_keywords_norm,
+                    kp_name=kp_cfg.get("name"),
+                    snip_difficulty=snip_difficulty,
+                    target_difficulty=0.5,
+                    difficulty_mode="relaxed",
+                    weights=matrix_weights,
+                    ast_min_ratio=fallback_ast_ratio,
+                    keyword_min_score=fallback_kw_score,
+                )
+
+                if r.get("filtered"):
+                    continue
+
+                bucket_name = self._get_difficulty_bucket(snip_difficulty)
+                snip_content = snip.get("content", "")
+                snip_method_name, snip_loc = _extract_method_info(snip_content)
+
+                fallback_buckets[bucket_name].append({
+                    "id": snip.get("id"),
+                    "content_hash": snip.get("content_hash"),
+                    "content": snip_content,
+                    "score": round(r["final_score"], 3),
+                    "ast_ratio": round(r["ast_score"], 2),
+                    "keyword_score": round(r["keyword_score"], 2),
+                    "difficulty": round(snip_difficulty, 2),
+                    "method_name": snip_method_name,
+                    "lines_of_code": snip_loc,
+                    "file_path": snip.get("file_path") or snip.get("source_path"),
+                    "fallback": True,  # 标记为兜底结果
+                })
+
+            # 重新构建矩阵
+            matrix = {}
+            total = 0
+            for level_name, items in fallback_buckets.items():
+                items.sort(key=lambda x: (-x["score"], x["id"]))
+                matrix[level_name] = items[:per_level]
+                total += len(matrix[level_name])
+
+            log.info("[SearchService.matrix_search] 兜底结果: total=%d, 分布=%s",
+                     total, {k: len(v) for k, v in matrix.items()})
+
+        log.info("[SearchService.matrix_search] 矩阵搜索完成: shape=%s, total=%d, 分布=%s",
+                 shape, total, {k: len(v) for k, v in matrix.items()})
+
+        return {
+            "kp_id": kp_id,
+            "shape": shape,
+            "levels": levels,
+            "per_level": per_level,
+            "matrix": matrix,
+            "total": total,
+        }
+
+    def composite_matrix_search(
+        self,
+        kp_ids: List[int],
+        per_level: int = 5,
+        ast_min_ratio: float = 0.4,
+        keyword_min_score: float = 0.4,
+        score_aggregation: str = "average",
+    ) -> Dict[str, Any]:
+        """
+        综合知识点矩阵匹配：找到涉及多个知识点的代码片段，按难度分级返回
+
+        :param kp_ids: 知识点 ID 列表
+        :param per_level: 每个难度级别返回的片段数量
+        :param ast_min_ratio: AST 最低阈值
+        :param keyword_min_score: 关键词最低得分
+        :param score_aggregation: 得分聚合方式
+        :return: 矩阵结构结果
+        """
+        log.info("[SearchService.composite_matrix_search] 开始综合矩阵搜索: kp_ids=%s, per_level=%d, agg=%s",
+                 kp_ids, per_level, score_aggregation)
+
+        if not kp_ids:
+            log.warning("[SearchService.composite_matrix_search] 知识点列表为空")
+            return {
+                "kp_ids": [],
+                "shape": [3, per_level],
+                "levels": [l["name"] for l in self.DEFAULT_DIFFICULTY_LEVELS],
+                "per_level": per_level,
+                "matrix": {l["name"]: [] for l in self.DEFAULT_DIFFICULTY_LEVELS},
+                "total": 0,
+            }
+
+        # 1. 获取所有知识点配置
+        kp_configs = []
+        all_kp_keywords = set()
+        all_kp_nodes = set()
+
+        for kp_id in kp_ids:
+            kp_row = self.kp_mgr.get_by_id(kp_id)
+            if not kp_row:
+                raise KnowledgePointNotFoundError(kp_id)
+
+            kp_level = kp_row.get("level")
+            if kp_level != 3:
+                raise NonLeafKnowledgePointError(kp_id, kp_level, kp_row.get("name", ""))
+
+            kp_cfg = self.kp_mgr.parse_kp_config(kp_row)
+            need_nodes = extract_required_nodes(kp_cfg.get("ast"))
+            if not need_nodes and kp_cfg.get("required_nodes"):
+                need_nodes = set(kp_cfg["required_nodes"])
+
+            kp_keywords_norm = normalize_keywords_list(kp_cfg.get("keywords", []))
+
+            kp_configs.append({
+                "id": kp_id,
+                "name": kp_cfg.get("name"),
+                "nodes": need_nodes,
+                "keywords": kp_keywords_norm
+            })
+
+            all_kp_keywords.update(kp_keywords_norm)
+            all_kp_nodes.update(need_nodes)
+
+        # 2. 获取候选片段
+        candidates = self._fetch_candidates(list(all_kp_keywords), all_kp_nodes, limit=self.candidate_limit)
+        log.info("[SearchService.composite_matrix_search] 获取候选片段数量: %d", len(candidates))
+
+        # 3. 使用矩阵模式权重
+        matrix_weights = self._get_matrix_weights()
+
+        # 按难度分桶
+        buckets = {level["name"]: [] for level in self.DEFAULT_DIFFICULTY_LEVELS}
+
+        for snip in candidates:
+            snip_id = snip.get("id")
+
+            # 解析特征
+            ast_raw = snip.get("ast_features")
+            if isinstance(ast_raw, (str, bytes, bytearray)):
+                snip_ast_nodes = safe_read_json(ast_raw, default=[])
+            else:
+                snip_ast_nodes = ast_raw or []
+
+            snip_keywords_norm = normalize_keywords_list(snip.get("keywords"))
+            snip_difficulty = snip.get("complexity_score") or snip.get("difficulty") or 0.5
+
+            # 计算每个知识点的得分
+            kp_scores = []
+            kp_details = []
+
+            for kp_cfg in kp_configs:
+                r = calculate_match_score(
+                    kp_ast_nodes=kp_cfg["nodes"],
+                    snip_ast_nodes=snip_ast_nodes,
+                    kp_keywords=kp_cfg["keywords"],
+                    snip_keywords=snip_keywords_norm,
+                    kp_name=kp_cfg["name"],
+                    snip_difficulty=snip_difficulty,
+                    target_difficulty=0.5,
+                    difficulty_mode="relaxed",
+                    weights=matrix_weights,
+                    ast_min_ratio=ast_min_ratio,
+                    keyword_min_score=keyword_min_score,
+                )
+
+                if r.get("filtered"):
+                    kp_scores.append(0.0)
+                else:
+                    kp_scores.append(r["final_score"])
+
+                kp_details.append({
+                    "kp_id": kp_cfg["id"],
+                    "kp_name": kp_cfg["name"],
+                    "score": round(kp_scores[-1], 3),
+                })
+
+            # 聚合得分
+            if score_aggregation == "average":
+                composite_score = sum(kp_scores) / len(kp_scores) if kp_scores else 0
+            elif score_aggregation == "min":
+                composite_score = min(kp_scores) if kp_scores else 0
+            elif score_aggregation == "sum":
+                composite_score = sum(kp_scores)
+            else:
+                composite_score = sum(kp_scores) / len(kp_scores) if kp_scores else 0
+
+            if composite_score < 0.1:
+                continue
+
+            # 标记是否满足所有知识点
+            all_kp_matched = all(s > 0 for s in kp_scores)
+
+            # 确定难度桶
+            bucket_name = self._get_difficulty_bucket(snip_difficulty)
+
+            buckets[bucket_name].append({
+                "id": snip.get("id"),
+                "content": snip.get("content", ""),
+                "composite_score": round(composite_score, 3),
+                "difficulty": round(snip_difficulty, 2),
+                "kp_count": len(kp_configs),
+                "kp_details": kp_details,
+                "score_aggregation": score_aggregation,
+                "file_path": snip.get("file_path") or snip.get("source_path"),
+                "_all_kp_matched": all_kp_matched,  # 内部标记
+            })
+
+        # 4. 分层过滤：每个桶内优先严格匹配，无结果时降级到宽松模式
+        matrix = {}
+        total = 0
+        fallback_used = False
+
+        for level_name, items in buckets.items():
+            # 分离严格匹配和宽松匹配
+            strict_items = [it for it in items if it.get("_all_kp_matched")]
+
+            if strict_items:
+                # 有严格匹配结果
+                final_items = strict_items
+            else:
+                # 降级到宽松模式
+                final_items = items
+                if items:
+                    fallback_used = True
+                    log.warning("[SearchService.composite_matrix_search] %s 级别无严格匹配，降级到宽松模式", level_name)
+
+            # 排序并截取
+            final_items.sort(key=lambda x: (-x["composite_score"], x["id"]))
+            final_items = final_items[:per_level]
+
+            # 清理内部标记，标记部分匹配
+            for it in final_items:
+                is_partial = not it.pop("_all_kp_matched", True)
+                if is_partial:
+                    it["partial_match"] = True
+
+            matrix[level_name] = final_items
+            total += len(final_items)
+
+        levels = [level["name"] for level in self.DEFAULT_DIFFICULTY_LEVELS]
+        shape = [len(levels), per_level]
+
+        log.info("[SearchService.composite_matrix_search] 综合矩阵搜索完成: shape=%s, total=%d, 分布=%s, 降级=%s",
+                 shape, total, {k: len(v) for k, v in matrix.items()}, fallback_used)
+
+        return {
+            "kp_ids": kp_ids,
+            "shape": shape,
+            "levels": levels,
+            "per_level": per_level,
+            "matrix": matrix,
+            "total": total,
+        }

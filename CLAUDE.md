@@ -194,6 +194,12 @@ Hybrid scoring algorithm with three components:
   - Aggregates scores using: `average` (balanced), `min` (strict), or `sum` (coverage)
   - Returns snippets with highest composite scores
   - Use case: Find code demonstrating multiple concepts (e.g., loops + exception handling)
+- **Matrix matching** (`matrix_search()` / `composite_matrix_search()` methods):
+  - Groups matching results by difficulty level (easy/medium/hard)
+  - Uses normalized weights without difficulty: `w_ast=0.22, w_keyword=0.78`
+  - Difficulty is classification dimension, not scoring weight
+  - Returns matrix format: `{"easy": [...], "medium": [...], "hard": [...]}`
+  - Supports fallback logic and partial matching (same as list mode)
 - **Service singleton**: Both API and offline tasks share a single instance via `_get_search_service()` (in offline tasks) or `get_search_service()` (in API routes) to avoid recreating connection pools
 
 **KnowledgeService** (`knowledge_service.py`):
@@ -278,6 +284,8 @@ Matching Endpoints:
 - `POST /api/match` - Single KP matching with parameters
 - `POST /api/match/batch` - Multiple KP matching (independent)
 - `POST /api/match/composite` - Composite KP matching (find code involving multiple KPs)
+- `POST /api/match/matrix` - Single KP matching with difficulty-grouped matrix return
+- `POST /api/match/composite/matrix` - Composite KP matching with difficulty-grouped matrix return
 - `GET /api/match/health` - Service health check
 
 ### Logging Strategy
@@ -420,6 +428,30 @@ The repository includes both unit tests and a comprehensive evaluation framework
 3. Update `src/matching/strategies.py` (NODE_MAPPING if templates change)
 4. Re-analyze existing code files: `python scripts/setup_database.py --import-project ./code_repos`
 
+### Using Matrix Mode Matching
+
+**When to use**: Return results grouped by difficulty level (easy/medium/hard) for adaptive learning scenarios.
+
+**Single KP Matrix**:
+```bash
+curl -X POST http://localhost:5000/api/match/matrix \
+  -H "Content-Type: application/json" \
+  -d '{"kp_id": 10011, "per_level": 5}'
+```
+
+**Composite KP Matrix**:
+```bash
+curl -X POST http://localhost:5000/api/match/composite/matrix \
+  -H "Content-Type: application/json" \
+  -d '{"kp_ids": [10011, 10012], "per_level": 5, "score_aggregation": "average"}'
+```
+
+**Key differences from list mode**:
+- Difficulty is classification dimension, not scoring weight
+- Weights normalized: `w_ast=0.22, w_keyword=0.78, w_difficulty=0.0`
+- Response format: `{"matrix": {"easy": [...], "medium": [...], "hard": [...]}, "shape": [3, n]}`
+- Composite matrix requires code to match ALL KPs; returns empty if no combined matches exist
+
 ### Using Composite Knowledge Point Matching
 
 **When to use**: Find code snippets that demonstrate multiple programming concepts simultaneously.
@@ -513,6 +545,12 @@ results = search_service.search(
 ```
 
 ## Recent Major Changes
+
+**v1.3.5** (2026-02-24):
+- **矩阵匹配模式**：新增 `/api/match/matrix` 和 `/api/match/composite/matrix` 端点
+- **按难度分级返回**：easy/medium/hard 三级分桶，每级返回 top-n 结果
+- **权重归一化**：矩阵模式使用 `w_ast=0.22, w_keyword=0.78`，难度不参与打分
+- **OpenSpec 归档**：`2026-02-24-add-matrix-difficulty-matching`
 
 **v1.3.3** (2026-02-07):
 - **非叶子节点校验**：API 拒绝对分类节点（level!=3）进行匹配，返回明确错误信息
