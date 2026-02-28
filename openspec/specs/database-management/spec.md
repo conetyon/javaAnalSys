@@ -165,6 +165,7 @@ CREATE TABLE IF NOT EXISTS knowledge_points (
     kp_id INT PRIMARY KEY AUTO_INCREMENT,
     parent_id INT NULL,
     name VARCHAR(255) NOT NULL,
+    name_zh VARCHAR(255),          -- Chinese name (added v1.4.0)
     description TEXT,
     level INT NOT NULL,
     ast_template TEXT,

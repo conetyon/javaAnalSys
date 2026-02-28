@@ -29,15 +29,15 @@ class KnowledgeService:
         # 使用递归 CTE 查询获取层级数据
         sql = """
             WITH RECURSIVE KnowledgeHierarchy AS (
-                SELECT id, name, parent_id, level, CAST(id AS CHAR(1000)) AS sort_path
+                SELECT id, name, name_zh, parent_id, level, CAST(id AS CHAR(1000)) AS sort_path
                 FROM knowledge_points
                 WHERE parent_id IS NULL
                 UNION ALL
-                SELECT kp.id, kp.name, kp.parent_id, kp.level, CONCAT(kh.sort_path, '/', kp.id)
+                SELECT kp.id, kp.name, kp.name_zh, kp.parent_id, kp.level, CONCAT(kh.sort_path, '/', kp.id)
                 FROM knowledge_points AS kp
                 JOIN KnowledgeHierarchy AS kh ON kp.parent_id = kh.id
             )
-            SELECT id, name, parent_id, level
+            SELECT id, name, name_zh, parent_id, level
             FROM KnowledgeHierarchy
             ORDER BY sort_path;
         """
@@ -165,6 +165,9 @@ class KnowledgeService:
             # 前端组件适配字段
             node['title'] = node['name']
             node['key'] = node['id']
+            # 中文名（可能为 None）
+            if 'name_zh' not in node:
+                node['name_zh'] = None
 
         tree = []
         for node in node_map.values():

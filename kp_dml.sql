@@ -8,24 +8,25 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- =========================
 -- Domain layer (level = 1)
 -- =========================
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(1, 'Core Syntax & Types', NULL, 1, NULL, NULL, NULL),
-(2, 'Control Flow', NULL, 1, NULL, NULL, NULL),
-(3, 'OOP Fundamentals', NULL, 1, NULL, NULL, NULL),
-(4, 'Encapsulation & Modifiers', NULL, 1, NULL, NULL, NULL),
-(5, 'Generics', NULL, 1, NULL, NULL, NULL),
-(6, 'Exceptions', NULL, 1, NULL, NULL, NULL),
-(7, 'Collections', NULL, 1, NULL, NULL, NULL),
-(8, 'Streams & Functional', NULL, 1, NULL, NULL, NULL),
-(9, 'Lambda & Method References', NULL, 1, NULL, NULL, NULL),
-(10, 'Optional', NULL, 1, NULL, NULL, NULL),
-(11, 'Concurrency', NULL, 1, NULL, NULL, NULL),
-(12, 'I/O & NIO', NULL, 1, NULL, NULL, NULL),
-(13, 'Date & Time', NULL, 1, NULL, NULL, NULL),
-(14, 'Annotations & Reflection', NULL, 1, NULL, NULL, NULL),
-(15, 'Modules & Packaging', NULL, 1, NULL, NULL, NULL)
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(1, 'Core Syntax & Types', '核心语法与类型', NULL, 1, NULL, NULL, NULL),
+(2, 'Control Flow', '流程控制', NULL, 1, NULL, NULL, NULL),
+(3, 'OOP Fundamentals', '面向对象基础', NULL, 1, NULL, NULL, NULL),
+(4, 'Encapsulation & Modifiers', '封装与修饰符', NULL, 1, NULL, NULL, NULL),
+(5, 'Generics', '泛型', NULL, 1, NULL, NULL, NULL),
+(6, 'Exceptions', '异常处理', NULL, 1, NULL, NULL, NULL),
+(7, 'Collections', '集合框架', NULL, 1, NULL, NULL, NULL),
+(8, 'Streams & Functional', 'Stream与函数式编程', NULL, 1, NULL, NULL, NULL),
+(9, 'Lambda & Method References', 'Lambda与方法引用', NULL, 1, NULL, NULL, NULL),
+(10, 'Optional', 'Optional类', NULL, 1, NULL, NULL, NULL),
+(11, 'Concurrency', '并发编程', NULL, 1, NULL, NULL, NULL),
+(12, 'I/O & NIO', '输入输出与NIO', NULL, 1, NULL, NULL, NULL),
+(13, 'Date & Time', '日期与时间', NULL, 1, NULL, NULL, NULL),
+(14, 'Annotations & Reflection', '注解与反射', NULL, 1, NULL, NULL, NULL),
+(15, 'Modules & Packaging', '模块与包管理', NULL, 1, NULL, NULL, NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -35,55 +36,56 @@ ON DUPLICATE KEY UPDATE
 -- =========================
 -- Module layer (level = 2)
 -- =========================
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(101, 'Primitives & Strings', 1, 2, NULL, NULL, NULL),
-(102, 'Arrays & Variables', 1, 2, NULL, NULL, NULL),
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(101, 'Primitives & Strings', '基本类型与字符串', 1, 2, NULL, NULL, NULL),
+(102, 'Arrays & Variables', '数组与变量', 1, 2, NULL, NULL, NULL),
 
-(201, 'Conditionals & Switch', 2, 2, NULL, NULL, NULL),
-(202, 'Loops & Jumps', 2, 2, NULL, NULL, NULL),
+(201, 'Conditionals & Switch', '条件语句与Switch', 2, 2, NULL, NULL, NULL),
+(202, 'Loops & Jumps', '循环与跳转', 2, 2, NULL, NULL, NULL),
 
-(301, 'Classes & Members', 3, 2, NULL, NULL, NULL),
-(302, 'Inheritance & Polymorphism', 3, 2, NULL, NULL, NULL),
+(301, 'Classes & Members', '类与成员', 3, 2, NULL, NULL, NULL),
+(302, 'Inheritance & Polymorphism', '继承与多态', 3, 2, NULL, NULL, NULL),
 
-(401, 'Access & Final', 4, 2, NULL, NULL, NULL),
-(402, 'Static & Inner', 4, 2, NULL, NULL, NULL),
+(401, 'Access & Final', '访问控制与Final', 4, 2, NULL, NULL, NULL),
+(402, 'Static & Inner', '静态成员与内部类', 4, 2, NULL, NULL, NULL),
 
-(501, 'Generic Types', 5, 2, NULL, NULL, NULL),
-(502, 'Wildcards & Bounds', 5, 2, NULL, NULL, NULL),
+(501, 'Generic Types', '泛型类型', 5, 2, NULL, NULL, NULL),
+(502, 'Wildcards & Bounds', '通配符与边界', 5, 2, NULL, NULL, NULL),
 
-(601, 'Handling Basics', 6, 2, NULL, NULL, NULL),
-(602, 'Advanced Exception Handling', 6, 2, NULL, NULL, NULL),
+(601, 'Handling Basics', '异常处理基础', 6, 2, NULL, NULL, NULL),
+(602, 'Advanced Exception Handling', '高级异常处理', 6, 2, NULL, NULL, NULL),
 
-(701, 'List', 7, 2, NULL, NULL, NULL),
-(702, 'Set', 7, 2, NULL, NULL, NULL),
-(703, 'Map', 7, 2, NULL, NULL, NULL),
-(704, 'Queue & Deque', 7, 2, NULL, NULL, NULL),
+(701, 'List', 'List列表', 7, 2, NULL, NULL, NULL),
+(702, 'Set', 'Set集合', 7, 2, NULL, NULL, NULL),
+(703, 'Map', 'Map映射', 7, 2, NULL, NULL, NULL),
+(704, 'Queue & Deque', '队列与双端队列', 7, 2, NULL, NULL, NULL),
 
-(801, 'Streams', 8, 2, NULL, NULL, NULL),
-(802, 'Collectors & Terminal Operations', 8, 2, NULL, NULL, NULL),
+(801, 'Streams', 'Stream流', 8, 2, NULL, NULL, NULL),
+(802, 'Collectors & Terminal Operations', '收集器与终端操作', 8, 2, NULL, NULL, NULL),
 
-(901, 'Lambda', 9, 2, NULL, NULL, NULL),
-(902, 'Method References & Functional Utilities', 9, 2, NULL, NULL, NULL),
+(901, 'Lambda', 'Lambda表达式', 9, 2, NULL, NULL, NULL),
+(902, 'Method References & Functional Utilities', '方法引用与函数工具', 9, 2, NULL, NULL, NULL),
 
-(1001, 'Optional Basics', 10, 2, NULL, NULL, NULL),
-(1002, 'Optional Advanced', 10, 2, NULL, NULL, NULL),
+(1001, 'Optional Basics', 'Optional基础', 10, 2, NULL, NULL, NULL),
+(1002, 'Optional Advanced', 'Optional进阶', 10, 2, NULL, NULL, NULL),
 
-(1101, 'Threads & Synchronization', 11, 2, NULL, NULL, NULL),
-(1102, 'Executors & Locks', 11, 2, NULL, NULL, NULL),
+(1101, 'Threads & Synchronization', '线程与同步', 11, 2, NULL, NULL, NULL),
+(1102, 'Executors & Locks', '执行器与锁', 11, 2, NULL, NULL, NULL),
 
-(1201, 'IO Streams', 12, 2, NULL, NULL, NULL),
-(1202, 'NIO Files & Channels', 12, 2, NULL, NULL, NULL),
+(1201, 'IO Streams', 'IO流', 12, 2, NULL, NULL, NULL),
+(1202, 'NIO Files & Channels', 'NIO文件与通道', 12, 2, NULL, NULL, NULL),
 
-(1301, 'Core Time Types', 13, 2, NULL, NULL, NULL),
-(1302, 'Formatting & Duration', 13, 2, NULL, NULL, NULL),
+(1301, 'Core Time Types', '核心时间类型', 13, 2, NULL, NULL, NULL),
+(1302, 'Formatting & Duration', '格式化与时间段', 13, 2, NULL, NULL, NULL),
 
-(1401, 'Annotations', 14, 2, NULL, NULL, NULL),
-(1402, 'Reflection', 14, 2, NULL, NULL, NULL),
+(1401, 'Annotations', '注解', 14, 2, NULL, NULL, NULL),
+(1402, 'Reflection', '反射', 14, 2, NULL, NULL, NULL),
 
-(1501, 'Packages & Imports', 15, 2, NULL, NULL, NULL),
-(1502, 'Java Modules', 15, 2, NULL, NULL, NULL)
+(1501, 'Packages & Imports', '包与导入', 15, 2, NULL, NULL, NULL),
+(1502, 'Java Modules', 'Java模块系统', 15, 2, NULL, NULL, NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -95,28 +97,28 @@ ON DUPLICATE KEY UPDATE
 -- ============================================
 
 -- Domain 1: Core Syntax & Types (Modules: 101, 102) [6 items]
--- 修正说明：required_nodes 仅保留 AST 节点类型，具体关键字移到 keywords
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10001, 'Primitive types: int/double/boolean', 101, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10001, 'Primitive types: int/double/boolean', '基本类型：int/double/boolean', 101, 3,
   '{"template":"PrimitiveType","required_nodes":["integral_type","floating_point_type","boolean_type"]}',
   '["int","double","boolean","long","short","byte","char","float","primitive","type"]', NULL),
-(10002, 'Type casting and promotion', 102, 3,
+(10002, 'Type casting and promotion', '类型转换与提升', 102, 3,
   '{"template":"PrimitiveType","required_nodes":["cast_expression"]}',
   '["cast","type_cast","primitive","conversion","int","double","float"]', NULL),
-(10003, 'String operations basics', 101, 3,
+(10003, 'String operations basics', '字符串基础操作', 101, 3,
   '{"template":"Class","required_nodes":["type_identifier","method_invocation"]}',
   '["string","substring","indexof","length","java.lang.string","charat"]', NULL),
-(10004, 'StringBuilder and StringBuffer', 101, 3,
+(10004, 'StringBuilder and StringBuffer', 'StringBuilder与StringBuffer', 101, 3,
   '{"template":"StringBuilder","required_nodes":["type_identifier","object_creation_expression"]}',
   '["stringbuilder","stringbuffer","append","tostring","java.lang"]', NULL),
-(10005, 'Arrays basics', 102, 3,
+(10005, 'Arrays basics', '数组基础', 102, 3,
   '{"template":"Arrays","required_nodes":["array_creation_expression","array_type"]}',
   '["array","new","length","index","element"]', NULL),
-(10006, 'var and local type inference', 102, 3,
+(10006, 'var and local type inference', 'var与局部类型推断', 102, 3,
   '{"template":"Class","required_nodes":["local_variable_declaration"]}',
   '["var","type_inference","local_variable","java10"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -124,27 +126,28 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Domain 2: Control Flow (Modules: 201, 202) [6 items]
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10007, 'if statement', 201, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10007, 'if statement', 'if条件语句', 201, 3,
   '{"template":"IfStatement","required_nodes":["if_statement"]}',
   '["if","condition"]', NULL),
-(10008, 'switch statement', 201, 3,
+(10008, 'switch statement', 'switch语句', 201, 3,
   '{"template":"ControlFlow","required_nodes":["switch_statement"]}',
   '["switch","case","default"]', NULL),
-(10009, 'switch expression', 201, 3,
+(10009, 'switch expression', 'switch表达式', 201, 3,
   '{"template":"ControlFlow","required_nodes":["switch_expression"]}',
   '["switch","expression","case","yield"]', NULL),
-(10010, 'for loop', 202, 3,
+(10010, 'for loop', 'for循环', 202, 3,
   '{"template":"ForStatement","required_nodes":["for_statement","enhanced_for_statement"]}',
   '["for","loop","iteration"]', NULL),
-(10011, 'while loop', 202, 3,
+(10011, 'while loop', 'while循环', 202, 3,
   '{"template":"WhileStatement","required_nodes":["while_statement"]}',
   '["while","loop","condition"]', NULL),
-(10012, 'break and continue', 202, 3,
+(10012, 'break and continue', 'break与continue', 202, 3,
   '{"template":"ControlFlow","required_nodes":["break_statement","continue_statement"]}',
   '["break","continue","loop"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -152,33 +155,34 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Domain 3: OOP Fundamentals (Modules: 301, 302) [8 items]
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10013, 'Class declaration', 301, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10013, 'Class declaration', '类声明', 301, 3,
   '{"template":"Class","required_nodes":["class_declaration"]}',
   '["class","declaration"]', NULL),
-(10014, 'Fields and methods', 301, 3,
+(10014, 'Fields and methods', '字段与方法', 301, 3,
   '{"template":"Class","required_nodes":["method_declaration"]}',
   '["field","method","member"]', NULL),
-(10015, 'Constructors', 301, 3,
+(10015, 'Constructors', '构造方法', 301, 3,
   '{"template":"Class","required_nodes":["constructor_declaration"]}',
   '["constructor","init"]', NULL),
-(10016, 'this and super usage', 301, 3,
+(10016, 'this and super usage', 'this与super的使用', 301, 3,
   '{"template":"Class","required_nodes":["method_declaration"]}',
   '["this","super","reference"]', NULL),
-(10017, 'Inheritance: extends', 302, 3,
+(10017, 'Inheritance: extends', '继承：extends关键字', 302, 3,
   '{"template":"Inheritance","required_nodes":["method_invocation"]}',
   '["super","extends","superclass","inheritance"]', NULL),
-(10018, 'Method overriding and @Override', 302, 3,
+(10018, 'Method overriding and @Override', '方法重写与@Override', 302, 3,
   '{"template":"Polymorphism","required_nodes":["method_declaration","annotation"]}',
   '["override","@override","polymorphism","method"]', NULL),
-(10019, 'Interface declaration', 302, 3,
+(10019, 'Interface declaration', '接口声明', 302, 3,
   '{"template":"Interface","required_nodes":["interface_declaration"]}',
   '["interface","implements"]', NULL),
-(10020, 'Abstract class and methods', 302, 3,
+(10020, 'Abstract class and methods', '抽象类与抽象方法', 302, 3,
   '{"template":"Class","required_nodes":["class_declaration","method_declaration"]}',
   '["abstract","class","method"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -186,21 +190,22 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Domain 4: Encapsulation & Modifiers (Modules: 401, 402) [4 items]
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10021, 'Access modifiers: private/protected/public', 401, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10021, 'Access modifiers: private/protected/public', '访问修饰符：private/protected/public', 401, 3,
   '{"template":"Class","required_nodes":["method_declaration"]}',
   '["access","private","protected","public","encapsulation"]', NULL),
-(10022, 'final keyword usage', 401, 3,
+(10022, 'final keyword usage', 'final关键字用法', 401, 3,
   '{"template":"Class","required_nodes":["field_declaration","modifiers"]}',
   '["final","constant","immutable"]', NULL),
-(10023, 'static fields and methods', 402, 3,
+(10023, 'static fields and methods', '静态字段与方法', 402, 3,
   '{"template":"Class","required_nodes":["method_declaration","modifiers"]}',
   '["static","class_member"]', NULL),
-(10024, 'Inner and anonymous classes', 402, 3,
+(10024, 'Inner and anonymous classes', '内部类与匿名类', 402, 3,
   '{"template":"Class","required_nodes":["class_declaration","anonymous_class_declaration"]}',
   '["inner_class","anonymous_class"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -208,27 +213,28 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Domain 5: Generics (Modules: 501, 502) [6 items]
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10025, 'Generic class declaration', 501, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10025, 'Generic class declaration', '泛型类声明', 501, 3,
   '{"template":"Class","required_nodes":["type_parameter","class_declaration"]}',
   '["generics","type_parameter","class"]', NULL),
-(10026, 'Generic methods', 501, 3,
+(10026, 'Generic methods', '泛型方法', 501, 3,
   '{"template":"Class","required_nodes":["type_parameter","method_declaration"]}',
   '["generics","method","type_parameter"]', NULL),
-(10027, 'Diamond operator', 501, 3,
+(10027, 'Diamond operator', '菱形运算符', 501, 3,
   '{"template":"Class","required_nodes":["object_creation_expression"]}',
   '["diamond","generics","new"]', NULL),
-(10028, 'Wildcard ?', 502, 3,
+(10028, 'Wildcard ?', '通配符 ?', 502, 3,
   '{"template":"Class","required_nodes":["type_argument"]}',
   '["wildcard","type_argument","generics"]', NULL),
-(10029, 'Upper bound extends', 502, 3,
+(10029, 'Upper bound extends', '上界 extends', 502, 3,
   '{"template":"Class","required_nodes":["type_bound"]}',
   '["extends","bound","generics"]', NULL),
-(10030, 'Lower bound super', 502, 3,
+(10030, 'Lower bound super', '下界 super', 502, 3,
   '{"template":"Class","required_nodes":["type_bound"]}',
   '["super","bound","generics"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -236,27 +242,28 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Domain 6: Exceptions (Modules: 601, 602) [6 items]
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10031, 'try-catch basics', 601, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10031, 'try-catch basics', 'try-catch基础', 601, 3,
   '{"template":"Exception","required_nodes":["try_statement","catch_clause"]}',
   '["try","catch","exception"]', NULL),
-(10032, 'finally clause', 601, 3,
+(10032, 'finally clause', 'finally子句', 601, 3,
   '{"template":"Exception","required_nodes":["finally_clause","try_statement"]}',
   '["finally","cleanup","exception"]', NULL),
-(10033, 'throw and throws', 601, 3,
+(10033, 'throw and throws', 'throw与throws', 601, 3,
   '{"template":"Exception","required_nodes":["throw_statement"]}',
   '["throw","throws","exception"]', NULL),
-(10034, 'try-with-resources', 602, 3,
+(10034, 'try-with-resources', 'try-with-resources语句', 602, 3,
   '{"required_nodes":["resource_specification","try_with_resources_statement"]}',
   '["bufferedreader","filereader","filewriter","connection","preparedstatement","resultset","autocloseable"]', NULL),
-(10035, 'Custom exception class', 602, 3,
+(10035, 'Custom exception class', '自定义异常类', 602, 3,
   '{"template":"Class","required_nodes":["class_declaration","extends_clause"]}',
   '["extends","exception","runtimeexception"]', NULL),
-(10036, 'Rethrow exceptions', 602, 3,
+(10036, 'Rethrow exceptions', '异常重新抛出', 602, 3,
   '{"template":"Exception","required_nodes":["throw_statement","catch_clause"]}',
   '["rethrow","exception","throw"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -264,23 +271,23 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Domain 7: Collections (Modules: 701, 702, 703, 704) [16 items]
--- 修正说明：增强 keywords，确保锚点词汇完整（list/arraylist/hashset等）
 -- List
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10037, 'ArrayList basics', 701, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10037, 'ArrayList basics', 'ArrayList基础', 701, 3,
   '{"template":"ArrayList","required_nodes":["type_identifier"]}',
   '["arraylist","java.util.list","add","get","remove","list","new"]', NULL),
-(10038, 'LinkedList basics', 701, 3,
+(10038, 'LinkedList basics', 'LinkedList基础', 701, 3,
   '{"template":"LinkedList","required_nodes":["type_identifier"]}',
   '["linkedlist","java.util.list","add","remove","get","list","new"]', NULL),
-(10039, 'List add/remove/get', 701, 3,
+(10039, 'List add/remove/get', 'List增删查操作', 701, 3,
   '{"template":"Declare<List>","required_nodes":["method_invocation"]}',
   '["java.util.list","add","remove","get","list"]', NULL),
-(10040, 'List sorting with Comparator', 701, 3,
+(10040, 'List sorting with Comparator', 'List排序与Comparator', 701, 3,
   '{"template":"Declare<List>","required_nodes":["method_invocation"]}',
   '["list","sort","comparator","java.util"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -288,21 +295,22 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Set
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10041, 'HashSet basics', 702, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10041, 'HashSet basics', 'HashSet基础', 702, 3,
   '{"template":"HashSet","required_nodes":["type_identifier"]}',
   '["hashset","java.util.set","add","contains","remove","set","new"]', NULL),
-(10042, 'TreeSet basics', 702, 3,
+(10042, 'TreeSet basics', 'TreeSet基础', 702, 3,
   '{"template":"Declare<Set>","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
   '["java.util.set","treeset","comparator","add","remove","set","new"]', NULL),
-(10043, 'Set add/remove/contains', 702, 3,
+(10043, 'Set add/remove/contains', 'Set增删查操作', 702, 3,
   '{"template":"Declare<Set>","required_nodes":["method_invocation"]}',
   '["java.util.set","add","remove","contains","set"]', NULL),
-(10044, 'LinkedHashSet basics', 702, 3,
+(10044, 'LinkedHashSet basics', 'LinkedHashSet基础', 702, 3,
   '{"template":"Declare<Set>","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
   '["java.util.set","linkedhashset","order","add","set","new"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -310,21 +318,22 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Map
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10045, 'HashMap basics', 703, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10045, 'HashMap basics', 'HashMap基础', 703, 3,
   '{"template":"HashMap","required_nodes":["type_identifier"]}',
   '["hashmap","java.util.map","put","get","containskey","map","new"]', NULL),
-(10046, 'LinkedHashMap basics', 703, 3,
+(10046, 'LinkedHashMap basics', 'LinkedHashMap基础', 703, 3,
   '{"template":"Class","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
   '["java.util.map","linkedhashmap","order","put","get","map","new"]', NULL),
-(10047, 'TreeMap basics', 703, 3,
+(10047, 'TreeMap basics', 'TreeMap基础', 703, 3,
   '{"template":"Class","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
   '["java.util.map","treemap","comparator","put","get","map","new"]', NULL),
-(10048, 'Map entrySet iteration', 703, 3,
+(10048, 'Map entrySet iteration', 'Map的entrySet遍历', 703, 3,
   '{"template":"MapEntrySet","required_nodes":["enhanced_for_statement","method_invocation"]}',
   '["entryset","entry","java.util.map","iterator","foreach","map"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -332,21 +341,22 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Queue & Deque
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10049, 'ArrayDeque basics', 704, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10049, 'ArrayDeque basics', 'ArrayDeque基础', 704, 3,
   '{"template":"Class","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
   '["java.util.deque","arraydeque","push","pop","peek","deque","new"]', NULL),
-(10050, 'PriorityQueue basics', 704, 3,
+(10050, 'PriorityQueue basics', 'PriorityQueue基础', 704, 3,
   '{"template":"Class","required_nodes":["object_creation_expression","type_identifier","method_invocation"]}',
   '["java.util.queue","priorityqueue","offer","poll","peek","queue","new"]', NULL),
-(10051, 'Queue offer/poll/peek', 704, 3,
+(10051, 'Queue offer/poll/peek', 'Queue入队出队查看', 704, 3,
   '{"template":"Class","required_nodes":["method_invocation"]}',
   '["java.util.queue","offer","poll","peek","queue"]', NULL),
-(10052, 'Deque push/pop', 704, 3,
+(10052, 'Deque push/pop', 'Deque压栈弹栈', 704, 3,
   '{"template":"Class","required_nodes":["method_invocation"]}',
   '["java.util.deque","push","pop","peek","deque"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -355,21 +365,22 @@ ON DUPLICATE KEY UPDATE
 
 -- Domain 8: Streams & Functional (Modules: 801, 802) [8 items]
 -- Streams
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10053, 'Stream pipeline creation', 801, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10053, 'Stream pipeline creation', 'Stream流水线创建', 801, 3,
   '{"template":"StreamPipeline","required_nodes":["method_invocation"]}',
   '["stream","pipeline","collection","java.util.stream"]', NULL),
-(10054, 'Intermediate operations: map/filter', 801, 3,
+(10054, 'Intermediate operations: map/filter', '中间操作：map/filter', 801, 3,
   '{"template":"StreamMapFilter","required_nodes":["method_invocation"]}',
   '["filter","map","stream","transform","java.util.stream"]', NULL),
-(10055, 'flatMap', 801, 3,
+(10055, 'flatMap', 'flatMap扁平映射', 801, 3,
   '{"template":"Stream","required_nodes":["method_invocation"]}',
   '["stream","flatmap"]', NULL),
-(10056, 'sorted and distinct', 801, 3,
+(10056, 'sorted and distinct', 'sorted排序与distinct去重', 801, 3,
   '{"template":"Stream","required_nodes":["method_invocation"]}',
   '["stream","sorted","distinct"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -377,44 +388,46 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Collectors & Terminal
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10057, 'collect toList/toSet', 802, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10057, 'collect toList/toSet', 'collect收集为List/Set', 802, 3,
   '{"template":"StreamCollect","required_nodes":["method_invocation"]}',
   '["collect","collectors","tolist","toset","stream","java.util.stream"]', NULL),
-(10058, 'reduce', 802, 3,
+(10058, 'reduce', 'reduce归约操作', 802, 3,
   '{"template":"Stream","required_nodes":["method_invocation"]}',
   '["stream","reduce"]', NULL),
-(10059, 'findFirst/findAny', 802, 3,
+(10059, 'findFirst/findAny', 'findFirst/findAny查找', 802, 3,
   '{"template":"Stream","required_nodes":["method_invocation"]}',
   '["stream","findfirst","findany"]', NULL),
-(10060, 'parallel streams', 802, 3,
+(10060, 'parallel streams', '并行流', 802, 3,
   '{"template":"Stream","required_nodes":["method_invocation"]}',
   '["stream","parallel","performance"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
   keywords=VALUES(keywords),
   semantic_vec=semantic_vec;
 
--- Domain 9: Lambda & Method References (Modules: 901, 902) [6 items]
+-- Domain 9: Lambda & Method References (Modules: 901, 902) [8 items]
 -- Lambda
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10061, 'Lambda expression basics', 901, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10061, 'Lambda expression basics', 'Lambda表达式基础', 901, 3,
   '{"template":"LambdaExpression","required_nodes":["lambda_expression"]}',
   '["lambda","functional","expression","arrow"]', NULL),
-(10062, 'Functional interfaces', 901, 3,
+(10062, 'Functional interfaces', '函数式接口', 901, 3,
   '{"template":"Class","required_nodes":["interface_declaration"]}',
   '["functional_interface","@functionalinterface","interface"]', NULL),
-(10063, 'Predicate and Function', 901, 3,
+(10063, 'Predicate and Function', 'Predicate与Function', 901, 3,
   '{"template":"Class","required_nodes":["type_identifier"]}',
   '["predicate","function","java.util.function"]', NULL),
-(10064, 'Comparator with lambda', 901, 3,
+(10064, 'Comparator with lambda', 'Lambda实现Comparator', 901, 3,
   '{"template":"Class","required_nodes":["lambda_expression","method_invocation"]}',
   '["comparator","lambda","compare"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -422,21 +435,22 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Method References & Functional Utilities
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10065, 'Method references', 902, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10065, 'Method references', '方法引用', 902, 3,
   '{"template":"MethodReference","required_nodes":["method_reference"]}',
   '["method_reference","lambda","::"]', NULL),
-(10066, 'Consumer and Supplier', 902, 3,
+(10066, 'Consumer and Supplier', 'Consumer与Supplier', 902, 3,
   '{"template":"Class","required_nodes":["type_identifier"]}',
   '["consumer","supplier","java.util.function"]', NULL),
-(10067, 'Stream forEach with method reference', 902, 3,
+(10067, 'Stream forEach with method reference', 'Stream的forEach与方法引用', 902, 3,
   '{"template":"Stream","required_nodes":["method_invocation","method_reference"]}',
   '["stream","foreach","method_reference"]', NULL),
-(10068, 'Function composition andThen', 902, 3,
+(10068, 'Function composition andThen', 'Function组合andThen', 902, 3,
   '{"template":"Class","required_nodes":["method_invocation"]}',
   '["function","andthen","compose","java.util.function"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -444,21 +458,22 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Domain 10: Optional (Modules: 1001, 1002) [4 items]
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10069, 'Optional basics', 1001, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10069, 'Optional basics', 'Optional基础', 1001, 3,
   '{"template":"Class","required_nodes":["method_invocation"]}',
   '["optional","java.util.optional","empty","of"]', NULL),
-(10070, 'Optional map/filter/orElse', 1001, 3,
+(10070, 'Optional map/filter/orElse', 'Optional的map/filter/orElse', 1001, 3,
   '{"template":"Class","required_nodes":["method_invocation"]}',
   '["optional","map","filter","orelse"]', NULL),
-(10071, 'orElseGet and ifPresent', 1002, 3,
+(10071, 'orElseGet and ifPresent', 'orElseGet与ifPresent', 1002, 3,
   '{"template":"Class","required_nodes":["method_invocation"]}',
   '["optional","orelseget","ifpresent"]', NULL),
-(10072, 'Optional flatMap', 1002, 3,
+(10072, 'Optional flatMap', 'Optional的flatMap', 1002, 3,
   '{"template":"Class","required_nodes":["method_invocation"]}',
   '["optional","flatmap"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -467,21 +482,22 @@ ON DUPLICATE KEY UPDATE
 
 -- Domain 11: Concurrency (Modules: 1101, 1102) [8 items]
 -- Threads & Synchronization
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10073, 'Thread creation: Thread/Runnable', 1101, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10073, 'Thread creation: Thread/Runnable', '线程创建：Thread/Runnable', 1101, 3,
   '{"template":"ThreadCreation","required_nodes":["object_creation_expression","method_invocation"]}',
   '["thread","runnable","start","run","execute"]', NULL),
-(10074, 'synchronized keyword', 1101, 3,
+(10074, 'synchronized keyword', 'synchronized关键字', 1101, 3,
   '{"template":"Synchronized","required_nodes":["synchronized_statement"]}',
   '["synchronized","lock","thread","concurrency"]', NULL),
-(10075, 'volatile variable', 1101, 3,
+(10075, 'volatile variable', 'volatile变量', 1101, 3,
   '{"template":"Class","required_nodes":["field_declaration","modifiers"]}',
   '["volatile","memory_visibility"]', NULL),
-(10076, 'wait and notify', 1101, 3,
+(10076, 'wait and notify', 'wait与notify', 1101, 3,
   '{"template":"WaitNotify","required_nodes":["synchronized_statement","method_invocation"]}',
   '["wait","notify","notifyall","synchronized","monitor"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -489,21 +505,22 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Executors & Locks
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10077, 'ExecutorService submit', 1102, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10077, 'ExecutorService submit', 'ExecutorService提交任务', 1102, 3,
   '{"template":"Class","required_nodes":["method_invocation","type_identifier"]}',
   '["executorservice","submit","threadpool"]', NULL),
-(10078, 'Future get', 1102, 3,
+(10078, 'Future get', 'Future获取结果', 1102, 3,
   '{"template":"Class","required_nodes":["method_invocation","type_identifier"]}',
   '["future","get","async"]', NULL),
-(10079, 'ReentrantLock usage', 1102, 3,
+(10079, 'ReentrantLock usage', 'ReentrantLock使用', 1102, 3,
   '{"template":"Class","required_nodes":["method_invocation","identifier"]}',
   '["reentrantlock","lock","unlock","concurrency"]', NULL),
-(10080, 'AtomicInteger operations', 1102, 3,
+(10080, 'AtomicInteger operations', 'AtomicInteger操作', 1102, 3,
   '{"template":"Class","required_nodes":["method_invocation","identifier"]}',
   '["atomicinteger","getandincrement","atomic"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -512,21 +529,22 @@ ON DUPLICATE KEY UPDATE
 
 -- Domain 12: I/O & NIO (Modules: 1201, 1202) [6 items]
 -- IO Streams
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10081, 'FileInputStream and FileOutputStream', 1201, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10081, 'FileInputStream and FileOutputStream', 'FileInputStream与FileOutputStream', 1201, 3,
   '{"template":"Class","required_nodes":["object_creation_expression","method_invocation"]}',
   '["fileinputstream","fileoutputstream","read","write","io"]', NULL),
-(10082, 'BufferedReader and BufferedWriter', 1201, 3,
+(10082, 'BufferedReader and BufferedWriter', 'BufferedReader与BufferedWriter', 1201, 3,
   '{"template":"BufferedReaderWriter","required_nodes":["type_identifier","object_creation_expression"]}',
   '["bufferedreader","bufferedwriter","readline","read","write","io"]', NULL),
-(10083, 'PrintStream println', 1201, 3,
+(10083, 'PrintStream println', 'PrintStream打印输出', 1201, 3,
   '{"template":"PrintStream","required_nodes":["method_invocation","field_access"]}',
   '["println","print","printf","system.out","system.err","printstream"]', NULL),
-(10084, 'Charset and encoding', 1201, 3,
+(10084, 'Charset and encoding', '字符集与编码', 1201, 3,
   '{"template":"Class","required_nodes":["type_identifier","method_invocation"]}',
   '["charset","standardcharsets","encoding"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -534,15 +552,16 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- NIO Files & Channels
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10085, 'Paths and Files', 1202, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10085, 'Paths and Files', 'Paths与Files工具类', 1202, 3,
   '{"template":"Class","required_nodes":["method_invocation","field_access"]}',
   '["paths","files","path","nio","readalllines","write","exists","create"]', NULL),
-(10086, 'FileChannel and ByteBuffer', 1202, 3,
+(10086, 'FileChannel and ByteBuffer', 'FileChannel与ByteBuffer', 1202, 3,
   '{"template":"Class","required_nodes":["method_invocation","object_creation_expression"]}',
   '["filechannel","bytebuffer","nio","channel"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -551,18 +570,19 @@ ON DUPLICATE KEY UPDATE
 
 -- Domain 13: Date & Time (Modules: 1301, 1302) [6 items]
 -- Core Time Types
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10087, 'LocalDate', 1301, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10087, 'LocalDate', 'LocalDate日期类', 1301, 3,
   '{"template":"LocalDate","required_nodes":["type_identifier","method_invocation"]}',
   '["localdate","java.time","date","now","parse","format"]', NULL),
-(10088, 'LocalDateTime', 1301, 3,
+(10088, 'LocalDateTime', 'LocalDateTime日期时间类', 1301, 3,
   '{"template":"Class","required_nodes":["type_identifier","method_invocation"]}',
   '["localdatetime","java.time","datetime"]', NULL),
-(10089, 'Instant', 1301, 3,
+(10089, 'Instant', 'Instant时间戳', 1301, 3,
   '{"template":"Class","required_nodes":["type_identifier","method_invocation"]}',
   '["instant","java.time","timestamp"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -570,18 +590,19 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Formatting & Duration
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10090, 'DateTimeFormatter', 1302, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10090, 'DateTimeFormatter', 'DateTimeFormatter格式化', 1302, 3,
   '{"template":"Class","required_nodes":["method_invocation"]}',
   '["datetimeformatter","format","parse","java.time.format"]', NULL),
-(10091, 'ZonedDateTime and ZoneId', 1302, 3,
+(10091, 'ZonedDateTime and ZoneId', 'ZonedDateTime与ZoneId', 1302, 3,
   '{"template":"Class","required_nodes":["type_identifier","method_invocation"]}',
   '["zoneddatetime","zoneid","java.time"]', NULL),
-(10092, 'Period and Duration', 1302, 3,
+(10092, 'Period and Duration', 'Period与Duration', 1302, 3,
   '{"template":"Class","required_nodes":["type_identifier","method_invocation"]}',
   '["period","duration","java.time"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -590,18 +611,19 @@ ON DUPLICATE KEY UPDATE
 
 -- Domain 14: Annotations & Reflection (Modules: 1401, 1402) [6 items]
 -- Annotations
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10093, '@Override and @Deprecated usage', 1401, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10093, '@Override and @Deprecated usage', '@Override与@Deprecated用法', 1401, 3,
   '{"template":"Annotations","required_nodes":["marker_annotation","normal_annotation"]}',
   '["@override","@deprecated","annotation","override","deprecated"]', NULL),
-(10094, 'Custom annotation declaration', 1401, 3,
+(10094, 'Custom annotation declaration', '自定义注解声明', 1401, 3,
   '{"template":"Class","required_nodes":["annotation_declaration"]}',
   '["annotation","@interface","declaration"]', NULL),
-(10095, 'Retention and Target', 1401, 3,
+(10095, 'Retention and Target', 'Retention与Target元注解', 1401, 3,
   '{"template":"Class","required_nodes":["annotation"]}',
   '["retention","target","meta-annotation"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -609,18 +631,19 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Reflection
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10096, 'Class.forName and ClassLoader', 1402, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10096, 'Class.forName and ClassLoader', 'Class.forName与ClassLoader', 1402, 3,
   '{"template":"Class","required_nodes":["method_invocation"]}',
   '["class","forname","classloader","reflection"]', NULL),
-(10097, 'getMethods and getFields', 1402, 3,
+(10097, 'getMethods and getFields', 'getMethods与getFields', 1402, 3,
   '{"template":"Class","required_nodes":["method_invocation"]}',
   '["getmethods","getfields","reflection"]', NULL),
-(10098, 'Annotation introspection getAnnotation', 1402, 3,
+(10098, 'Annotation introspection getAnnotation', 'getAnnotation注解内省', 1402, 3,
   '{"template":"Class","required_nodes":["method_invocation"]}',
   '["getannotation","annotation","reflection"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),
@@ -628,15 +651,16 @@ ON DUPLICATE KEY UPDATE
   semantic_vec=semantic_vec;
 
 -- Domain 15: Modules & Packaging (Modules: 1501, 1502) [2 items]
-INSERT INTO knowledge_points (id, name, parent_id, level, ast_template, keywords, semantic_vec) VALUES
-(10099, 'package declaration', 1501, 3,
+INSERT INTO knowledge_points (id, name, name_zh, parent_id, level, ast_template, keywords, semantic_vec) VALUES
+(10099, 'package declaration', 'package包声明', 1501, 3,
   '{"template":"Class","required_nodes":["package_declaration"]}',
   '["package","declaration"]', NULL),
-(10100, 'module-info requires', 1502, 3,
+(10100, 'module-info requires', 'module-info模块依赖', 1502, 3,
   '{"template":"Class","required_nodes":["module_declaration"]}',
   '["module","requires","java.modules"]', NULL)
 ON DUPLICATE KEY UPDATE
   name=VALUES(name),
+  name_zh=VALUES(name_zh),
   parent_id=VALUES(parent_id),
   level=VALUES(level),
   ast_template=VALUES(ast_template),

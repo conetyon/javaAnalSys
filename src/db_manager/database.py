@@ -40,7 +40,8 @@ class DatabaseInitializer(BaseManager):
             ('''CREATE TABLE IF NOT EXISTS knowledge_points
                 (
                     id           INT PRIMARY KEY AUTO_INCREMENT,
-                    name         TEXT NOT NULL,
+                    name         VARCHAR(255) NOT NULL,
+                    name_zh      VARCHAR(255),
                     parent_id    INTEGER,
                     level        INTEGER,
                     ast_template TEXT,

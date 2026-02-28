@@ -546,6 +546,14 @@ results = search_service.search(
 
 ## Recent Major Changes
 
+**v1.4.0** (2026-02-28):
+- **前端界面 MVP**：新增 React + TypeScript 前端（`frontend/` 目录）
+- **知识点中文名称**：`knowledge_points` 表新增 `name_zh` 字段，147 个知识点中英双语
+- **后端扩展**：`KnowledgeService.get_tree()` 返回 `name_zh` 字段
+- **前端组件**：KnowledgeTree（树形浏览）、CodeBlock（语法高亮）、MatchResultCard（结果卡片）
+- **交互优化**：点击整行展开/折叠树节点，中英文双语搜索
+- **OpenSpec**：`add-frontend-ui` 迭代 1 完成
+
 **v1.3.5** (2026-02-24):
 - **矩阵匹配模式**：新增 `/api/match/matrix` 和 `/api/match/composite/matrix` 端点
 - **按难度分级返回**：easy/medium/hard 三级分桶，每级返回 top-n 结果

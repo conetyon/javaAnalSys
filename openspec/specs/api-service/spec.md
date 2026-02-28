@@ -9,7 +9,7 @@ The system SHALL provide an endpoint to retrieve the hierarchical tree structure
 #### Scenario: Get complete knowledge point tree
 - **WHEN** GET request is sent to `/api/knowledge/tree`
 - **THEN** response contains hierarchical tree structure (L1→L2→L3)
-- **AND** each node includes kp_id, name, description, level, and children
+- **AND** each node includes id, name, name_zh (Chinese name), level, and children
 - **AND** response status is 200 OK
 
 #### Scenario: Handle tree query error
