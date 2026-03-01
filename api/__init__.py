@@ -55,7 +55,7 @@ def create_app(config_object=None) -> Flask:
         return {
             "code": 200,
             "message": "Java Knowledge Matching API",
-            "version": "1.3.1",
+            "version": "1.4.0",
             "endpoints": {
                 "health": "GET /api/health",
                 "metrics": "GET /api/metrics",
@@ -65,6 +65,8 @@ def create_app(config_object=None) -> Flask:
                 "match": "POST /api/match",
                 "batch_match": "POST /api/match/batch",
                 "composite_match": "POST /api/match/composite",
+                "matrix_match": "POST /api/match/matrix",
+                "composite_matrix_match": "POST /api/match/composite/matrix",
                 "match_health": "GET /api/match/health"
             }
         }

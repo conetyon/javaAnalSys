@@ -5,3 +5,4 @@
 export * from './api';
 export * from './knowledge';
 export * from './match';
+export * from './auth';

@@ -29,7 +29,7 @@ from lib.globals import core_logger as log
 
 
 def init_schema():
-    """初始化数据库表结构"""
+    """初始化数据库表结构（含管理员账号）"""
     print("\n" + "=" * 70)
     print("[1] 初始化数据库表结构")
     print("=" * 70)
@@ -42,6 +42,10 @@ def init_schema():
         db_init.init_db()
 
         print("[OK] 数据库表结构初始化完成")
+
+        # 自动创建管理员账号
+        create_admin_user()
+
         return True
     except Exception as e:
         print(f"[ERROR] 表结构初始化失败: {e}")
@@ -339,6 +343,63 @@ def analyze_sample_code():
 
     except Exception as e:
         print(f"[WARN] 示例代码分析失败: {e}")
+        return True  # 非关键步骤，失败不影响整体
+
+
+def create_admin_user():
+    """创建预置管理员账号（从 .env 读取凭证）"""
+    print("\n" + "=" * 70)
+    print("[*] 创建管理员账号")
+    print("=" * 70)
+
+    try:
+        import os
+        import bcrypt
+        from dotenv import load_dotenv
+        from lib.client.db import MySQLClient
+        from config import DB_NAME
+
+        load_dotenv()
+
+        username = os.environ.get('ADMIN_USERNAME', 'admin')
+        password = os.environ.get('ADMIN_PASSWORD')
+
+        if not password:
+            print("[WARN] ADMIN_PASSWORD 未在 .env 中设置，跳过管理员创建")
+            print("       请在 .env 文件中添加: ADMIN_PASSWORD=your-secure-password")
+            return True  # 非关键步骤
+
+        # Check if users table exists
+        client = MySQLClient(db=DB_NAME)
+        try:
+            client.fetch_one("SELECT 1 FROM users LIMIT 1")
+        except Exception:
+            print("[SKIP] users 表不存在，跳过管理员创建")
+            return True
+
+        # Check if admin already exists
+        existing = client.fetch_one(
+            "SELECT id FROM users WHERE username = %s",
+            (username,)
+        )
+        if existing:
+            print(f"[OK] 管理员账号 '{username}' 已存在")
+            return True
+
+        # Create admin user
+        password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+        client.execute(
+            """INSERT INTO users (username, password_hash, role)
+               VALUES (%s, %s, 'admin')""",
+            (username, password_hash)
+        )
+
+        print(f"[OK] 管理员账号 '{username}' 已创建")
+        return True
+
+    except Exception as e:
+        print(f"[WARN] 管理员创建失败: {e}")
         return True  # 非关键步骤，失败不影响整体
 
 

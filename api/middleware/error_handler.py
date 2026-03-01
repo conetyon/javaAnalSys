@@ -38,6 +38,13 @@ class InternalServerException(ApiException):
         super().__init__(message, code=500, error=error)
 
 
+class UnauthorizedException(ApiException):
+    """未授权访问异常"""
+
+    def __init__(self, message: str = "未授权访问", error: str = None):
+        super().__init__(message, code=401, error=error)
+
+
 def register_error_handlers(app: Flask):
     """
     注册全局异常处理器
@@ -80,6 +87,16 @@ def register_error_handlers(app: Flask):
             "error": str(e)
         }), 400
 
+    @app.errorhandler(401)
+    def handle_unauthorized(e):
+        """处理原生 401 错误（如 abort(401)）"""
+        log.warning(f"[{request.method}] {request.path} - Unauthorized: {str(e)}")
+        return jsonify({
+            "code": 401,
+            "message": "未授权访问",
+            "error": str(e.description) if hasattr(e, 'description') else str(e)
+        }), 401
+
     @app.errorhandler(404)
     def handle_not_found(e):
         """处理 404 错误"""
@@ -119,15 +136,3 @@ def register_error_handlers(app: Flask):
             "message": "服务器内部错误",
             "error": str(e)
         }), 500
-
-    # 请求日志中间件
-    @app.before_request
-    def log_request():
-        """记录请求日志"""
-        log.debug(f"[{request.method}] {request.path} - Request started")
-
-    @app.after_request
-    def log_response(response):
-        """记录响应日志"""
-        log.debug(f"[{request.method}] {request.path} - Response: {response.status_code}")
-        return response

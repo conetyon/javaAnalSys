@@ -1,6 +1,8 @@
 /**
  * 知识点树组件
- * 三级层级展示，点击叶子节点触发匹配
+ * 三级层级展示，支持单选和多选模式
+ * 单选：点击叶子节点触发匹配
+ * 多选：勾选多个叶子节点进行组合匹配（最多5个）
  */
 
 import { useEffect, useState, useMemo } from 'react';
@@ -16,9 +18,16 @@ import {
 import { getKnowledgeTree } from '../api/knowledge';
 import { KnowledgeTreeNode } from '../types/knowledge';
 
+const MAX_SELECTED = 5; // 多选模式最多选择数量
+
 interface KnowledgeTreeProps {
+  // 单选回调
   onSelect: (kpId: number, kpName: string, kpNameZh: string | null, level: number) => void;
   selectedKey?: number;
+  // 多选模式
+  checkable?: boolean;
+  checkedKeys?: number[];
+  onCheckedChange?: (checkedKps: Array<{ id: number; name: string; name_zh: string | null }>) => void;
 }
 
 const STORAGE_KEY = 'knowledge_tree_expanded';
@@ -29,11 +38,25 @@ function countLeafNodes(node: KnowledgeTreeNode): number {
   return node.children.reduce((sum, child) => sum + countLeafNodes(child), 0);
 }
 
+// 构建 ID -> 节点映射
+function buildNodeMap(nodes: KnowledgeTreeNode[]): Map<number, KnowledgeTreeNode> {
+  const map = new Map<number, KnowledgeTreeNode>();
+  const traverse = (nodeList: KnowledgeTreeNode[]) => {
+    nodeList.forEach((node) => {
+      map.set(node.id, node);
+      traverse(node.children);
+    });
+  };
+  traverse(nodes);
+  return map;
+}
+
 // 转换数据添加图标和标题
 function transformTreeData(
   nodes: KnowledgeTreeNode[],
   expandedKeys: React.Key[],
-  searchText: string
+  searchText: string,
+  checkable: boolean
 ): TreeDataNode[] {
   const searchLower = searchText.toLowerCase();
 
@@ -99,7 +122,7 @@ function transformTreeData(
       );
 
       const children = node.children.length > 0
-        ? transformTreeData(node.children, expandedKeys, searchText).filter(Boolean) as TreeDataNode[]
+        ? transformTreeData(node.children, expandedKeys, searchText, checkable).filter(Boolean) as TreeDataNode[]
         : undefined;
 
       // 如果搜索模式下子节点都被过滤了，且自己不匹配，则隐藏
@@ -116,16 +139,29 @@ function transformTreeData(
         icon,
         children,
         isLeaf: node.level === 3,
+        // 多选模式下只允许勾选叶子节点
+        checkable: checkable && node.level === 3,
+        // 非叶子节点禁用勾选
+        disableCheckbox: checkable && node.level !== 3,
       };
     })
     .filter(Boolean) as TreeDataNode[];
 }
 
-export default function KnowledgeTree({ onSelect, selectedKey }: KnowledgeTreeProps) {
+export default function KnowledgeTree({
+  onSelect,
+  selectedKey,
+  checkable = false,
+  checkedKeys = [],
+  onCheckedChange,
+}: KnowledgeTreeProps) {
   const [rawData, setRawData] = useState<KnowledgeTreeNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
   const [searchText, setSearchText] = useState('');
+
+  // 节点映射（用于快速查找节点信息）
+  const nodeMap = useMemo(() => buildNodeMap(rawData), [rawData]);
 
   // 加载知识点树
   useEffect(() => {
@@ -154,8 +190,8 @@ export default function KnowledgeTree({ onSelect, selectedKey }: KnowledgeTreePr
 
   // 转换后的树数据
   const treeData = useMemo(
-    () => transformTreeData(rawData, expandedKeys, searchText),
-    [rawData, expandedKeys, searchText]
+    () => transformTreeData(rawData, expandedKeys, searchText, checkable),
+    [rawData, expandedKeys, searchText, checkable]
   );
 
   // 搜索时自动展开匹配的节点
@@ -184,10 +220,72 @@ export default function KnowledgeTree({ onSelect, selectedKey }: KnowledgeTreePr
     }
   };
 
-  // 选择节点
+  // 选择节点（单选模式 / 多选模式点击整行触发勾选）
   const handleSelect: TreeProps['onSelect'] = (_, info) => {
     const node = info.node as unknown as KnowledgeTreeNode;
+
+    // 多选模式：点击整行触发勾选（仅限叶子节点）
+    if (checkable && node.level === 3 && onCheckedChange) {
+      const currentIds = checkedKeys;
+      const isCurrentlyChecked = currentIds.includes(node.id);
+
+      if (isCurrentlyChecked) {
+        // 取消勾选
+        const newCheckedNodes = currentIds
+          .filter((id) => id !== node.id)
+          .map((id) => {
+            const n = nodeMap.get(id);
+            return n ? { id: n.id, name: n.name, name_zh: n.name_zh } : null;
+          })
+          .filter((n): n is { id: number; name: string; name_zh: string | null } => n !== null);
+        onCheckedChange(newCheckedNodes);
+      } else {
+        // 添加勾选
+        if (currentIds.length >= MAX_SELECTED) {
+          message.warning(`最多只能选择 ${MAX_SELECTED} 个知识点`);
+          return;
+        }
+        const newCheckedNodes = [...currentIds, node.id]
+          .map((id) => {
+            const n = nodeMap.get(id);
+            return n ? { id: n.id, name: n.name, name_zh: n.name_zh } : null;
+          })
+          .filter((n): n is { id: number; name: string; name_zh: string | null } => n !== null);
+        onCheckedChange(newCheckedNodes);
+      }
+      return;
+    }
+
+    // 单选模式：正常触发选择
     onSelect(node.id, node.name, node.name_zh, node.level);
+  };
+
+  // 勾选节点（多选模式）
+  const handleCheck: TreeProps['onCheck'] = (checked) => {
+    if (!onCheckedChange) return;
+
+    // checked 可能是数组或对象（带 halfChecked）
+    const checkedKeysArray = Array.isArray(checked) ? checked : checked.checked;
+    const numericKeys = checkedKeysArray.map(Number);
+
+    // 检查是否超过限制
+    if (numericKeys.length > MAX_SELECTED) {
+      message.warning(`最多只能选择 ${MAX_SELECTED} 个知识点`);
+      return;
+    }
+
+    // 获取勾选节点的详细信息
+    const checkedNodes = numericKeys
+      .map((id) => {
+        const node = nodeMap.get(id);
+        if (node && node.level === 3) {
+          return { id: node.id, name: node.name, name_zh: node.name_zh };
+        }
+        return null;
+      })
+      .filter((n): n is { id: number; name: string; name_zh: string | null } => n !== null);
+
+    onCheckedChange(checkedNodes);
   };
 
   if (loading) {
@@ -216,6 +314,11 @@ export default function KnowledgeTree({ onSelect, selectedKey }: KnowledgeTreePr
       {/* 统计信息 */}
       <div style={{ marginBottom: 8, fontSize: 12, color: '#999' }}>
         共 {rawData.length} 个分类，{totalL3} 个知识点
+        {checkable && checkedKeys.length > 0 && (
+          <span style={{ marginLeft: 8, color: '#1890ff' }}>
+            已选 {checkedKeys.length}/{MAX_SELECTED}
+          </span>
+        )}
       </div>
 
       {/* 树 */}
@@ -228,6 +331,11 @@ export default function KnowledgeTree({ onSelect, selectedKey }: KnowledgeTreePr
         showIcon
         blockNode
         expandAction="click"
+        // 多选模式
+        checkable={checkable}
+        checkedKeys={checkedKeys}
+        onCheck={handleCheck}
+        checkStrictly={true}  // 父子节点不联动
         style={{
           background: '#fafafa',
           borderRadius: 6,

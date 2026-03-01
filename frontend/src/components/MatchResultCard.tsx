@@ -1,11 +1,11 @@
 /**
  * 匹配结果卡片组件
- * 展示代码、得分、文件路径，支持复制和折叠
+ * 展示代码、得分、文件路径，支持复制、折叠、收藏
  */
 
 import { useState } from 'react';
 import { Card, Typography, Space, Button, Tag, message, Tooltip } from 'antd';
-import { CopyOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
+import { CopyOutlined, DownOutlined, UpOutlined, StarOutlined, StarFilled } from '@ant-design/icons';
 import CodeBlock from './CodeBlock';
 import { MatchResultItem } from '../types/match';
 
@@ -14,12 +14,26 @@ const { Text } = Typography;
 interface MatchResultCardProps {
   item: MatchResultItem;
   rank: number;
+  extra?: React.ReactNode;  // 额外内容（如组合匹配的知识点列表）
+  isFavorite?: boolean;     // 是否已收藏
+  onFavoriteToggle?: (snippetId: number, isFavorite: boolean) => void;  // 收藏切换回调
+  showFavorite?: boolean;   // 是否显示收藏按钮
+  isComposite?: boolean;    // 是否为组合匹配模式（隐藏 AST/KW 指标）
 }
 
 const MAX_LINES_COLLAPSED = 20;
 
-export default function MatchResultCard({ item, rank }: MatchResultCardProps) {
+export default function MatchResultCard({
+  item,
+  rank,
+  extra,
+  isFavorite = false,
+  onFavoriteToggle,
+  showFavorite = false,
+  isComposite = false,
+}: MatchResultCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   const lines = item.content.split('\n');
   const needsFolding = lines.length > MAX_LINES_COLLAPSED;
@@ -32,6 +46,17 @@ export default function MatchResultCard({ item, rank }: MatchResultCardProps) {
       message.success('代码已复制到剪贴板');
     } catch {
       message.error('复制失败，请手动选择复制');
+    }
+  };
+
+  // 收藏切换
+  const handleFavorite = async () => {
+    if (!onFavoriteToggle || !item.id) return;
+    setFavoriteLoading(true);
+    try {
+      await onFavoriteToggle(item.id, !isFavorite);
+    } finally {
+      setFavoriteLoading(false);
     }
   };
 
@@ -59,28 +84,52 @@ export default function MatchResultCard({ item, rank }: MatchResultCardProps) {
         <Space>
           <Tag color="blue">#{rank}</Tag>
           <Tag color={getScoreColor(item.score)}>
-            得分: {(item.score * 100).toFixed(1)}%
+            {isComposite ? '综合得分' : '得分'}: {(item.score * 100).toFixed(1)}%
           </Tag>
-          <Tooltip title="AST 匹配率">
-            <Tag>AST: {(item.ast_ratio * 100).toFixed(0)}%</Tag>
-          </Tooltip>
-          <Tooltip title={`关键词命中: ${item.keyword_hit}/${item.keyword_total}`}>
-            <Tag>KW: {(item.keyword_score * 100).toFixed(0)}%</Tag>
-          </Tooltip>
+          {/* 单选模式显示 AST/KW 指标 */}
+          {!isComposite && (
+            <>
+              <Tooltip title="AST 匹配率">
+                <Tag>AST: {(item.ast_ratio * 100).toFixed(0)}%</Tag>
+              </Tooltip>
+              <Tooltip title={`关键词命中: ${item.keyword_hit}/${item.keyword_total}`}>
+                <Tag>KW: {(item.keyword_score * 100).toFixed(0)}%</Tag>
+              </Tooltip>
+            </>
+          )}
+          {/* 组合模式显示知识点数量 */}
+          {isComposite && item.keyword_total > 0 && (
+            <Tooltip title="涉及的知识点数量">
+              <Tag color="purple">涉及 {item.keyword_total} 个知识点</Tag>
+            </Tooltip>
+          )}
           <Tooltip title={`代码复杂度: ${(item.difficulty * 100).toFixed(0)}%`}>
             <Tag color={diffLabel.color}>{diffLabel.text}</Tag>
           </Tooltip>
         </Space>
       }
       extra={
-        <Button
-          type="text"
-          icon={<CopyOutlined />}
-          onClick={handleCopy}
-          size="small"
-        >
-          复制
-        </Button>
+        <Space>
+          {showFavorite && item.id && (
+            <Tooltip title={isFavorite ? '取消收藏' : '收藏'}>
+              <Button
+                type="text"
+                icon={isFavorite ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />}
+                onClick={handleFavorite}
+                loading={favoriteLoading}
+                size="small"
+              />
+            </Tooltip>
+          )}
+          <Button
+            type="text"
+            icon={<CopyOutlined />}
+            onClick={handleCopy}
+            size="small"
+          >
+            复制
+          </Button>
+        </Space>
       }
       style={{ marginBottom: 16 }}
     >
@@ -106,6 +155,9 @@ export default function MatchResultCard({ item, rank }: MatchResultCardProps) {
           </Text>
         </div>
       )}
+
+      {/* 额外内容（如组合匹配的知识点列表） */}
+      {extra}
     </Card>
   );
 }

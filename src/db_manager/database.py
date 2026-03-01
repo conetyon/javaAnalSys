@@ -84,6 +84,44 @@ class DatabaseInitializer(BaseManager):
                     metrics      JSON,
                     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     INDEX idx_dataset (dataset_name)
+                )''', ()),
+
+            # users 表：用户认证（迭代 2）
+            ('''CREATE TABLE IF NOT EXISTS users
+                (
+                    id            INT PRIMARY KEY AUTO_INCREMENT,
+                    username      VARCHAR(50) NOT NULL UNIQUE,
+                    password_hash VARCHAR(128) NOT NULL,
+                    email         VARCHAR(100) UNIQUE,
+                    role          ENUM('user', 'admin') DEFAULT 'user',
+                    last_login_at TIMESTAMP NULL,
+                    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                )''', ()),
+
+            # match_history 表：匹配历史记录（迭代 3）
+            ('''CREATE TABLE IF NOT EXISTS match_history
+                (
+                    id         INT PRIMARY KEY AUTO_INCREMENT,
+                    user_id    INT NOT NULL,
+                    kp_ids     JSON NOT NULL,
+                    kp_names   JSON NOT NULL,
+                    params     JSON NOT NULL,
+                    mode       VARCHAR(20) DEFAULT 'list',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )''', ()),
+
+            # favorites 表：用户收藏（迭代 3）
+            ('''CREATE TABLE IF NOT EXISTS favorites
+                (
+                    id         INT PRIMARY KEY AUTO_INCREMENT,
+                    user_id    INT NOT NULL,
+                    snippet_id INT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (snippet_id) REFERENCES code_snippets(id) ON DELETE CASCADE,
+                    UNIQUE KEY uk_user_snippet (user_id, snippet_id)
                 )''', ())
         ]
 
@@ -102,6 +140,14 @@ class DatabaseInitializer(BaseManager):
             # 复合索引：file_id + complexity_score（用于按文件和难度筛选）
             ('''CREATE INDEX idx_snippets_file_complexity
                 ON code_snippets(file_id, complexity_score)''', 'idx_snippets_file_complexity'),
+
+            # match_history: 用户+时间复合索引（历史记录分页查询）
+            ('''CREATE INDEX idx_match_history_user_created
+                ON match_history(user_id, created_at DESC)''', 'idx_match_history_user_created'),
+
+            # favorites: 用户+时间复合索引（收藏列表分页查询）
+            ('''CREATE INDEX idx_favorites_user_created
+                ON favorites(user_id, created_at DESC)''', 'idx_favorites_user_created'),
 
             # 哈希索引：用于幂等导入检查（已在表定义中定义为 UNIQUE，此处可选）
             # ('''CREATE INDEX idx_content_hash

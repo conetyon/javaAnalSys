@@ -1,11 +1,11 @@
 # Java 知识点匹配系统
 
 > For graduation-design-2026, BUPT
-> **Version**: v1.4.0
+> **Version**: v1.5.0
 
 一个基于 AST 分析和关键词匹配的 Java 代码知识点匹配系统。采用混合打分策略（AST 结构 + 关键词语义 + 难度评估），支持单点匹配、综合知识点匹配和矩阵模式匹配。
 
-**新增**：前端界面支持知识点浏览和代码匹配，支持中英双语显示。
+**新增 v1.5.0**：完整前端界面（用户认证、历史记录、收藏功能、矩阵/组合匹配模式）。
 
 ## 📋 目录
 
@@ -364,6 +364,18 @@ python scripts/run_experiments.py --quick
 - Node.js 18+
 - npm 或 yarn
 
+### 环境配置
+
+```bash
+# 复制环境变量模板
+cp .env.example .env
+
+# 编辑 .env 文件，设置必要的变量
+# JWT_SECRET=your-32-char-secret-here-change-me
+# ADMIN_USERNAME=admin
+# ADMIN_PASSWORD=your-secure-password
+```
+
 ### 启动前端
 
 ```bash
@@ -381,6 +393,8 @@ npm run dev
 
 ### 功能说明
 
+#### 迭代 1：核心功能
+
 | 功能 | 说明 |
 |------|------|
 | 知识点树 | 三级层级浏览（L1 分类 → L2 模块 → L3 知识点），支持中英双语 |
@@ -390,12 +404,64 @@ npm run dev
 | 代码高亮 | Java 语法高亮显示 |
 | 复制代码 | 一键复制代码到剪贴板 |
 
+#### 迭代 2：用户认证
+
+| 功能 | 说明 |
+|------|------|
+| 用户注册 | 支持用户名、密码、邮箱（可选）注册 |
+| 用户登录 | JWT Token 认证，access_token (15分钟) + refresh_token (7天) |
+| 自动刷新 | Token 过期自动刷新，用户无感知 |
+| 单设备登录 | 新设备登录自动踢出旧设备 |
+| 路由守卫 | 受保护页面（历史、收藏）需登录访问 |
+
+#### 迭代 3：高级功能
+
+| 功能 | 说明 |
+|------|------|
+| 矩阵模式 | 按难度分级（easy/medium/hard）展示匹配结果 |
+| 组合匹配 | 多选知识点（最多5个），查找同时涉及多个概念的代码 |
+| 匹配历史 | 记录匹配操作，支持分页浏览和重新执行 |
+| 代码收藏 | 收藏有价值的代码片段，支持管理和浏览 |
+| 状态持久化 | 从历史/收藏页返回主页时恢复选中状态 |
+
 ### 技术栈
 
 - **框架**: React 18 + TypeScript
 - **UI**: Ant Design 5
 - **构建**: Vite
+- **HTTP**: Axios（带自动刷新拦截器）
 - **代码高亮**: react-syntax-highlighter
+
+### 目录结构
+
+```
+frontend/src/
+├── api/              # API 封装层
+│   ├── client.ts     # Axios 实例（Token 自动刷新）
+│   ├── auth.ts       # 认证 API
+│   ├── knowledge.ts  # 知识点 API
+│   ├── match.ts      # 匹配 API
+│   └── user.ts       # 用户 API（历史、收藏）
+├── components/       # 通用组件
+│   ├── KnowledgeTree.tsx   # 知识点树
+│   ├── CodeBlock.tsx       # 代码高亮
+│   ├── MatchResultCard.tsx # 结果卡片
+│   ├── MatrixView.tsx      # 矩阵视图
+│   ├── Header.tsx          # 顶部导航
+│   └── PrivateRoute.tsx    # 路由守卫
+├── contexts/         # React Context
+│   └── AuthContext.tsx     # 认证状态管理
+├── pages/            # 页面组件
+│   ├── Dashboard.tsx       # 主面板
+│   ├── LoginPage.tsx       # 登录页
+│   ├── RegisterPage.tsx    # 注册页
+│   ├── HistoryPage.tsx     # 历史记录
+│   └── FavoritesPage.tsx   # 收藏列表
+├── types/            # TypeScript 类型
+│   ├── api.ts, auth.ts, knowledge.ts, match.ts, user.ts
+│   └── index.ts
+└── App.tsx           # 根组件（路由配置）
+```
 
 ---
 
@@ -631,12 +697,26 @@ java-ana-mvp/
 ├── frontend/                     # 前端界面（React + TypeScript）
 │   ├── src/
 │   │   ├── api/                  # API 封装
+│   │   │   ├── client.ts         # Axios 实例（Token 自动刷新）
+│   │   │   ├── auth.ts           # 认证 API
+│   │   │   ├── knowledge.ts      # 知识点 API
+│   │   │   ├── match.ts          # 匹配 API
+│   │   │   └── user.ts           # 用户 API（历史、收藏）
 │   │   ├── components/           # 通用组件
-│   │   │   ├── KnowledgeTree.tsx # 知识点树
+│   │   │   ├── KnowledgeTree.tsx # 知识点树（中英双语、多选）
 │   │   │   ├── CodeBlock.tsx     # 代码高亮
-│   │   │   └── MatchResultCard.tsx # 结果卡片
+│   │   │   ├── MatchResultCard.tsx # 结果卡片（收藏按钮）
+│   │   │   ├── MatrixView.tsx    # 矩阵视图（难度分级）
+│   │   │   ├── Header.tsx        # 顶部导航（用户菜单）
+│   │   │   └── PrivateRoute.tsx  # 路由守卫
+│   │   ├── contexts/             # React Context
+│   │   │   └── AuthContext.tsx   # 认证状态管理
 │   │   ├── pages/                # 页面组件
-│   │   │   └── Dashboard.tsx     # 主面板
+│   │   │   ├── Dashboard.tsx     # 主面板
+│   │   │   ├── LoginPage.tsx     # 登录页
+│   │   │   ├── RegisterPage.tsx  # 注册页
+│   │   │   ├── HistoryPage.tsx   # 历史记录
+│   │   │   └── FavoritesPage.tsx # 收藏列表
 │   │   └── types/                # TypeScript 类型
 │   ├── package.json
 │   └── vite.config.ts            # Vite 配置（含 API 代理）
@@ -646,20 +726,25 @@ java-ana-mvp/
 │   ├── routes/                   # 路由模块
 │   │   ├── knowledge.py          # 知识点接口
 │   │   ├── match.py              # 匹配接口
+│   │   ├── auth.py               # 认证接口（登录/注册/刷新）
+│   │   ├── user.py               # 用户接口（历史/收藏）
 │   │   └── system.py             # 系统接口（健康检查、指标）
 │   ├── schemas/                  # Pydantic 数据模型
 │   │   ├── common.py             # 通用响应模型
 │   │   ├── knowledge.py          # 知识点模型
-│   │   └── match.py              # 匹配请求/响应模型
+│   │   ├── match.py              # 匹配请求/响应模型
+│   │   ├── auth.py               # 认证模型
+│   │   └── user.py               # 用户模型（历史/收藏）
 │   └── middleware/               # 中间件
-│       ├── error_handler.py      # 异常处理
+│       ├── error_handler.py      # 异常处理（含 UnauthorizedException）
+│       ├── auth.py               # JWT 认证装饰器
 │       ├── metrics.py            # 性能指标
-│       └── request_logger.py     # 请求日志
+│       └── request_logger.py     # 请求日志（带脱敏）
 │
 ├── src/                          # 核心业务逻辑
 │   ├── db_manager/               # 数据库管理
 │   │   ├── base.py               # 管理器基类
-│   │   ├── database.py           # 表结构初始化
+│   │   ├── database.py           # 表结构初始化（含 users, match_history, favorites）
 │   │   ├── knowledge_point_manager.py  # 知识点 CRUD
 │   │   └── code_library_manager.py     # 代码片段 CRUD
 │   ├── java_analyzer/            # AST 分析
@@ -670,7 +755,9 @@ java-ana-mvp/
 │   │   └── utils.py              # 匹配工具函数
 │   └── services/                 # 服务层
 │       ├── search_service.py     # 检索服务
-│       └── knowledge_service.py  # 知识点服务
+│       ├── knowledge_service.py  # 知识点服务
+│       ├── auth_service.py       # 认证服务（含单设备登录）
+│       └── user_service.py       # 用户服务（历史/收藏）
 │
 ├── experiments/                  # 评估实验
 │   ├── datasets/                 # 数据集
@@ -704,6 +791,7 @@ java-ana-mvp/
 │   │   └── __init__.py           # Cfg 单例、logger 实例
 │   └── utils/                    # 工具模块
 │       ├── settings.py           # YAML 配置解析
+│       ├── sanitize.py           # 日志脱敏
 │       └── matching_config.py    # 匹配参数配置
 │
 ├── config/                       # 配置文件
@@ -711,7 +799,16 @@ java-ana-mvp/
 │   ├── logger.yaml               # 日志配置
 │   └── matching.yaml             # 匹配参数配置
 │
+├── openspec/                     # 项目提案和设计文档
+│   ├── specs/                    # 系统规格说明
+│   │   ├── frontend-ui/          # 前端 UI 规格
+│   │   ├── user-auth/            # 用户认证规格
+│   │   ├── api-service/          # API 服务规格
+│   │   └── ...
+│   └── changes/archive/          # 已归档的变更提案
+│
 ├── run_api.py                    # API 服务入口 ⭐
+├── .env.example                  # 环境变量模板
 ├── sample_code.java              # 示例代码
 ├── kp_dml.sql                    # 知识点预置数据
 ├── CLAUDE.md                     # 详细开发文档
@@ -857,6 +954,92 @@ Content-Type: application/json
 - `POST /api/match/batch` - 批量知识点匹配
 - `GET /api/match/health` - 服务健康检查
 
+#### 认证接口
+
+```bash
+# 用户注册
+POST /api/auth/register
+Content-Type: application/json
+
+{
+  "username": "user1",
+  "password": "password123",
+  "email": "user@example.com"  # 可选
+}
+```
+
+```bash
+# 用户登录
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "username": "user1",
+  "password": "password123"
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "Login successful",
+  "data": {
+    "access_token": "eyJ...",
+    "refresh_token": "eyJ...",
+    "token_type": "bearer",
+    "expires_in": 900
+  }
+}
+```
+
+```bash
+# Token 刷新
+POST /api/auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "eyJ..."
+}
+```
+
+#### 用户接口（需认证）
+
+```bash
+# 获取匹配历史
+GET /api/user/history?page=1&page_size=20
+Authorization: Bearer {access_token}
+```
+
+```bash
+# 获取收藏列表
+GET /api/user/favorites?page=1&page_size=20
+Authorization: Bearer {access_token}
+```
+
+```bash
+# 添加收藏
+POST /api/user/favorites
+Authorization: Bearer {access_token}
+Content-Type: application/json
+
+{
+  "snippet_id": 12345
+}
+```
+
+```bash
+# 取消收藏
+DELETE /api/user/favorites/12345
+Authorization: Bearer {access_token}
+```
+
+```bash
+# 获取收藏 ID 列表（轻量接口）
+GET /api/user/favorites/ids
+Authorization: Bearer {access_token}
+```
+
 详细 API 文档见 [`CLAUDE.md`](CLAUDE.md#api-routes)
 
 ---
@@ -963,6 +1146,8 @@ A: 不会。用户代码和数据集代码存储在同一表，通过 `source` �
 
 ## 依赖说明
 
+### 后端依赖
+
 | 依赖 | 版本 | 用途 |
 |------|------|------|
 | Flask | 3.x | Web 框架 |
@@ -971,8 +1156,24 @@ A: 不会。用户代码和数据集代码存储在同一表，通过 `source` �
 | mysql-connector-python | 8.x | MySQL 驱动 |
 | tree-sitter | 0.20.x | AST 解析 |
 | tree-sitter-java | - | Java 语法 |
+| PyJWT | 2.x | JWT Token |
+| bcrypt | 4.x | 密码哈希 |
+| python-dotenv | 1.x | 环境变量 |
 | PyYAML | 6.x | 配置解析 |
 | scikit-learn | 1.x | 评估基线方法 |
+
+### 前端依赖
+
+| 依赖 | 版本 | 用途 |
+|------|------|------|
+| react | ^18.2.0 | UI 框架 |
+| react-dom | ^18.2.0 | DOM 渲染 |
+| react-router-dom | ^6.x | 路由管理 |
+| antd | ^5.x | UI 组件库 |
+| axios | ^1.x | HTTP 客户端 |
+| react-syntax-highlighter | ^15.x | 代码高亮 |
+| typescript | ^5.x | 类型检查 |
+| vite | ^5.x | 构建工具 |
 
 ---
 
@@ -990,6 +1191,7 @@ A: 不会。用户代码和数据集代码存储在同一表，通过 `source` �
 
 | 版本 | 日期 | 主要更新 |
 |------|------|----------|
+| v1.5.0 | 2026-03-01 | 完整前端界面（用户认证、历史收藏、矩阵/组合匹配） |
 | v1.4.0 | 2026-02-28 | 前端界面 MVP（知识点树、列表匹配、中英双语） |
 | v1.3.5 | 2026-02-24 | 矩阵匹配模式（按难度分级返回），权重归一化 |
 | v1.3.4 | 2026-02-07 | 分级评估重构，权重优化（AST=0.2, KW=0.7），Binary P 98.0% |

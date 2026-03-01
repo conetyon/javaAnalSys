@@ -9,12 +9,14 @@ Log format:
 
 Author: System Refactoring v1.3.0
 Created: 2026-01-24
+Updated: 2026-03-01 (Added request/response body logging with sanitization)
 """
 
 import time
 from flask import request, g
 
 from lib.globals import api_logger as logger
+from lib.utils.sanitize import sanitize_for_log
 
 
 def init_request_logging(app):
@@ -39,6 +41,16 @@ def init_request_logging(app):
 
         logger.info(f"[{client_ip}] {method} {path}")
 
+        # Log request body at DEBUG level (sanitized)
+        if request.is_json and logger.isEnabledFor(10):  # DEBUG level
+            try:
+                body = request.get_json(silent=True)
+                if body:
+                    safe_body = sanitize_for_log(body)
+                    logger.debug(f"[{client_ip}] {method} {path} - body: {safe_body}")
+            except Exception:
+                pass  # Ignore JSON parsing errors
+
     @app.after_request
     def log_request_end(response):
         """Log response."""
@@ -61,6 +73,16 @@ def init_request_logging(app):
                     logger.warning(f"[{client_ip}] {method} {path} -> {status} ({response_time_ms}ms)")
                 else:
                     logger.info(f"[{client_ip}] {method} {path} -> {status} ({response_time_ms}ms)")
+
+                # Log response body at DEBUG level in debug mode (sanitized)
+                if app.debug and response.is_json and logger.isEnabledFor(10):
+                    try:
+                        body = response.get_json(silent=True)
+                        if body:
+                            safe_body = sanitize_for_log(body)
+                            logger.debug(f"[{client_ip}] {method} {path} - response: {safe_body}")
+                    except Exception:
+                        pass  # Ignore JSON parsing errors
 
         except Exception as e:
             logger.error(f"Failed to log request: {e}")

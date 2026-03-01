@@ -2,7 +2,7 @@
 """
 匹配相关路由
 """
-from flask import jsonify, request
+from flask import jsonify, request, g
 from pydantic import ValidationError
 from . import api_bp
 from src.services import SearchService
@@ -15,12 +15,15 @@ from api.schemas.match import (
     CompositeMatrixMatchRequest
 )
 from api.middleware.error_handler import BadRequestException, NotFoundException
+from api.middleware.auth import optional_auth
 from lib.globals import api_logger as log
 import config
 
 
 # 初始化服务（懒加载）
 _search_service = None
+_user_service = None
+_knowledge_service = None
 
 
 def get_search_service() -> SearchService:
@@ -31,7 +34,55 @@ def get_search_service() -> SearchService:
     return _search_service
 
 
+def get_user_service():
+    """获取用户服务实例（单例）"""
+    global _user_service
+    if _user_service is None:
+        from src.services.user_service import UserService
+        _user_service = UserService(db_name=config.DB_NAME)
+    return _user_service
+
+
+def get_knowledge_service():
+    """获取知识点服务实例（单例）"""
+    global _knowledge_service
+    if _knowledge_service is None:
+        from src.services.knowledge_service import KnowledgeService
+        _knowledge_service = KnowledgeService(db_name=config.DB_NAME)
+    return _knowledge_service
+
+
+def _record_match_history(kp_ids: list, params: dict, mode: str, has_results: bool):
+    """
+    记录匹配历史（仅登录用户且有结果时）
+
+    Args:
+        kp_ids: 知识点 ID 列表
+        params: 匹配参数
+        mode: 匹配模式 ('list', 'matrix', 'composite', 'composite_matrix')
+        has_results: 是否有匹配结果
+    """
+    user_id = getattr(g, 'user_id', None)
+    if user_id is None or not has_results:
+        return
+
+    try:
+        kp_names = get_knowledge_service().get_kp_names(kp_ids)
+        get_user_service().record_history(
+            user_id=user_id,
+            kp_ids=kp_ids,
+            kp_names=kp_names,
+            params=params,
+            mode=mode
+        )
+        log.debug(f"[History] Recorded: user={user_id}, kp_ids={kp_ids}, mode={mode}")
+    except Exception as e:
+        # 历史记录失败不影响主流程
+        log.warning(f"[History] Failed to record: {e}")
+
+
 @api_bp.route('/match', methods=['POST'])
+@optional_auth
 def match_knowledge():
     """
     知识点匹配接口
@@ -111,6 +162,20 @@ def match_knowledge():
 
         log.info(f"[POST] /api/match - 成功匹配 {len(results)} 条结果")
 
+        # 记录历史（仅登录用户且有结果）
+        _record_match_history(
+            kp_ids=[req.kp_id],
+            params={
+                'top_k': req.top_k,
+                'target_difficulty': req.target_difficulty,
+                'ast_min_ratio': req.ast_min_ratio,
+                'keyword_min_score': req.keyword_min_score,
+                'difficulty_mode': req.difficulty_mode
+            },
+            mode='list',
+            has_results=len(results) > 0
+        )
+
         return jsonify({
             "code": 200,
             "message": "success",
@@ -137,6 +202,7 @@ def match_knowledge():
 
 
 @api_bp.route('/match/batch', methods=['POST'])
+@optional_auth
 def batch_match_knowledge():
     """
     批量知识点匹配接口
@@ -289,6 +355,7 @@ def match_health():
 
 
 @api_bp.route('/match/composite', methods=['POST'])
+@optional_auth
 def composite_match_knowledge():
     """
     综合知识点匹配接口
@@ -383,6 +450,21 @@ def composite_match_knowledge():
 
         log.info(f"[POST] /api/match/composite - 成功匹配 {len(results)} 条结果")
 
+        # 记录历史（仅登录用户且有结果）
+        _record_match_history(
+            kp_ids=req.kp_ids,
+            params={
+                'top_k': req.top_k,
+                'target_difficulty': req.target_difficulty,
+                'ast_min_ratio': req.ast_min_ratio,
+                'keyword_min_score': req.keyword_min_score,
+                'difficulty_mode': req.difficulty_mode,
+                'score_aggregation': req.score_aggregation
+            },
+            mode='composite',
+            has_results=len(results) > 0
+        )
+
         return jsonify({
             "code": 200,
             "message": "success",
@@ -409,6 +491,7 @@ def composite_match_knowledge():
 
 
 @api_bp.route('/match/matrix', methods=['POST'])
+@optional_auth
 def matrix_match_knowledge():
     """
     矩阵匹配接口（按难度分级返回）
@@ -473,6 +556,18 @@ def matrix_match_knowledge():
 
         log.info(f"[POST] /api/match/matrix - 成功返回矩阵 shape={result['shape']}, total={result['total']}")
 
+        # 记录历史（仅登录用户且有结果）
+        _record_match_history(
+            kp_ids=[req.kp_id],
+            params={
+                'per_level': req.per_level,
+                'ast_min_ratio': req.ast_min_ratio,
+                'keyword_min_score': req.keyword_min_score
+            },
+            mode='matrix',
+            has_results=result['total'] > 0
+        )
+
         return jsonify({
             "code": 200,
             "message": "success",
@@ -497,6 +592,7 @@ def matrix_match_knowledge():
 
 
 @api_bp.route('/match/composite/matrix', methods=['POST'])
+@optional_auth
 def composite_matrix_match_knowledge():
     """
     综合知识点矩阵匹配接口（按难度分级返回）
@@ -568,6 +664,19 @@ def composite_matrix_match_knowledge():
         )
 
         log.info(f"[POST] /api/match/composite/matrix - 成功返回矩阵 shape={result['shape']}, total={result['total']}")
+
+        # 记录历史（仅登录用户且有结果）
+        _record_match_history(
+            kp_ids=req.kp_ids,
+            params={
+                'per_level': req.per_level,
+                'ast_min_ratio': req.ast_min_ratio,
+                'keyword_min_score': req.keyword_min_score,
+                'score_aggregation': req.score_aggregation
+            },
+            mode='composite_matrix',
+            has_results=result['total'] > 0
+        )
 
         return jsonify({
             "code": 200,

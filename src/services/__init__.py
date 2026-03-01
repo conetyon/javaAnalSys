@@ -5,10 +5,14 @@
 """
 from .search_service import SearchService, KnowledgePointNotFoundError, NonLeafKnowledgePointError
 from .knowledge_service import KnowledgeService
+from .auth_service import AuthService
+from .user_service import UserService
 
 __all__ = [
     "SearchService",
     "KnowledgeService",
+    "AuthService",
+    "UserService",
     "KnowledgePointNotFoundError",
     "NonLeafKnowledgePointError",
 ]

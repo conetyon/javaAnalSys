@@ -82,7 +82,7 @@ def check_status():
 
         # Check 2: Tables exist
         required_tables = ['knowledge_points', 'code_files', 'code_snippets',
-                          'experiment_runs', 'bulk_import_jobs']
+                          'experiment_runs']
 
         with client as conn:
             cursor = conn._conn.cursor()

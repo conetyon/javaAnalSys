@@ -18,11 +18,17 @@ Usage:
 
 Author: System Refactoring v1.3.0
 Created: 2026-01-24
+Updated: 2026-03-01 (Added JWT_SECRET validation)
 """
 
 import sys
+import os
 import argparse
 from pathlib import Path
+
+# Load environment variables from .env file BEFORE other imports
+from dotenv import load_dotenv
+load_dotenv()
 
 from lib.globals import api_logger as logger
 
@@ -35,6 +41,7 @@ def validate_environment():
     1. Configuration file exists
     2. Database connection works
     3. Required tables exist
+    4. JWT_SECRET configured (warning only)
 
     Raises:
         SystemExit: If validation fails (exit code 1)
@@ -44,7 +51,7 @@ def validate_environment():
     print("=" * 70)
 
     # Step 1: Check configuration file
-    print("\n[1/3] Checking configuration...")
+    print("\n[1/4] Checking configuration...")
 
     config_file = Path("config/db.yaml")
     if not config_file.exists():
@@ -58,7 +65,7 @@ def validate_environment():
     print(f"[OK] Configuration file found: {config_file}")
 
     # Step 2: Test database connection
-    print("\n[2/3] Testing database connection...")
+    print("\n[2/4] Testing database connection...")
 
     try:
         from lib.client.db import MySQLClient
@@ -82,7 +89,7 @@ def validate_environment():
         sys.exit(1)
 
     # Step 3: Check required tables
-    print("\n[3/3] Validating database schema...")
+    print("\n[3/4] Validating database schema...")
 
     required_tables = [
         "knowledge_points",
@@ -112,6 +119,18 @@ def validate_environment():
     except Exception as e:
         print(f"[FAIL] Schema validation failed: {e}")
         sys.exit(1)
+
+    # Step 4: Check JWT_SECRET (warning only, not blocking)
+    print("\n[4/4] Checking authentication configuration...")
+
+    jwt_secret = os.environ.get('JWT_SECRET')
+    if not jwt_secret:
+        print("[WARN] JWT_SECRET not set - authentication features disabled")
+        print("       To enable authentication, create a .env file with JWT_SECRET")
+    elif len(jwt_secret) < 32:
+        print("[WARN] JWT_SECRET is too short (< 32 chars) - consider using a longer secret")
+    else:
+        print("[OK] JWT_SECRET configured")
 
     print("\n" + "=" * 70)
     print("[OK] ALL VALIDATION PASSED")
@@ -193,9 +212,9 @@ def print_api_info(host: str, port: int, debug: bool):
     print("  POST /api/match                     - Single KP matching")
     print("  POST /api/match/batch               - Batch KP matching")
     print("  POST /api/match/composite           - Composite KP matching")
+    print("  POST /api/match/matrix              - Single KP matrix matching")
+    print("  POST /api/match/composite/matrix    - Composite KP matrix matching")
     print("  GET  /api/match/health              - Matching service health")
-    print("  POST /api/bulk-import               - Start bulk import job")
-    print("  GET  /api/bulk-import/{job_id}      - Query import job status")
     print("\n" + "-" * 70 + "\n")
 
 

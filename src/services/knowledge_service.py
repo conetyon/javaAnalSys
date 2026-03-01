@@ -147,6 +147,28 @@ class KnowledgeService:
         log.debug("[KnowledgeService.get_children] 找到 %d 个子节点", len(result))
         return result
 
+    def get_kp_names(self, kp_ids: List[int]) -> List[str]:
+        """
+        批量获取知识点名称（与输入顺序一致，不存在的返回空字符串）
+
+        Args:
+            kp_ids: 知识点 ID 列表
+
+        Returns:
+            名称列表（与 kp_ids 顺序一致）
+        """
+        if not kp_ids:
+            return []
+
+        placeholders = ','.join(['%s'] * len(kp_ids))
+        sql = f"SELECT id, name FROM knowledge_points WHERE id IN ({placeholders})"
+
+        with MySQLClient(db=self.db_name) as client:
+            rows = client.fetch_all(sql, tuple(kp_ids))
+
+        name_map = {row['id']: row['name'] for row in rows}
+        return [name_map.get(kp_id, '') for kp_id in kp_ids]
+
     @staticmethod
     def _list_to_tree(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
