@@ -663,7 +663,10 @@ export default function Dashboard() {
                   key={item.id || index}
                   item={item}
                   rank={index + 1}
+                  kpId={selectedKp?.id}
+                  kpName={selectedKp?.name_zh || selectedKp?.name}
                   showFavorite={isAuthenticated}
+                  showExplain={isAuthenticated}
                   isFavorite={item.id ? favoriteIds.has(item.id) : false}
                   onFavoriteToggle={handleFavoriteToggle}
                 />
@@ -703,9 +706,13 @@ export default function Dashboard() {
                     keyword_total: item.kp_count,
                     difficulty: item.difficulty || 0,
                     file_path: item.file_path,
+                    highlight_ranges: item.highlight_ranges,
                   }}
                   rank={index + 1}
                   showFavorite={isAuthenticated}
+                  showExplain={isAuthenticated && checkedKps.length > 0}
+                  kpId={checkedKps[0]?.id}
+                  kpName={checkedKps.map((kp) => kp.name_zh || kp.name).join(' + ')}
                   isFavorite={item.id ? favoriteIds.has(item.id) : false}
                   onFavoriteToggle={handleFavoriteToggle}
                   isComposite={true}
@@ -729,6 +736,9 @@ export default function Dashboard() {
               total={matrixData.total}
               isComposite={selectionMode === 'multiple'}
               showFavorite={isAuthenticated}
+              showExplain={isAuthenticated}
+              kpId={selectionMode === 'single' ? selectedKp?.id : undefined}
+              kpName={selectionMode === 'single' ? (selectedKp?.name_zh || selectedKp?.name) : undefined}
               favoriteIds={favoriteIds}
               onFavoriteToggle={handleFavoriteToggle}
             />

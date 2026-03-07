@@ -2,6 +2,16 @@
  * 匹配相关类型
  */
 
+// ============== 关键行标注 ==============
+
+// 代码关键行标注
+export interface HighlightRange {
+  start_line: number;  // 起始行号（1-indexed）
+  end_line: number;    // 结束行号（1-indexed）
+  type: string;        // AST 节点类型或 'keyword_match'
+  label: string;       // 人类可读标签
+}
+
 // ============== 列表模式 ==============
 
 // 匹配请求参数（单 KP 列表模式）
@@ -28,6 +38,7 @@ export interface MatchResultItem {
   details?: string;
   details_md?: string;
   file_path?: string;
+  highlight_ranges?: HighlightRange[];  // 关键行标注
 }
 
 // ============== 矩阵模式 ==============
@@ -54,6 +65,7 @@ export interface MatrixResultItem {
   method_name?: string;
   lines_of_code?: number;
   fallback?: boolean;
+  highlight_ranges?: HighlightRange[];  // 关键行标注
 }
 
 // 矩阵匹配响应（单 KP）
@@ -98,6 +110,7 @@ export interface CompositeMatchResultItem {
   file_path?: string;
   partial_match?: boolean;
   difficulty?: number;
+  highlight_ranges?: HighlightRange[];  // 关键行标注
 }
 
 // 组合匹配响应（列表模式）

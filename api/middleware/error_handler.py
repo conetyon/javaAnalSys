@@ -45,6 +45,21 @@ class UnauthorizedException(ApiException):
         super().__init__(message, code=401, error=error)
 
 
+class TooManyRequestsException(ApiException):
+    """配额耗尽或请求过于频繁异常"""
+
+    def __init__(
+        self,
+        message: str = "请求过于频繁",
+        error: str = None,
+        reset_at: str = None,
+        retry_after: int = None
+    ):
+        super().__init__(message, code=429, error=error)
+        self.reset_at = reset_at
+        self.retry_after = retry_after
+
+
 def register_error_handlers(app: Flask):
     """
     注册全局异常处理器
@@ -96,6 +111,22 @@ def register_error_handlers(app: Flask):
             "message": "未授权访问",
             "error": str(e.description) if hasattr(e, 'description') else str(e)
         }), 401
+
+    @app.errorhandler(TooManyRequestsException)
+    def handle_too_many_requests(e: TooManyRequestsException):
+        """处理 429 配额/限流异常"""
+        log.warning(f"[{request.method}] {request.path} - TooManyRequests: {e.message}")
+        response = {
+            "code": 429,
+            "message": e.message,
+        }
+        if e.error:
+            response["error"] = e.error
+        if e.reset_at:
+            response["reset_at"] = e.reset_at
+        if e.retry_after:
+            response["retry_after"] = e.retry_after
+        return jsonify(response), 429
 
     @app.errorhandler(404)
     def handle_not_found(e):

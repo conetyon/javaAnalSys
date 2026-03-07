@@ -51,7 +51,7 @@ def validate_environment():
     print("=" * 70)
 
     # Step 1: Check configuration file
-    print("\n[1/4] Checking configuration...")
+    print("\n[1/5] Checking configuration...")
 
     config_file = Path("config/db.yaml")
     if not config_file.exists():
@@ -65,7 +65,7 @@ def validate_environment():
     print(f"[OK] Configuration file found: {config_file}")
 
     # Step 2: Test database connection
-    print("\n[2/4] Testing database connection...")
+    print("\n[2/5] Testing database connection...")
 
     try:
         from lib.client.db import MySQLClient
@@ -89,13 +89,16 @@ def validate_environment():
         sys.exit(1)
 
     # Step 3: Check required tables
-    print("\n[3/4] Validating database schema...")
+    print("\n[3/5] Validating database schema...")
 
     required_tables = [
         "knowledge_points",
         "code_files",
         "code_snippets",
-        "experiment_runs"
+        "experiment_runs",
+        "users",           # Auth tables
+        "user_quotas",     # AI explanation quota
+        "explain_logs",    # AI explanation logs
     ]
 
     try:
@@ -121,7 +124,7 @@ def validate_environment():
         sys.exit(1)
 
     # Step 4: Check JWT_SECRET (warning only, not blocking)
-    print("\n[4/4] Checking authentication configuration...")
+    print("\n[4/5] Checking authentication configuration...")
 
     jwt_secret = os.environ.get('JWT_SECRET')
     if not jwt_secret:
@@ -131,6 +134,22 @@ def validate_environment():
         print("[WARN] JWT_SECRET is too short (< 32 chars) - consider using a longer secret")
     else:
         print("[OK] JWT_SECRET configured")
+
+    # Step 5: Check LLM configuration (warning only)
+    print("\n[5/5] Checking LLM configuration...")
+
+    llm_api_key = os.environ.get('LLM_API_KEY')
+    if not llm_api_key:
+        print("[WARN] LLM_API_KEY not set - AI explanation features disabled")
+        print("       To enable AI features, add LLM_API_KEY to .env file")
+    else:
+        print(f"[OK] LLM_API_KEY configured (length: {len(llm_api_key)})")
+
+    llm_api_key_fallback = os.environ.get('LLM_API_KEY_FALLBACK')
+    if llm_api_key_fallback:
+        print(f"[OK] LLM_API_KEY_FALLBACK configured (length: {len(llm_api_key_fallback)})")
+    else:
+        print("[INFO] LLM_API_KEY_FALLBACK not set - no fallback endpoint")
 
     print("\n" + "=" * 70)
     print("[OK] ALL VALIDATION PASSED")
@@ -215,6 +234,9 @@ def print_api_info(host: str, port: int, debug: bool):
     print("  POST /api/match/matrix              - Single KP matrix matching")
     print("  POST /api/match/composite/matrix    - Composite KP matrix matching")
     print("  GET  /api/match/health              - Matching service health")
+    print("  POST /api/explain                   - AI code explanation (SSE stream)")
+    print("  POST /api/explain/chat              - AI follow-up chat (SSE stream)")
+    print("  GET  /api/explain/health            - Explain service health")
     print("\n" + "-" * 70 + "\n")
 
 

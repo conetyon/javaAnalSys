@@ -1,11 +1,11 @@
 # Java 知识点匹配系统
 
 > For graduation-design-2026, BUPT
-> **Version**: v1.5.0
+> **Version**: v1.6.0
 
 一个基于 AST 分析和关键词匹配的 Java 代码知识点匹配系统。采用混合打分策略（AST 结构 + 关键词语义 + 难度评估），支持单点匹配、综合知识点匹配和矩阵模式匹配。
 
-**新增 v1.5.0**：完整前端界面（用户认证、历史记录、收藏功能、矩阵/组合匹配模式）。
+**新增 v1.6.0**：AI 代码解释功能（关键行标注 + LLM 按需解释 + 配额管理）。
 
 ## 📋 目录
 
@@ -31,6 +31,7 @@
 - 🔍 **灵活匹配模式**：支持单知识点、批量、综合匹配、矩阵匹配
 - 🛡️ **智能兜底逻辑**：自动降低阈值重试，尽量不返回空结果
 - 🔄 **幂等化设计**：数据库初始化和代码分析安全可重复执行
+- 🤖 **AI 代码解释**：关键行标注 + LLM 按需解释 + 多轮问答
 
 ---
 
@@ -374,7 +375,16 @@ cp .env.example .env
 # JWT_SECRET=your-32-char-secret-here-change-me
 # ADMIN_USERNAME=admin
 # ADMIN_PASSWORD=your-secure-password
+# LLM_API_KEY=your-llm-api-key  # AI 解释功能需要
 ```
+
+### AI 解释功能配置
+
+AI 代码解释功能需要配置 LLM API：
+
+1. 在 `.env` 文件中设置 `LLM_API_KEY`
+2. 配置文件 `config/llm.yaml` 包含 API 端点和模型设置
+3. 配额默认：普通用户 50 次/天，管理员无限制
 
 ### 启动前端
 
@@ -403,6 +413,7 @@ npm run dev
 | 参数配置 | 可调整返回数量和期望难度 |
 | 代码高亮 | Java 语法高亮显示 |
 | 复制代码 | 一键复制代码到剪贴板 |
+| 关键行标注 | 自动高亮与知识点相关的代码行 |
 
 #### 迭代 2：用户认证
 
@@ -424,6 +435,17 @@ npm run dev
 | 代码收藏 | 收藏有价值的代码片段，支持管理和浏览 |
 | 状态持久化 | 从历史/收藏页返回主页时恢复选中状态 |
 
+#### 迭代 4：AI 代码解释
+
+| 功能 | 说明 |
+|------|------|
+| 关键行标注 | 自动标注与知识点相关的代码行（基于 AST 分析） |
+| AI 解释 | 点击"AI 解释"按钮获取 LLM 生成的代码解读 |
+| 多轮问答 | 支持针对代码的追问和深入讨论 |
+| 智能补救 | AI 可自动生成更合适的示例代码 |
+| 配额管理 | 普通用户 50 次/天，管理员无限制 |
+| 流式输出 | SSE 实时显示 AI 回复，提升交互体验 |
+
 ### 技术栈
 
 - **框架**: React 18 + TypeScript
@@ -441,12 +463,15 @@ frontend/src/
 │   ├── auth.ts       # 认证 API
 │   ├── knowledge.ts  # 知识点 API
 │   ├── match.ts      # 匹配 API
-│   └── user.ts       # 用户 API（历史、收藏）
+│   ├── user.ts       # 用户 API（历史、收藏）
+│   └── explain.ts    # AI 解释 API（SSE）
 ├── components/       # 通用组件
 │   ├── KnowledgeTree.tsx   # 知识点树
 │   ├── CodeBlock.tsx       # 代码高亮
 │   ├── MatchResultCard.tsx # 结果卡片
 │   ├── MatrixView.tsx      # 矩阵视图
+│   ├── CodeExplainer.tsx   # AI 解释面板
+│   ├── QuotaIndicator.tsx  # 配额指示器
 │   ├── Header.tsx          # 顶部导航
 │   └── PrivateRoute.tsx    # 路由守卫
 ├── contexts/         # React Context
@@ -1040,6 +1065,58 @@ GET /api/user/favorites/ids
 Authorization: Bearer {access_token}
 ```
 
+#### AI 解释接口（需认证）
+
+```bash
+# AI 代码解释（SSE 流式响应）
+POST /api/explain
+Authorization: Bearer {access_token}
+Content-Type: application/json
+
+{
+  "snippet_id": 12345,
+  "kp_id": 10011,
+  "user_level": "beginner"  // optional: beginner, intermediate, advanced
+}
+```
+
+**响应** (SSE):
+```
+data: {"type": "content", "content": "这段代码演示了"}
+data: {"type": "content", "content": "Java 的增强 for 循环..."}
+data: {"type": "done", "tokens": {"prompt": 150, "completion": 200}}
+```
+
+```bash
+# 多轮问答（SSE 流式响应）
+POST /api/explain/chat
+Authorization: Bearer {access_token}
+Content-Type: application/json
+
+{
+  "snippet_id": 12345,
+  "kp_id": 10011,
+  "question": "为什么不能在遍历时修改集合？",
+  "session_id": "abc123"  // optional, 用于多轮对话
+}
+```
+
+```bash
+# 查询配额状态
+GET /api/user/quota
+Authorization: Bearer {access_token}
+```
+
+**响应**:
+```json
+{
+  "daily_limit": 50,
+  "used_today": 12,
+  "remaining": 38,
+  "reset_at": "2026-03-08T00:00:00+08:00"
+}
+```
+
 详细 API 文档见 [`CLAUDE.md`](CLAUDE.md#api-routes)
 
 ---
@@ -1161,6 +1238,9 @@ A: 不会。用户代码和数据集代码存储在同一表，通过 `source` �
 | python-dotenv | 1.x | 环境变量 |
 | PyYAML | 6.x | 配置解析 |
 | scikit-learn | 1.x | 评估基线方法 |
+| requests | 2.x | HTTP 客户端（AI 解释功能） |
+
+> **注意**: `zoneinfo` 是 Python 3.9+ 内置模块，无需单独安装。
 
 ### 前端依赖
 
@@ -1172,6 +1252,7 @@ A: 不会。用户代码和数据集代码存储在同一表，通过 `source` �
 | antd | ^5.x | UI 组件库 |
 | axios | ^1.x | HTTP 客户端 |
 | react-syntax-highlighter | ^15.x | 代码高亮 |
+| react-markdown | ^9.x | Markdown 渲染（AI 解释功能） |
 | typescript | ^5.x | 类型检查 |
 | vite | ^5.x | 构建工具 |
 
@@ -1191,6 +1272,7 @@ A: 不会。用户代码和数据集代码存储在同一表，通过 `source` �
 
 | 版本 | 日期 | 主要更新 |
 |------|------|----------|
+| v1.6.0 | 2026-03-07 | AI 代码解释功能（关键行标注、LLM 解释、配额管理、SSE 流式响应） |
 | v1.5.0 | 2026-03-01 | 完整前端界面（用户认证、历史收藏、矩阵/组合匹配） |
 | v1.4.0 | 2026-02-28 | 前端界面 MVP（知识点树、列表匹配、中英双语） |
 | v1.3.5 | 2026-02-24 | 矩阵匹配模式（按难度分级返回），权重归一化 |

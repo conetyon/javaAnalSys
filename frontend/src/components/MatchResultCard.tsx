@@ -1,43 +1,76 @@
 /**
  * 匹配结果卡片组件
- * 展示代码、得分、文件路径，支持复制、折叠、收藏
+ * 展示代码、得分、文件路径，支持复制、折叠、收藏、AI 解释
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, Typography, Space, Button, Tag, message, Tooltip } from 'antd';
-import { CopyOutlined, DownOutlined, UpOutlined, StarOutlined, StarFilled } from '@ant-design/icons';
+import {
+  CopyOutlined,
+  DownOutlined,
+  UpOutlined,
+  StarOutlined,
+  StarFilled,
+  RobotOutlined
+} from '@ant-design/icons';
 import CodeBlock from './CodeBlock';
-import { MatchResultItem } from '../types/match';
+import CodeExplainer from './CodeExplainer';
+import { MatchResultItem, HighlightRange } from '../types/match';
 
 const { Text } = Typography;
 
 interface MatchResultCardProps {
   item: MatchResultItem;
   rank: number;
+  kpId?: number;           // 知识点 ID（用于 AI 解释）
+  kpName?: string;         // 知识点名称（用于 AI 解释）
   extra?: React.ReactNode;  // 额外内容（如组合匹配的知识点列表）
   isFavorite?: boolean;     // 是否已收藏
   onFavoriteToggle?: (snippetId: number, isFavorite: boolean) => void;  // 收藏切换回调
   showFavorite?: boolean;   // 是否显示收藏按钮
+  showExplain?: boolean;    // 是否显示 AI 解释按钮
   isComposite?: boolean;    // 是否为组合匹配模式（隐藏 AST/KW 指标）
 }
 
 const MAX_LINES_COLLAPSED = 20;
 
+// 从 highlight_ranges 提取需要高亮的行号数组
+function extractHighlightLines(ranges?: HighlightRange[]): number[] {
+  if (!ranges || ranges.length === 0) return [];
+  const lines: number[] = [];
+  for (const range of ranges) {
+    for (let line = range.start_line; line <= range.end_line; line++) {
+      lines.push(line);
+    }
+  }
+  return [...new Set(lines)].sort((a, b) => a - b);
+}
+
 export default function MatchResultCard({
   item,
   rank,
+  kpId,
+  kpName,
   extra,
   isFavorite = false,
   onFavoriteToggle,
   showFavorite = false,
+  showExplain = false,
   isComposite = false,
 }: MatchResultCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [showExplainer, setShowExplainer] = useState(false);
 
   const lines = item.content.split('\n');
   const needsFolding = lines.length > MAX_LINES_COLLAPSED;
   const displayCode = expanded ? item.content : lines.slice(0, MAX_LINES_COLLAPSED).join('\n');
+
+  // 计算高亮行（memoized）
+  const highlightLines = useMemo(
+    () => extractHighlightLines(item.highlight_ranges),
+    [item.highlight_ranges]
+  );
 
   // 复制代码
   const handleCopy = async () => {
@@ -106,10 +139,29 @@ export default function MatchResultCard({
           <Tooltip title={`代码复杂度: ${(item.difficulty * 100).toFixed(0)}%`}>
             <Tag color={diffLabel.color}>{diffLabel.text}</Tag>
           </Tooltip>
+          {/* 高亮行提示 */}
+          {highlightLines.length > 0 && (
+            <Tooltip title={`关键行: ${highlightLines.join(', ')}`}>
+              <Tag color="gold">标注 {highlightLines.length} 行</Tag>
+            </Tooltip>
+          )}
         </Space>
       }
       extra={
         <Space>
+          {/* AI 解释按钮 */}
+          {showExplain && item.id && kpId && (
+            <Tooltip title="AI 代码解释">
+              <Button
+                type={showExplainer ? 'primary' : 'text'}
+                icon={<RobotOutlined />}
+                onClick={() => setShowExplainer(!showExplainer)}
+                size="small"
+              >
+                解释
+              </Button>
+            </Tooltip>
+          )}
           {showFavorite && item.id && (
             <Tooltip title={isFavorite ? '取消收藏' : '收藏'}>
               <Button
@@ -133,7 +185,7 @@ export default function MatchResultCard({
       }
       style={{ marginBottom: 16 }}
     >
-      <CodeBlock code={displayCode} />
+      <CodeBlock code={displayCode} highlightRanges={item.highlight_ranges} />
 
       {needsFolding && (
         <div style={{ textAlign: 'center', marginTop: 8 }}>
@@ -154,6 +206,18 @@ export default function MatchResultCard({
             来源: {item.file_path}
           </Text>
         </div>
+      )}
+
+      {/* AI 解释面板 */}
+      {showExplainer && item.id && kpId && (
+        <CodeExplainer
+          snippetId={item.id}
+          kpId={kpId}
+          kpName={kpName}
+          code={item.content}
+          highlightRanges={item.highlight_ranges}
+          onClose={() => setShowExplainer(false)}
+        />
       )}
 
       {/* 额外内容（如组合匹配的知识点列表） */}

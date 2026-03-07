@@ -6,6 +6,14 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
+class HighlightRange(BaseModel):
+    """代码关键行标注"""
+    start_line: int = Field(description="起始行号（1-indexed）")
+    end_line: int = Field(description="结束行号（1-indexed）")
+    type: str = Field(description="AST 节点类型或 'keyword_match'")
+    label: str = Field(description="人类可读标签")
+
+
 class MatchRequest(BaseModel):
     """匹配请求参数"""
     kp_id: int = Field(description="知识点 ID")
@@ -53,6 +61,10 @@ class MatchResultItem(BaseModel):
     details: Optional[str] = Field(default=None, description="详情文本")
     details_md: Optional[str] = Field(default=None, description="详情 Markdown")
     file_path: Optional[str] = Field(default=None, description="源文件路径")
+    highlight_ranges: Optional[List[HighlightRange]] = Field(
+        default=None,
+        description="代码关键行标注列表"
+    )
 
 
 class MatchResponse(BaseModel):
@@ -104,6 +116,10 @@ class CompositeMatchResultItem(BaseModel):
     kp_details: List[dict] = Field(default_factory=list, description="各知识点详细得分")
     score_aggregation: str = Field(description="使用的聚合方式")
     file_path: Optional[str] = Field(default=None, description="源文件路径")
+    highlight_ranges: Optional[List[HighlightRange]] = Field(
+        default=None,
+        description="代码关键行标注列表（合并所有涉及知识点的标注）"
+    )
 
 
 class CompositeMatchResponse(BaseModel):

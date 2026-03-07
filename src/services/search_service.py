@@ -15,6 +15,7 @@ from src.matching.strategies import (
     calculate_match_score,
     get_weight_defaults,
 )
+from src.services.highlight_service import get_highlight_service
 
 
 def _extract_method_info(content: str) -> Tuple[str, int]:
@@ -108,6 +109,7 @@ class SearchService:
         self.kp_mgr = KnowledgePointManager(db_name)
         self.code_mgr = CodeLibraryManager(db_name)
         self.candidate_limit = int(candidate_limit)
+        self.highlight_service = get_highlight_service()
         log.info("[SearchService] 初始化完成, db=%s, candidate_limit=%d", db_name, self.candidate_limit)
 
     def search(
@@ -306,6 +308,21 @@ class SearchService:
         results.sort(key=lambda x: (-x["score"], x["id"]))
         final_results = results[:max(1, int(top_k))]
 
+        # 为最终结果计算 highlight_ranges（只对top_k结果计算，节省性能）
+        kp_ast_for_highlight = kp_cfg.get("ast") or {}
+        kp_keywords_for_highlight = kp_cfg.get("keywords", [])
+        for res in final_results:
+            try:
+                highlights = self.highlight_service.compute_highlights(
+                    res["content"],
+                    kp_ast_for_highlight,
+                    kp_keywords_for_highlight
+                )
+                res["highlight_ranges"] = highlights
+            except Exception as e:
+                log.warning("[SearchService.search] 计算高亮失败: %s", e)
+                res["highlight_ranges"] = []
+
         log.info("[SearchService.search] 搜索完成: 候选=%d, 过滤=%d, 通过=%d, 返回=%d",
                  len(candidates), filtered_count, len(results), len(final_results))
 
@@ -381,6 +398,20 @@ class SearchService:
 
             fallback_results.sort(key=lambda x: (-x["score"], x["id"]))
             final_results = fallback_results[:max(1, int(top_k))]
+
+            # 为兜底结果也计算 highlight_ranges
+            for res in final_results:
+                try:
+                    highlights = self.highlight_service.compute_highlights(
+                        res["content"],
+                        kp_ast_for_highlight,
+                        kp_keywords_for_highlight
+                    )
+                    res["highlight_ranges"] = highlights
+                except Exception as e:
+                    log.warning("[SearchService.search] 兜底结果计算高亮失败: %s", e)
+                    res["highlight_ranges"] = []
+
             log.info("[SearchService.search] 兜底结果: 通过=%d, 返回=%d", len(fallback_results), len(final_results))
 
         if final_results:
@@ -578,6 +609,31 @@ class SearchService:
 
         log.info("[SearchService.composite_search] 综合匹配完成: 候选=%d, 严格=%d, 宽松=%d, 返回=%d",
                  len(candidates), len(strict_results), len(results), len(final_results))
+
+        # 为最终结果计算 highlight_ranges（使用所有 KP 的模板）
+        if kp_configs:
+            # 收集所有 KP 的高亮配置
+            all_kp_highlight_configs = []
+            for kp_cfg in kp_configs:
+                kp_row = self.kp_mgr.get_by_id(kp_cfg["id"])
+                if kp_row:
+                    parsed_cfg = self.kp_mgr.parse_kp_config(kp_row)
+                    all_kp_highlight_configs.append((
+                        parsed_cfg.get("ast") or {},
+                        parsed_cfg.get("keywords", []),
+                        kp_cfg["name"]
+                    ))
+
+            for res in final_results:
+                try:
+                    highlights = self.highlight_service.compute_highlights_multi(
+                        res["content"],
+                        all_kp_highlight_configs
+                    )
+                    res["highlight_ranges"] = highlights
+                except Exception as e:
+                    log.warning("[SearchService.composite_search] 计算高亮失败: %s", e)
+                    res["highlight_ranges"] = []
 
         if final_results:
             log.info("[SearchService.composite_search] Top结果: %s",
@@ -827,6 +883,22 @@ class SearchService:
         log.info("[SearchService.matrix_search] 矩阵搜索完成: shape=%s, total=%d, 分布=%s",
                  shape, total, {k: len(v) for k, v in matrix.items()})
 
+        # 7. 为最终结果计算 highlight_ranges
+        kp_ast_for_highlight = kp_cfg.get("ast") or {}
+        kp_keywords_for_highlight = kp_cfg.get("keywords", [])
+        for level_name, items in matrix.items():
+            for res in items:
+                try:
+                    highlights = self.highlight_service.compute_highlights(
+                        res["content"],
+                        kp_ast_for_highlight,
+                        kp_keywords_for_highlight
+                    )
+                    res["highlight_ranges"] = highlights
+                except Exception as e:
+                    log.warning("[SearchService.matrix_search] 计算高亮失败: %s", e)
+                    res["highlight_ranges"] = []
+
         return {
             "kp_id": kp_id,
             "shape": shape,
@@ -1020,6 +1092,32 @@ class SearchService:
 
         log.info("[SearchService.composite_matrix_search] 综合矩阵搜索完成: shape=%s, total=%d, 分布=%s, 降级=%s",
                  shape, total, {k: len(v) for k, v in matrix.items()}, fallback_used)
+
+        # 为最终结果计算 highlight_ranges（使用所有 KP 的模板）
+        if kp_configs:
+            # 收集所有 KP 的高亮配置
+            all_kp_highlight_configs = []
+            for kp_cfg in kp_configs:
+                kp_row = self.kp_mgr.get_by_id(kp_cfg["id"])
+                if kp_row:
+                    parsed_cfg = self.kp_mgr.parse_kp_config(kp_row)
+                    all_kp_highlight_configs.append((
+                        parsed_cfg.get("ast") or {},
+                        parsed_cfg.get("keywords", []),
+                        kp_cfg["name"]
+                    ))
+
+            for level_name, items in matrix.items():
+                for res in items:
+                    try:
+                        highlights = self.highlight_service.compute_highlights_multi(
+                            res["content"],
+                            all_kp_highlight_configs
+                        )
+                        res["highlight_ranges"] = highlights
+                    except Exception as e:
+                        log.warning("[SearchService.composite_matrix_search] 计算高亮失败: %s", e)
+                        res["highlight_ranges"] = []
 
         return {
             "kp_ids": kp_ids,

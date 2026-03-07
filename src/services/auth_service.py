@@ -124,7 +124,7 @@ class AuthService:
             )
 
         # Generate tokens (outside transaction)
-        tokens = self._generate_tokens(user['id'])
+        tokens = self._generate_tokens(user['id'], user['role'])
 
         # Add user info to response
         tokens['user'] = {
@@ -167,8 +167,15 @@ class AuthService:
             if last_login_ts and iat < (last_login_ts - 2):
                 raise UnauthorizedException(error="Session expired, please login again")
 
+            # Query latest role from database (role may have been changed by admin)
+            user = self.client.fetch_one(
+                "SELECT role FROM users WHERE id = %s",
+                (user_id,)
+            )
+            user_role = user['role'] if user else 'user'
+
             # Generate new access token only (refresh token stays the same)
-            return self._generate_tokens(user_id)
+            return self._generate_tokens(user_id, user_role)
 
         except jwt.ExpiredSignatureError:
             raise UnauthorizedException(error="Refresh token expired")
@@ -196,12 +203,13 @@ class AuthService:
             return float(row['ts'])
         return None
 
-    def _generate_tokens(self, user_id: int) -> dict:
+    def _generate_tokens(self, user_id: int, user_role: str = 'user') -> dict:
         """
         Generate access and refresh tokens.
 
         Args:
             user_id: User ID to embed in token
+            user_role: User role ('user' or 'admin') to embed in token
 
         Returns:
             Token dict (access_token, refresh_token, token_type, expires_in)
@@ -224,12 +232,14 @@ class AuthService:
 
         access_payload = {
             'user_id': user_id,
+            'role': user_role,
             'exp': now + timedelta(seconds=access_expire),
             'iat': iat_timestamp
         }
 
         refresh_payload = {
             'user_id': user_id,
+            'role': user_role,
             'exp': now + timedelta(seconds=refresh_expire),
             'iat': iat_timestamp
         }

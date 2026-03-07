@@ -213,3 +213,45 @@ def remove_favorite():
         "message": "Removed from favorites" if removed else "Not in favorites",
         "data": {"removed": removed}
     })
+
+
+# ============== Quota ==============
+
+# Lazy-load QuotaService singleton
+_quota_service = None
+
+
+def get_quota_service():
+    """Get QuotaService singleton (lazy initialization)"""
+    global _quota_service
+    if _quota_service is None:
+        from src.services.quota_service import QuotaService
+        _quota_service = QuotaService()
+    return _quota_service
+
+
+@user_bp.route('/quota', methods=['GET'])
+@require_auth
+def get_quota():
+    """
+    Get AI explanation quota for current user.
+
+    Returns:
+        200: Quota information
+            - daily_limit: Daily request limit (-1 for unlimited)
+            - used_today: Requests used today
+            - remaining: Remaining requests (-1 for unlimited)
+            - reset_at: Next reset time (ISO format with timezone)
+            - unlimited: Whether user has unlimited quota (admin)
+    """
+    user_role = getattr(g, 'user_role', 'user')
+    quota_service = get_quota_service()
+    quota_info = quota_service.get_quota_info(g.user_id, user_role)
+
+    log.debug(f"[GET] /api/user/quota - user={g.user_id}, remaining={quota_info.get('remaining')}")
+
+    return jsonify({
+        "code": 200,
+        "message": "success",
+        "data": quota_info
+    })

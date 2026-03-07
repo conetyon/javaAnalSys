@@ -3,12 +3,14 @@
  *
  * Top navigation bar with user menu.
  * Shows login button for anonymous users, dropdown menu for authenticated users.
+ * Includes quota indicator for AI explanation feature.
  */
 
 import { useNavigate } from 'react-router-dom';
-import { Layout, Button, Dropdown, Avatar, Space, Typography } from 'antd';
+import { Layout, Button, Dropdown, Avatar, Space, Typography, Divider } from 'antd';
 import { UserOutlined, LogoutOutlined, LoginOutlined, HistoryOutlined, StarOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
+import QuotaIndicator from './QuotaIndicator';
 import type { MenuProps } from 'antd';
 
 const { Header: AntHeader } = Layout;
@@ -80,12 +82,18 @@ export default function Header() {
 
       <div>
         {isAuthenticated ? (
-          <Dropdown menu={{ items: menuItems }} placement="bottomRight">
-            <Space style={{ cursor: 'pointer' }}>
-              <Avatar icon={<UserOutlined />} />
-              <Text>{user?.username}</Text>
-            </Space>
-          </Dropdown>
+          <Space split={<Divider type="vertical" />}>
+            {/* 配额指示器 */}
+            <QuotaIndicator compact />
+
+            {/* 用户菜单 */}
+            <Dropdown menu={{ items: menuItems }} placement="bottomRight">
+              <Space style={{ cursor: 'pointer' }}>
+                <Avatar icon={<UserOutlined />} />
+                <Text>{user?.username}</Text>
+              </Space>
+            </Dropdown>
+          </Space>
         ) : (
           <Space>
             <Button

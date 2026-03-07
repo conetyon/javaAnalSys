@@ -4,7 +4,7 @@
  */
 
 import { Tabs, Empty, Typography, Tag } from 'antd';
-import type { MatrixResultItem, CompositeMatchResultItem } from '../types/match';
+import type { MatrixResultItem, CompositeMatchResultItem, MatchResultItem } from '../types/match';
 import MatchResultCard from './MatchResultCard';
 
 const { Text } = Typography;
@@ -22,6 +22,9 @@ interface MatrixViewProps {
   total: number;
   isComposite?: boolean;
   showFavorite?: boolean;
+  showExplain?: boolean;  // 是否显示 AI 解释按钮
+  kpId?: number;          // 知识点 ID（单选模式）
+  kpName?: string;        // 知识点名称
   favoriteIds?: Set<number>;
   onFavoriteToggle?: (snippetId: number, isFavorite: boolean) => void;
 }
@@ -32,12 +35,18 @@ export default function MatrixView({
   total,
   isComposite = false,
   showFavorite = false,
+  showExplain = false,
+  kpId,
+  kpName,
   favoriteIds = new Set(),
   onFavoriteToggle,
 }: MatrixViewProps) {
   if (total === 0) {
     return <Empty description="暂无匹配结果" />;
   }
+
+  // 组合模式不支持 AI 解释（没有单一 kpId）
+  const shouldShowExplain = showExplain && !isComposite && !!kpId;
 
   const tabItems = levels.map((level) => {
     const items = matrix[level] || [];
@@ -66,6 +75,9 @@ export default function MatrixView({
                   item={converted}
                   rank={index + 1}
                   showFavorite={showFavorite}
+                  showExplain={shouldShowExplain}
+                  kpId={kpId}
+                  kpName={kpName}
                   isFavorite={converted.id ? favoriteIds.has(converted.id) : false}
                   onFavoriteToggle={onFavoriteToggle}
                   isComposite={isComposite}
@@ -95,18 +107,7 @@ export default function MatrixView({
 function convertToMatchResultItem(
   item: MatrixResultItem | CompositeMatchResultItem,
   isComposite: boolean
-): {
-  id: number | null;
-  content: string;
-  score: number;
-  ast_ratio: number;
-  ast_coverage: number;
-  keyword_score: number;
-  keyword_hit: number;
-  keyword_total: number;
-  difficulty: number;
-  file_path?: string;
-} {
+): MatchResultItem {
   if (isComposite) {
     const compositeItem = item as CompositeMatchResultItem;
     return {
@@ -120,6 +121,7 @@ function convertToMatchResultItem(
       keyword_total: compositeItem.kp_count,
       difficulty: compositeItem.difficulty || 0,
       file_path: compositeItem.file_path,
+      highlight_ranges: compositeItem.highlight_ranges || [],
     };
   }
 
@@ -135,5 +137,6 @@ function convertToMatchResultItem(
     keyword_total: 0, // 矩阵模式不返回此字段
     difficulty: matrixItem.difficulty,
     file_path: matrixItem.file_path,
+    highlight_ranges: matrixItem.highlight_ranges || [],
   };
 }

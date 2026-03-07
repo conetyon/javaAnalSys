@@ -122,6 +122,36 @@ class DatabaseInitializer(BaseManager):
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                     FOREIGN KEY (snippet_id) REFERENCES code_snippets(id) ON DELETE CASCADE,
                     UNIQUE KEY uk_user_snippet (user_id, snippet_id)
+                )''', ()),
+
+            # user_quotas 表：AI 解释配额管理（迭代 4 - 代码解释功能）
+            ('''CREATE TABLE IF NOT EXISTS user_quotas
+                (
+                    id              INT PRIMARY KEY AUTO_INCREMENT,
+                    user_id         INT NOT NULL UNIQUE,
+                    daily_limit     INT NOT NULL DEFAULT 50,
+                    used_today      INT NOT NULL DEFAULT 0,
+                    last_reset_date DATE NOT NULL,
+                    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )''', ()),
+
+            # explain_logs 表：AI 解释请求日志（迭代 4 - 代码解释功能）
+            # 注意：snippet_id 使用 ON DELETE SET NULL 保留审计日志（即使代码片段被删除）
+            ('''CREATE TABLE IF NOT EXISTS explain_logs
+                (
+                    id                INT PRIMARY KEY AUTO_INCREMENT,
+                    user_id           INT NOT NULL,
+                    snippet_id        INT,
+                    kp_id             INT NOT NULL,
+                    request_type      ENUM('explain', 'chat') NOT NULL,
+                    prompt_tokens     INT,
+                    completion_tokens INT,
+                    latency_ms        INT,
+                    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (snippet_id) REFERENCES code_snippets(id) ON DELETE SET NULL
                 )''', ())
         ]
 
@@ -148,6 +178,10 @@ class DatabaseInitializer(BaseManager):
             # favorites: 用户+时间复合索引（收藏列表分页查询）
             ('''CREATE INDEX idx_favorites_user_created
                 ON favorites(user_id, created_at DESC)''', 'idx_favorites_user_created'),
+
+            # explain_logs: 用户+时间复合索引（日志查询）
+            ('''CREATE INDEX idx_explain_logs_user_created
+                ON explain_logs(user_id, created_at DESC)''', 'idx_explain_logs_user_created'),
 
             # 哈希索引：用于幂等导入检查（已在表定义中定义为 UNIQUE，此处可选）
             # ('''CREATE INDEX idx_content_hash

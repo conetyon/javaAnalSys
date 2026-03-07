@@ -1,5 +1,6 @@
 # lib/utils/settings.py
 from __future__ import annotations
+import os
 import yaml
 from pathlib import Path
 from collections.abc import ItemsView
@@ -8,12 +9,62 @@ from typing import Dict, Any, Optional, Iterator, Tuple
 from pydantic import BaseModel, Field, RootModel, ConfigDict
 
 
+class LLMFallbackConfig(BaseModel):
+    """LLM fallback endpoint configuration."""
+    endpoint: str = ""
+    model: str = ""
+    api_key: str = ""
+
+    def get_api_key(self) -> str:
+        """Get API key, preferring environment variable."""
+        env_key = os.environ.get('LLM_API_KEY_FALLBACK')
+        if env_key:
+            return env_key
+        return self.api_key
+
+
+class LLMConfig(BaseModel):
+    """LLM API configuration for AI code explanation feature."""
+    provider: str = "openai_compatible"
+    endpoint: str = ""
+    model: str = ""
+    api_key: str = ""  # Can be overridden by env var
+    timeout: int = 120
+    max_tokens: int = 1000
+    temperature: float = 0.7
+    fallback: Optional[LLMFallbackConfig] = None
+
+    def get_api_key(self) -> str:
+        """Get API key, preferring environment variable."""
+        env_key = os.environ.get('LLM_API_KEY')
+        if env_key:
+            return env_key
+        return self.api_key
+
+
+class QuotaConfig(BaseModel):
+    """Quota configuration for AI explanation feature."""
+    default_daily_limit: int = 50
+    admin_unlimited: bool = True
+    reset_timezone: str = "Asia/Shanghai"
+    reset_hour: int = 0
+
+
+class RateLimitConfig(BaseModel):
+    """Rate limiting configuration."""
+    requests_per_minute: int = 10
+    burst: int = 3
+
+
 class _AppConfig(BaseModel):
     debug: bool = False
     version: str = "0.0.1"
     logger: Optional[LoggerConfig] = None
     redis: Optional[Dict[str, RedisConfig]] = None
     db: Dict[str, DbConfig]
+    llm: Optional[LLMConfig] = None
+    quota: Optional[QuotaConfig] = None
+    rate_limit: Optional[RateLimitConfig] = None
 
     # 允许用环境变量覆盖
     model_config = {

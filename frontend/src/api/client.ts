@@ -159,3 +159,11 @@ client.interceptors.response.use(
 );
 
 export default client;
+
+/**
+ * Get the current access token from localStorage
+ * Used by SSE utilities that need direct token access
+ */
+export function getToken(): string | null {
+  return localStorage.getItem(ACCESS_TOKEN_KEY);
+}

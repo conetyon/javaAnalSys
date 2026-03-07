@@ -207,12 +207,45 @@ Hybrid scoring algorithm with three components:
 - Builds tree structures for frontend display
 - Handles parent-child relationships
 
+**HighlightService** (`highlight_service.py`):
+- Computes highlight ranges for code snippets based on KP templates
+- Uses tree-sitter AST analysis to identify relevant code lines
+- Returns `[{start_line, end_line, type, label}]` format
+- Called during search result assembly (not stored in database)
+
+**ExplainService** (`explain_service.py`):
+- AI-powered code explanation using LLM
+- `stream_explain()`: Initial code explanation (SSE streaming)
+- `stream_chat()`: Multi-turn Q&A about code (SSE streaming)
+- Integrates with QuotaService and RateLimiterService
+- Logs requests to `explain_logs` table for auditing
+
+**QuotaService** (`quota_service.py`):
+- Manages daily AI explanation quotas per user
+- Default: 50 requests/day for regular users, unlimited for admins
+- Automatic daily reset at midnight Beijing time (Asia/Shanghai)
+- Methods: `check_quota()`, `consume_quota()`, `get_quota_info()`
+
+**RateLimiterService** (`rate_limiter.py`):
+- In-memory sliding window rate limiting
+- Default: 10 requests per minute per user
+- Prevents API abuse during high-frequency requests
+
 #### 4. Database Layer (`src/db_manager/`)
 
-Three main tables:
+Core tables:
 - `knowledge_points`: KP hierarchy with AST templates and keywords (JSON stored as TEXT)
 - `code_files`: Java source files
 - `code_snippets`: Extracted method-level snippets with features
+
+User and authentication tables:
+- `users`: User accounts with password hash and role
+- `match_history`: User's matching history records
+- `favorites`: User's favorite code snippets
+
+AI explanation tables:
+- `user_quotas`: Daily AI explanation quotas per user
+- `explain_logs`: AI explanation request logs for auditing
 
 Managers:
 - `DatabaseInitializer`: Creates schema (does not populate data)
@@ -287,6 +320,11 @@ Matching Endpoints:
 - `POST /api/match/matrix` - Single KP matching with difficulty-grouped matrix return
 - `POST /api/match/composite/matrix` - Composite KP matching with difficulty-grouped matrix return
 - `GET /api/match/health` - Service health check
+
+AI Explanation Endpoints (requires authentication):
+- `POST /api/explain` - Code explanation (SSE streaming response)
+- `POST /api/explain/chat` - Multi-turn Q&A about code (SSE streaming response)
+- `GET /api/user/quota` - Query user's AI explanation quota
 
 ### Logging Strategy
 
@@ -545,6 +583,20 @@ results = search_service.search(
 ```
 
 ## Recent Major Changes
+
+**v1.6.0** (2026-03-07):
+- **AI 代码解释功能**：新增关键行标注 + LLM 按需解释
+- **SSE 流式响应**：`/api/explain` 和 `/api/explain/chat` 端点支持 SSE
+- **配额管理**：`user_quotas` 表管理每日使用配额（普通用户 50 次/天）
+- **新增服务**：`HighlightService`（关键行）、`ExplainService`（AI 解释）、`QuotaService`（配额）、`RateLimiterService`（限流）
+- **前端组件**：`CodeExplainer`（AI 解释面板）、`QuotaIndicator`（配额指示器）
+- **SSE 修复**：CORS preflight 处理、响应编码、React StrictMode 兼容性
+- **OpenSpec 归档**：`2026-03-07-add-code-explanation`
+
+**v1.5.0** (2026-03-01):
+- **完整前端界面**：用户认证、历史记录、收藏功能、矩阵/组合匹配
+- **用户认证系统**：JWT Token 鉴权、单设备登录、自动刷新
+- **OpenSpec 归档**：`2026-03-01-add-frontend-ui`
 
 **v1.4.0** (2026-02-28):
 - **前端界面 MVP**：新增 React + TypeScript 前端（`frontend/` 目录）

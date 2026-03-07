@@ -30,12 +30,15 @@ def create_app(config_object=None) -> Flask:
     app.config.setdefault('JSON_AS_ASCII', False)  # 支持中文
     app.config.setdefault('JSON_SORT_KEYS', False)  # 保持 JSON 键顺序
 
-    # 启用 CORS
+    # 启用 CORS（支持 SSE 流式响应）
+    # 注意：resources 使用 regex 模式，/api/.* 匹配所有 /api/ 开头的路径
     CORS(app, resources={
-        r"/api/*": {
+        r"/api/.*": {
             "origins": "*",
             "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"]
+            "allow_headers": ["Content-Type", "Authorization", "Accept", "Cache-Control"],
+            "expose_headers": ["Content-Type", "X-Accel-Buffering"],
+            "supports_credentials": False
         }
     })
 

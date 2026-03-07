@@ -66,6 +66,12 @@ def init_request_logging(app):
                 path = request.path
                 status = response.status_code
 
+                # Skip detailed logging for SSE streams (avoid memory issues)
+                is_sse = response.content_type and 'text/event-stream' in response.content_type
+                if is_sse:
+                    logger.info(f"[{client_ip}] {method} {path} -> {status} (SSE stream)")
+                    return response
+
                 # Use different log levels based on status code
                 if status >= 500:
                     logger.error(f"[{client_ip}] {method} {path} -> {status} ({response_time_ms}ms)")
