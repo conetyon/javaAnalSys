@@ -470,6 +470,72 @@ function handleSessionExpired() {
 - **AND** 在匹配结果中展示该片段
 - **THEN** 收藏按钮显示已收藏状态
 
+### Requirement: AI 代码解释（迭代 4，v1.6.0+）
+
+系统 MUST 提供 AI 驱动的代码解释功能。
+
+#### Scenario: 显示 AI 解释按钮
+
+- **WHEN** 匹配结果卡片渲染
+- **AND** 用户已登录
+- **THEN** 显示"AI 解释"按钮
+
+#### Scenario: 触发 AI 解释
+
+- **WHEN** 用户点击"AI 解释"按钮
+- **THEN** 展开 CodeExplainer 组件
+- **AND** 调用 POST /api/explain（SSE）
+- **AND** 流式显示 AI 回复
+
+#### Scenario: 知识点关键行高亮
+
+- **WHEN** AI 解释请求成功
+- **THEN** 代码中与知识点相关的行高亮显示（黄色背景）
+- **AND** 高亮范围支持横向滚动
+- **AND** 高亮信息基于 AST 分析 + 关键词匹配
+
+#### Scenario: 多轮问答
+
+- **WHEN** 用户在输入框输入问题并提交
+- **THEN** 调用 POST /api/explain/chat（SSE）
+- **AND** 对话追加到聊天区域
+- **AND** 支持 Markdown 渲染
+
+#### Scenario: 加载状态
+
+- **WHEN** AI 正在生成回复
+- **THEN** 显示加载指示器（Spin）
+- **AND** 初始解释：在解释区域显示
+- **AND** 追问回复：在聊天区域显示气泡
+
+#### Scenario: 组合匹配多知识点解释（v1.6.1+）
+
+- **WHEN** 当前为组合匹配模式
+- **THEN** 传递 kp_ids 数组到 /api/explain
+- **AND** AI 解释涵盖所有选中的知识点
+
+### Requirement: 配额显示（迭代 4，v1.6.0+）
+
+系统 MUST 显示用户的 AI 解释配额状态。
+
+#### Scenario: 显示配额指示器
+
+- **WHEN** 用户已登录
+- **THEN** 在顶部导航显示 QuotaIndicator 组件
+- **AND** 显示 "剩余: X/Y" 格式
+
+#### Scenario: 配额用尽提示
+
+- **WHEN** 用户配额为 0
+- **THEN** AI 解释按钮显示为禁用状态
+- **AND** 提示"今日配额已用尽，明日重置"
+
+#### Scenario: 配额实时更新
+
+- **WHEN** AI 解释请求成功完成
+- **THEN** 配额指示器数值减 1
+- **AND** 无需刷新页面
+
 ## Implementation Details
 
 ### Technology Stack
@@ -484,18 +550,34 @@ function handleSessionExpired() {
 frontend/src/
 ├── api/                  # API layer
 │   ├── client.ts         # Axios instance with interceptors
+│   ├── auth.ts           # Authentication API
 │   ├── knowledge.ts      # Knowledge point API
-│   └── match.ts          # Matching API
+│   ├── match.ts          # Matching API
+│   ├── user.ts           # User API (history, favorites)
+│   └── explain.ts        # AI explanation API (SSE)
 ├── components/           # Reusable components
 │   ├── KnowledgeTree.tsx # Tree with bilingual support
-│   ├── CodeBlock.tsx     # Syntax highlighting
-│   └── MatchResultCard.tsx # Result card with scores
+│   ├── CodeBlock.tsx     # Syntax highlighting + line highlighting
+│   ├── MatchResultCard.tsx # Result card with scores
+│   ├── MatrixView.tsx    # Difficulty-grouped matrix view
+│   ├── CodeExplainer.tsx # AI explanation panel (v1.6.0+)
+│   ├── QuotaIndicator.tsx # Quota display (v1.6.0+)
+│   ├── Header.tsx        # Top navigation with user menu
+│   └── PrivateRoute.tsx  # Route guard
+├── contexts/             # React Context
+│   └── AuthContext.tsx   # Authentication state
 ├── pages/                # Page components
-│   └── Dashboard.tsx     # Main page (sidebar + content)
+│   ├── Dashboard.tsx     # Main page (sidebar + content)
+│   ├── LoginPage.tsx     # Login page
+│   ├── RegisterPage.tsx  # Registration page
+│   ├── HistoryPage.tsx   # Match history
+│   └── FavoritesPage.tsx # Favorites list
 ├── types/                # TypeScript definitions
 │   ├── api.ts            # Response types
+│   ├── auth.ts           # Auth types
 │   ├── knowledge.ts      # KnowledgeTreeNode
 │   ├── match.ts          # MatchResultItem
+│   ├── user.ts           # User, History, Favorite types
 │   └── index.ts          # Re-exports
 └── App.tsx               # Root with routing
 ```
@@ -513,6 +595,20 @@ frontend/src/
 - react-syntax-highlighter with Prism
 - Java language support
 - Line numbers enabled
+- **Line highlighting**: Supports `highlightLines` prop for KP-related lines (v1.6.0+)
+- **Horizontal scroll**: Highlight extends to scrolled content
+
+#### CodeExplainer.tsx (v1.6.0+)
+- AI explanation panel with SSE streaming
+- Markdown rendering via react-markdown
+- Chat messages area for multi-turn Q&A
+- Unified scroll container for explanation + chat
+- Loading indicators in appropriate locations
+
+#### QuotaIndicator.tsx (v1.6.0+)
+- Displays remaining AI explanation quota
+- Format: "剩余: X/Y"
+- Real-time update after successful requests
 
 #### MatchResultCard.tsx
 - Ant Design Card with custom title
@@ -582,9 +678,15 @@ interface MatchResultItem {
 - axios: ^1.x
 - react-syntax-highlighter: ^15.x
 - @types/react-syntax-highlighter: ^15.x
+- react-markdown: ^9.x (v1.6.0+, AI explanation)
+- remark-gfm: ^4.x (v1.6.0+, GFM Markdown support)
 - typescript: ^5.x
 - vite: ^5.x
 
 ## Future Iterations
 
-All iterations have been completed (v1.4.0).
+All iterations have been completed (v1.6.1):
+- Iteration 1: Knowledge tree, code display, list matching (v1.4.0)
+- Iteration 2: User authentication, token refresh (v1.5.0)
+- Iteration 3: Matrix mode, composite matching, history, favorites (v1.5.0)
+- Iteration 4: AI code explanation, quota management (v1.6.0-v1.6.1)

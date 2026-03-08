@@ -246,6 +246,72 @@ The system SHALL return structured error responses with consistent format for al
   - `matrix`: 按难度分组的片段字典
   - `total`: 结果总数
 
+### Requirement: AI 代码解释（v1.6.0+）
+
+系统 SHALL 提供 AI 驱动的代码解释功能，支持 SSE 流式响应。
+
+#### Scenario: 基础代码解释
+
+- **WHEN** POST 请求发送至 `/api/explain`，请求体为 `{"snippet_id": 12345, "kp_id": 10011}`
+- **THEN** 返回 SSE 流式响应
+- **AND** 每个 chunk 格式为 `data: {"type": "content", "content": "..."}`
+- **AND** 最后返回 `data: {"type": "done", "tokens": {...}}`
+
+#### Scenario: 多知识点解释（v1.6.1+）
+
+- **WHEN** POST 请求发送至 `/api/explain`，请求体为 `{"snippet_id": 12345, "kp_ids": [10011, 10012]}`
+- **THEN** 系统合并多个知识点的关键词和高亮信息
+- **AND** Prompt 中组合显示知识点名称（如 "For loop + ArrayList"）
+- **AND** 返回针对多知识点的综合解释
+
+#### Scenario: 指定用户级别
+
+- **WHEN** 请求包含 `user_level: "beginner"`
+- **THEN** AI 使用适合初学者的语言风格解释代码
+- **AND** 支持的级别：beginner, intermediate, advanced
+
+#### Scenario: 配额检查失败
+
+- **WHEN** 用户当日配额已用尽
+- **THEN** 响应状态码为 429 Too Many Requests
+- **AND** 响应包含 `{"error": "Daily quota exceeded"}`
+
+### Requirement: AI 多轮问答（v1.6.0+）
+
+系统 SHALL 支持针对代码的多轮对话问答。
+
+#### Scenario: 追问代码问题
+
+- **WHEN** POST 请求发送至 `/api/explain/chat`，请求体为 `{"snippet_id": 12345, "kp_id": 10011, "question": "为什么用 ArrayList？"}`
+- **THEN** 返回 SSE 流式响应
+- **AND** 基于代码上下文回答问题
+
+#### Scenario: 多知识点追问（v1.6.1+）
+
+- **WHEN** POST 请求发送至 `/api/explain/chat`，请求体包含 `kp_ids: [10011, 10012]`
+- **THEN** 系统使用多知识点的合并上下文回答问题
+
+#### Scenario: 会话上下文
+
+- **WHEN** 请求包含 `session_id`
+- **THEN** 系统保持对话上下文连续性
+- **AND** 后续问题可以引用之前的回答
+
+### Requirement: 配额查询（v1.6.0+）
+
+系统 SHALL 提供端点查询用户的 AI 解释配额状态。
+
+#### Scenario: 查询配额
+
+- **WHEN** GET 请求发送至 `/api/user/quota`
+- **THEN** 响应包含 `daily_limit`, `used_today`, `remaining`, `reset_at`
+- **AND** 响应状态码为 200 OK
+
+#### Scenario: 管理员无限配额
+
+- **WHEN** 管理员用户查询配额
+- **THEN** `daily_limit` 显示为 -1（表示无限制）
+
 ## Implementation Details
 
 ### Flask Application
@@ -291,7 +357,14 @@ The system SHALL return structured error responses with consistent format for al
 - `POST /api/match` - Single KP matching with parameters
 - `POST /api/match/batch` - Multiple independent KP matching
 - `POST /api/match/composite` - Composite KP matching (multi-KP)
+- `POST /api/match/matrix` - Single KP matrix matching (by difficulty)
+- `POST /api/match/composite/matrix` - Composite KP matrix matching
 - `GET /api/match/health` - Service health check
+
+### AI Explanation Endpoints (v1.6.0+, require authentication)
+- `POST /api/explain` - Code explanation (SSE streaming)
+- `POST /api/explain/chat` - Multi-turn Q&A (SSE streaming)
+- `GET /api/user/quota` - Query AI explanation quota
 
 ## Default Configuration
 
@@ -313,3 +386,62 @@ The system SHALL return structured error responses with consistent format for al
 - Pydantic: Request/response validation
 - SearchService: Business logic for matching
 - KnowledgeService: Business logic for knowledge points
+- ExplainService: AI explanation with LLM (v1.6.0+)
+- HighlightService: AST-based code line highlighting (v1.6.0+)
+- QuotaService: Daily quota management (v1.6.0+)
+- RateLimiterService: Request rate limiting (v1.6.0+)
+- LLMClient: OpenAI-compatible API wrapper (v1.6.0+)
+
+## AI Explanation Architecture (v1.6.0+)
+
+### LLM Integration
+
+The system uses `lib/client/llm.py` to interact with LLM APIs:
+
+```python
+# Configuration: config/llm.yaml
+primary:
+  endpoint: https://api.openai.com/v1/chat/completions
+  model: gpt-4o
+  api_key: ${LLM_API_KEY}  # From environment variable
+
+fallback:
+  endpoint: https://backup-api.example.com
+  model: gpt-4o-mini
+  api_key: ${LLM_FALLBACK_API_KEY}
+```
+
+**Features**:
+- SSE (Server-Sent Events) streaming response
+- Primary/Fallback dual-endpoint support
+- Automatic failover on primary failure
+- Token usage tracking (prompt + completion)
+
+### Highlight Mechanism
+
+`HighlightService` computes code line highlights based on:
+1. **AST Node Matching**: KP template nodes → code locations
+2. **Keyword Matching**: KP keywords → code lines containing them
+3. **Merge Adjacent**: Consecutive highlighted lines merged
+
+**Output Format**:
+```json
+[
+  {"start_line": 3, "end_line": 5, "type": "for_statement", "label": "for loop"},
+  {"start_line": 7, "end_line": 7, "type": "keyword_match", "label": "Keyword: ArrayList"}
+]
+```
+
+### Quota Management
+
+`QuotaService` manages daily AI explanation quotas:
+- Regular users: 50 requests/day
+- Admin users: Unlimited
+- Reset time: 00:00 Beijing time (Asia/Shanghai)
+- Quota consumed only on successful LLM response (v1.6.1+)
+
+### Rate Limiting
+
+`RateLimiterService` implements sliding window rate limiting:
+- Default: 10 requests/minute/user
+- Returns 429 Too Many Requests when exceeded
