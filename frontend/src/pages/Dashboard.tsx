@@ -712,6 +712,7 @@ export default function Dashboard() {
                   showFavorite={isAuthenticated}
                   showExplain={isAuthenticated && checkedKps.length > 0}
                   kpId={checkedKps[0]?.id}
+                  kpIds={checkedKps.map((kp) => kp.id)}
                   kpName={checkedKps.map((kp) => kp.name_zh || kp.name).join(' + ')}
                   isFavorite={item.id ? favoriteIds.has(item.id) : false}
                   onFavoriteToggle={handleFavoriteToggle}
@@ -737,8 +738,11 @@ export default function Dashboard() {
               isComposite={selectionMode === 'multiple'}
               showFavorite={isAuthenticated}
               showExplain={isAuthenticated}
-              kpId={selectionMode === 'single' ? selectedKp?.id : undefined}
-              kpName={selectionMode === 'single' ? (selectedKp?.name_zh || selectedKp?.name) : undefined}
+              kpId={selectionMode === 'single' ? selectedKp?.id : checkedKps[0]?.id}
+              kpIds={selectionMode === 'multiple' ? checkedKps.map((kp) => kp.id) : undefined}
+              kpName={selectionMode === 'single'
+                ? (selectedKp?.name_zh || selectedKp?.name)
+                : checkedKps.map((kp) => kp.name_zh || kp.name).join(' + ')}
               favoriteIds={favoriteIds}
               onFavoriteToggle={handleFavoriteToggle}
             />

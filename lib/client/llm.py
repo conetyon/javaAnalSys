@@ -212,7 +212,11 @@ class LLMClient:
 
                         try:
                             data = json.loads(data_str)
-                            choice = data.get('choices', [{}])[0]
+                            choices = data.get('choices', [])
+                            if not choices:
+                                # 跳过空 choices（某些代理服务的首个 chunk 可能为空）
+                                continue
+                            choice = choices[0]
                             delta = choice.get('delta', {})
                             content = delta.get('content', '')
 
@@ -220,7 +224,7 @@ class LLMClient:
                                 total_content += content
                                 yield {"type": "content", "content": content}
 
-                            if 'usage' in data:
+                            if 'usage' in data and data['usage']:
                                 usage = data['usage']
 
                         except json.JSONDecodeError as e:

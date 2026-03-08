@@ -99,21 +99,21 @@ def explain_snippet():
     user_id = g.user_id
     user_role = getattr(g, 'user_role', 'user')
 
-    log.info(f"[POST] /api/explain - user={user_id}, role={user_role}, snippet={req.snippet_id}, kp={req.kp_id}")
+    log.info(f"[POST] /api/explain - user={user_id}, role={user_role}, snippet={req.snippet_id}, kp={req.kp_id}, kp_ids={req.kp_ids}")
 
     # Record request for rate limiting
     rate_limiter = get_rate_limiter()
     rate_limiter.record_request(user_id)
 
-    # Consume quota
+    # 配额在成功后消耗，不在这里预扣
     quota_service = get_quota_service()
-    quota_service.consume_quota(user_id)
 
     def generate():
         log.info(f"[explain_snippet] Generator started")
         explain_service = get_explain_service()
         log.info(f"[explain_snippet] ExplainService obtained")
         chunk_count = 0
+        success = False  # 追踪是否成功
         # 发送初始连接确认（防止浏览器超时）
         yield _sse_format({"type": "connected"})
         log.info(f"[explain_snippet] Sent connected event")
@@ -122,15 +122,26 @@ def explain_snippet():
                 user_id=user_id,
                 snippet_id=req.snippet_id,
                 kp_id=req.kp_id,
-                user_level=req.user_level.value
+                user_level=req.user_level.value,
+                kp_ids=req.kp_ids
             ):
                 chunk_count += 1
                 log.debug(f"[explain_snippet] Yielding chunk #{chunk_count}: type={chunk.get('type')}")
                 yield _sse_format(chunk)
-            log.info(f"[explain_snippet] Completed: total chunks={chunk_count}")
+                # 收到 done 事件表示成功
+                if chunk.get('type') == 'done':
+                    success = True
+            log.info(f"[explain_snippet] Completed: total chunks={chunk_count}, success={success}")
         except Exception as e:
             log.error(f"[explain_snippet] Error in generator: {e}", exc_info=True)
             yield _sse_format({"type": "error", "error": str(e)})
+        finally:
+            # 只有成功时才消耗配额
+            if success:
+                quota_service.consume_quota(user_id)
+                log.info(f"[explain_snippet] Quota consumed for user={user_id}")
+            else:
+                log.info(f"[explain_snippet] Request failed, quota not consumed for user={user_id}")
 
     return _make_sse_response(generate())
 
@@ -170,24 +181,31 @@ def chat_snippet():
     rate_limiter = get_rate_limiter()
     rate_limiter.record_request(user_id)
 
-    # Consume quota
+    # 配额在成功后消耗
     quota_service = get_quota_service()
-    quota_service.consume_quota(user_id)
 
     def generate():
         explain_service = get_explain_service()
+        success = False
         try:
             for chunk in explain_service.stream_chat(
                 user_id=user_id,
                 snippet_id=req.snippet_id,
                 kp_id=req.kp_id,
                 question=req.question,
-                session_id=req.session_id
+                session_id=req.session_id,
+                kp_ids=req.kp_ids
             ):
                 yield _sse_format(chunk)
+                if chunk.get('type') == 'done':
+                    success = True
         except Exception as e:
             log.error(f"[chat_snippet] Error: {e}")
             yield _sse_format({"type": "error", "error": str(e)})
+        finally:
+            if success:
+                quota_service.consume_quota(user_id)
+                log.info(f"[chat_snippet] Quota consumed for user={user_id}")
 
     return _make_sse_response(generate())
 

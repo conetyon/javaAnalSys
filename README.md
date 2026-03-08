@@ -1,7 +1,7 @@
 # Java 知识点匹配系统
 
 > For graduation-design-2026, BUPT
-> **Version**: v1.6.0
+> **Version**: v1.6.1
 
 一个基于 AST 分析和关键词匹配的 Java 代码知识点匹配系统。采用混合打分策略（AST 结构 + 关键词语义 + 难度评估），支持单点匹配、综合知识点匹配和矩阵模式匹配。
 
@@ -1175,7 +1175,177 @@ if len(results) == 0 and thresholds_not_zero:
 
 ---
 
-## 开发指南
+## AI 代码解释技术架构
+
+### 整体架构
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         前端 (React)                                 │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────────────┐ │
+│  │ CodeBlock    │   │ CodeExplainer│   │ QuotaIndicator          │ │
+│  │ (关键行高亮)  │   │ (AI 解释面板) │   │ (配额显示)               │ │
+│  └──────────────┘   └──────────────┘   └──────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+                                │ SSE Stream
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      后端 API (Flask)                                │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────────────┐ │
+│  │ /api/explain │   │ QuotaService │   │ RateLimiter             │ │
+│  │ (SSE 流式)   │   │ (配额管理)    │   │ (请求限流)               │ │
+│  └──────────────┘   └──────────────┘   └──────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      服务层 (Services)                               │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────────────┐ │
+│  │ ExplainSvc   │   │ HighlightSvc │   │ SessionCache            │ │
+│  │ (LLM 调用)   │   │ (关键行计算)  │   │ (对话上下文)             │ │
+│  └──────────────┘   └──────────────┘   └──────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                      LLM 代理层 (lib/client/llm.py)                  │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │ LLMClient                                                     │  │
+│  │ - Primary API (config/llm.yaml)                              │  │
+│  │ - Fallback API (自动故障切换)                                 │  │
+│  │ - SSE 流式响应解析                                            │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### LLM 代理机制
+
+系统通过 `lib/client/llm.py` 封装 LLM API 调用，支持 OpenAI 兼容接口：
+
+```python
+# 配置文件: config/llm.yaml
+primary:
+  endpoint: https://api.openai.com/v1/chat/completions
+  model: gpt-4o
+  api_key: ${LLM_API_KEY}  # 从环境变量读取
+
+fallback:
+  endpoint: https://backup-llm-api.example.com
+  model: gpt-4o-mini
+  api_key: ${LLM_FALLBACK_API_KEY}
+```
+
+**核心特性**：
+
+| 特性 | 说明 |
+|------|------|
+| 流式响应 | SSE (Server-Sent Events) 实时输出 |
+| 自动故障切换 | Primary 失败自动切换 Fallback |
+| Token 统计 | 记录 prompt_tokens / completion_tokens |
+| 超时控制 | 可配置请求超时时间 |
+
+**调用流程**：
+
+```
+ExplainService.stream_explain()
+    ↓
+LLMClient.stream_completion(messages)
+    ↓ (Primary API)
+┌─ 成功 ─────────────────────────┐
+│  yield {"type": "content", ...} │
+│  yield {"type": "done", ...}    │
+└────────────────────────────────┘
+    ↓ 失败
+┌─ Fallback ─────────────────────┐
+│  自动切换到 fallback endpoint   │
+│  继续 yield chunks             │
+└────────────────────────────────┘
+```
+
+### 知识点高亮机制
+
+`HighlightService` 基于 AST 分析自动标注与知识点相关的代码行：
+
+```python
+# 高亮计算流程
+highlights = highlight_service.compute_highlights(
+    code=snippet['content'],          # 代码内容
+    ast_template=kp['ast_template'],  # KP 的 AST 模板
+    keywords=kp['keywords']           # KP 关键词
+)
+
+# 返回格式
+[
+    {"start_line": 3, "end_line": 5, "type": "for_statement", "label": "for 循环"},
+    {"start_line": 7, "end_line": 7, "type": "keyword_match", "label": "关键词: ArrayList"}
+]
+```
+
+**高亮规则**：
+
+| 规则 | 说明 | 示例 |
+|------|------|------|
+| AST 节点匹配 | 模板中的节点类型在代码中出现 | `for_statement` → 高亮 for 循环 |
+| 关键词匹配 | KP 关键词在代码行中出现 | `ArrayList` → 高亮包含该词的行 |
+| 合并相邻行 | 连续高亮行合并为一个范围 | 3-5 行合并为一条记录 |
+
+**前端渲染**：
+
+```tsx
+// CodeBlock.tsx
+<SyntaxHighlighter
+  lineProps={(lineNumber) => ({
+    style: isHighlighted(lineNumber) ? {
+      backgroundColor: 'rgba(255, 235, 59, 0.3)',  // 黄色高亮
+      display: 'block',
+      minWidth: 'fit-content'  // 支持横向滚动
+    } : {}
+  })}
+/>
+```
+
+### 多知识点支持
+
+组合匹配模式下，AI 解释支持同时解释多个知识点：
+
+```python
+# stream_explain() 多 KP 处理
+effective_kp_ids = kp_ids if kp_ids else [kp_id]
+
+for kid in effective_kp_ids:
+    kp = self._get_knowledge_point(kid)
+    kps.append(kp)
+    all_keywords.extend(kp['keywords'])
+    all_highlights.extend(compute_highlights(...))
+
+# 合并后去重
+unique_keywords = list(dict.fromkeys(all_keywords))
+unique_highlights = deduplicate_and_sort(all_highlights)
+
+# Prompt 中组合 KP 名称
+kp_name = ' + '.join(kp['name'] for kp in kps)  # "For loop + ArrayList"
+```
+
+### 配额与限流
+
+**配额管理** (`QuotaService`):
+
+| 用户类型 | 每日限额 | 重置时间 |
+|----------|----------|----------|
+| 普通用户 | 50 次 | 北京时间 00:00 |
+| 管理员 | 无限制 | - |
+
+**限流机制** (`RateLimiterService`):
+- 滑动窗口算法
+- 默认：10 次/分钟/用户
+- 超限返回 429 Too Many Requests
+
+**配额消耗规则**：
+- 仅在 LLM 成功返回时消耗
+- 请求失败不扣配额
+- 从缓存读取不扣配额（计划中）
+
+---
 
 ### 添加新的匹配算法
 
@@ -1272,6 +1442,7 @@ A: 不会。用户代码和数据集代码存储在同一表，通过 `source` �
 
 | 版本 | 日期 | 主要更新 |
 |------|------|----------|
+| v1.6.1 | 2026-03-08 | AI 解释功能优化（多知识点支持、SSE 修复、配额仅成功时消耗、UI 渲染修复） |
 | v1.6.0 | 2026-03-07 | AI 代码解释功能（关键行标注、LLM 解释、配额管理、SSE 流式响应） |
 | v1.5.0 | 2026-03-01 | 完整前端界面（用户认证、历史收藏、矩阵/组合匹配） |
 | v1.4.0 | 2026-02-28 | 前端界面 MVP（知识点树、列表匹配、中英双语） |

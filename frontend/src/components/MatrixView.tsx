@@ -23,7 +23,8 @@ interface MatrixViewProps {
   isComposite?: boolean;
   showFavorite?: boolean;
   showExplain?: boolean;  // 是否显示 AI 解释按钮
-  kpId?: number;          // 知识点 ID（单选模式）
+  kpId?: number;          // 知识点 ID（单选模式 / primary KP）
+  kpIds?: number[];       // 多知识点 ID（组合匹配模式）
   kpName?: string;        // 知识点名称
   favoriteIds?: Set<number>;
   onFavoriteToggle?: (snippetId: number, isFavorite: boolean) => void;
@@ -37,6 +38,7 @@ export default function MatrixView({
   showFavorite = false,
   showExplain = false,
   kpId,
+  kpIds,
   kpName,
   favoriteIds = new Set(),
   onFavoriteToggle,
@@ -45,8 +47,8 @@ export default function MatrixView({
     return <Empty description="暂无匹配结果" />;
   }
 
-  // 组合模式不支持 AI 解释（没有单一 kpId）
-  const shouldShowExplain = showExplain && !isComposite && !!kpId;
+  // 组合模式也支持 AI 解释（使用 primary KP context）
+  const shouldShowExplain = showExplain && !!kpId;
 
   const tabItems = levels.map((level) => {
     const items = matrix[level] || [];
@@ -77,6 +79,7 @@ export default function MatrixView({
                   showFavorite={showFavorite}
                   showExplain={shouldShowExplain}
                   kpId={kpId}
+                  kpIds={kpIds}
                   kpName={kpName}
                   isFavorite={converted.id ? favoriteIds.has(converted.id) : false}
                   onFavoriteToggle={onFavoriteToggle}

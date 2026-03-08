@@ -145,6 +145,7 @@ class DatabaseInitializer(BaseManager):
                     user_id           INT NOT NULL,
                     snippet_id        INT,
                     kp_id             INT NOT NULL,
+                    kp_ids            TEXT,
                     request_type      ENUM('explain', 'chat') NOT NULL,
                     prompt_tokens     INT,
                     completion_tokens INT,

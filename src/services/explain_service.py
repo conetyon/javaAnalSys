@@ -74,7 +74,8 @@ class ExplainService:
         user_id: int,
         snippet_id: int,
         kp_id: int,
-        user_level: str = 'beginner'
+        user_level: str = 'beginner',
+        kp_ids: List[int] = None
     ) -> Generator[Dict[str, Any], None, None]:
         """
         Stream AI explanation for a code snippet.
@@ -82,16 +83,19 @@ class ExplainService:
         Args:
             user_id: Requesting user's ID
             snippet_id: Code snippet ID
-            kp_id: Knowledge point ID
+            kp_id: Primary knowledge point ID (used if kp_ids is None)
             user_level: User expertise level (beginner/intermediate/advanced)
+            kp_ids: Optional list of knowledge point IDs for composite matching
 
         Yields:
             Dict with type (content/done/error) and relevant data
         """
-        log.info(f"[ExplainService.stream_explain] Starting: user={user_id}, snippet={snippet_id}, kp={kp_id}")
+        # 使用 kp_ids 如果提供，否则使用单个 kp_id
+        effective_kp_ids = kp_ids if kp_ids else [kp_id]
+        log.info(f"[ExplainService.stream_explain] Starting: user={user_id}, snippet={snippet_id}, kps={effective_kp_ids}")
         start_time = time.time()
 
-        # Fetch snippet and KP data
+        # Fetch snippet
         log.debug(f"[ExplainService] Fetching snippet {snippet_id}")
         snippet = self._get_snippet(snippet_id)
         if not snippet:
@@ -99,29 +103,62 @@ class ExplainService:
             yield {"type": "error", "error": "代码片段不存在"}
             return
 
-        log.debug(f"[ExplainService] Fetching KP {kp_id}")
-        kp = self._get_knowledge_point(kp_id)
-        if not kp:
-            log.warning(f"[ExplainService] KP {kp_id} not found")
-            yield {"type": "error", "error": "知识点不存在"}
-            return
+        # Fetch all KPs and merge their info
+        kps = []
+        all_keywords = []
+        all_highlights = []
 
-        # Compute highlights
-        log.debug(f"[ExplainService] Computing highlights")
-        highlights = self.highlight_service.compute_highlights(
-            snippet['content'],
-            self._parse_json_field(kp.get('ast_template')),
-            self._parse_json_field(kp.get('keywords'))
-        )
+        for kid in effective_kp_ids:
+            log.debug(f"[ExplainService] Fetching KP {kid}")
+            kp = self._get_knowledge_point(kid)
+            if not kp:
+                log.warning(f"[ExplainService] KP {kid} not found")
+                yield {"type": "error", "error": f"知识点 {kid} 不存在"}
+                return
+            kps.append(kp)
+
+            # Extract keywords
+            kp_keywords = self._parse_json_field(kp.get('keywords')) or []
+            all_keywords.extend(kp_keywords)
+
+            # Compute highlights for this KP
+            highlights = self.highlight_service.compute_highlights(
+                snippet['content'],
+                self._parse_json_field(kp.get('ast_template')),
+                kp_keywords
+            )
+            all_highlights.extend(highlights)
+
+        # Deduplicate and sort highlights
+        seen_ranges = set()
+        unique_highlights = []
+        for h in all_highlights:
+            key = (h['start_line'], h['end_line'], h['type'])
+            if key not in seen_ranges:
+                seen_ranges.add(key)
+                unique_highlights.append(h)
+        unique_highlights.sort(key=lambda x: x['start_line'])
+
+        # Deduplicate keywords
+        unique_keywords = list(dict.fromkeys(all_keywords))
+
+        # Build KP display name (combine all KP names)
+        if len(kps) == 1:
+            kp_name = kps[0]['name']
+            kp_name_zh = kps[0].get('name_zh', '')
+        else:
+            kp_name = ' + '.join(kp['name'] for kp in kps)
+            kp_name_zh = ' + '.join(kp.get('name_zh') or kp['name'] for kp in kps)
 
         # Build prompt
-        log.debug(f"[ExplainService] Building messages")
+        log.debug(f"[ExplainService] Building messages for {len(kps)} KPs")
         messages = self._build_explain_messages(
             code=snippet['content'],
-            kp_name=kp['name'],
-            kp_name_zh=kp.get('name_zh', ''),
-            highlights=highlights,
-            user_level=user_level
+            kp_name=kp_name,
+            kp_name_zh=kp_name_zh,
+            highlights=unique_highlights,
+            user_level=user_level,
+            keywords=unique_keywords
         )
 
         # Stream from LLM
@@ -145,15 +182,16 @@ class ExplainService:
                 yield chunk
                 latency_ms = int((time.time() - start_time) * 1000)
 
-        # Log request
+        # Log request (use primary KP ID + full kp_ids list)
         self._log_request(
             user_id=user_id,
             snippet_id=snippet_id,
-            kp_id=kp_id,
+            kp_id=effective_kp_ids[0],
             request_type='explain',
             prompt_tokens=total_usage.get("prompt_tokens"),
             completion_tokens=total_usage.get("completion_tokens"),
-            latency_ms=latency_ms
+            latency_ms=latency_ms,
+            kp_ids=effective_kp_ids if len(effective_kp_ids) > 1 else None
         )
 
     def stream_chat(
@@ -162,7 +200,8 @@ class ExplainService:
         snippet_id: int,
         kp_id: int,
         question: str,
-        session_id: Optional[str] = None
+        session_id: Optional[str] = None,
+        kp_ids: List[int] = None
     ) -> Generator[Dict[str, Any], None, None]:
         """
         Stream AI response for a follow-up question.
@@ -170,25 +209,39 @@ class ExplainService:
         Args:
             user_id: Requesting user's ID
             snippet_id: Code snippet ID
-            kp_id: Knowledge point ID
+            kp_id: Primary knowledge point ID
             question: User's question
             session_id: Optional session ID for multi-turn context
+            kp_ids: Optional list of knowledge point IDs for composite matching
 
         Yields:
             Dict with type (content/done/error/session_id) and relevant data
         """
         start_time = time.time()
+        effective_kp_ids = kp_ids if kp_ids else [kp_id]
 
-        # Fetch snippet and KP data
+        # Fetch snippet
         snippet = self._get_snippet(snippet_id)
         if not snippet:
             yield {"type": "error", "error": "代码片段不存在"}
             return
 
-        kp = self._get_knowledge_point(kp_id)
-        if not kp:
-            yield {"type": "error", "error": "知识点不存在"}
-            return
+        # Fetch all KPs and build combined name
+        kps = []
+        for kid in effective_kp_ids:
+            kp = self._get_knowledge_point(kid)
+            if not kp:
+                yield {"type": "error", "error": f"知识点 {kid} 不存在"}
+                return
+            kps.append(kp)
+
+        # Build KP display name
+        if len(kps) == 1:
+            kp_name = kps[0]['name']
+            kp_name_zh = kps[0].get('name_zh', '')
+        else:
+            kp_name = ' + '.join(kp['name'] for kp in kps)
+            kp_name_zh = ' + '.join(kp.get('name_zh') or kp['name'] for kp in kps)
 
         # Get or create session
         if session_id:
@@ -202,8 +255,8 @@ class ExplainService:
         # Build prompt
         messages = self._build_chat_messages(
             code=snippet['content'],
-            kp_name=kp['name'],
-            kp_name_zh=kp.get('name_zh', ''),
+            kp_name=kp_name,
+            kp_name_zh=kp_name_zh,
             question=question,
             history=history
         )
@@ -243,18 +296,19 @@ class ExplainService:
         _session_cache.set(session_id, {
             "history": history,
             "snippet_id": snippet_id,
-            "kp_id": kp_id
+            "kp_ids": effective_kp_ids
         })
 
         # Log request
         self._log_request(
             user_id=user_id,
             snippet_id=snippet_id,
-            kp_id=kp_id,
+            kp_id=effective_kp_ids[0],
             request_type='chat',
             prompt_tokens=total_usage.get("prompt_tokens"),
             completion_tokens=total_usage.get("completion_tokens"),
-            latency_ms=latency_ms
+            latency_ms=latency_ms,
+            kp_ids=effective_kp_ids if len(effective_kp_ids) > 1 else None
         )
 
     def _build_explain_messages(
@@ -263,7 +317,8 @@ class ExplainService:
         kp_name: str,
         kp_name_zh: str,
         highlights: List[Dict[str, Any]],
-        user_level: str
+        user_level: str,
+        keywords: List[str] = None
     ) -> List[Dict[str, str]]:
         """Build messages for explanation prompt."""
         level_desc = {
@@ -281,13 +336,18 @@ class ExplainService:
         else:
             highlights_text = "（未检测到特定关键行）"
 
+        # 知识点关键词（用于增强 LLM 上下文）
+        keywords_text = ""
+        if keywords:
+            keywords_text = f"\n【核心关键词】{', '.join(keywords[:8])}"
+
         kp_display = f"{kp_name}"
         if kp_name_zh:
             kp_display = f"{kp_name} ({kp_name_zh})"
 
         system_prompt = f"""你是一位 Java 教学助手，正在帮助学生理解代码。
 
-【知识点】{kp_display}
+【知识点】{kp_display}{keywords_text}
 
 【当前代码片段】
 ```java
@@ -314,6 +374,9 @@ class ExplainService:
 - 适合 {level_desc} 水平的学习者
 - 重点突出，避免冗长
 - 如果代码中包含疑似敏感信息（如 API Key、密码、Token），不要在解释中暴露这些值"""
+
+        # DEBUG: 记录 prompt 构建信息
+        log.debug(f"[ExplainService] Prompt built: kp={kp_display}, highlights={len(highlights or [])}, keywords={len(keywords or [])}")
 
         return [{"role": "system", "content": system_prompt}]
 
@@ -398,15 +461,18 @@ class ExplainService:
         request_type: str,
         prompt_tokens: Optional[int],
         completion_tokens: Optional[int],
-        latency_ms: int
+        latency_ms: int,
+        kp_ids: List[int] = None
     ) -> None:
         """Log request to explain_logs table."""
         try:
+            # kp_ids 序列化为 JSON 字符串
+            kp_ids_json = json.dumps(kp_ids) if kp_ids else None
             self.client.execute(
                 """INSERT INTO explain_logs
-                   (user_id, snippet_id, kp_id, request_type, prompt_tokens, completion_tokens, latency_ms)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-                (user_id, snippet_id, kp_id, request_type, prompt_tokens, completion_tokens, latency_ms)
+                   (user_id, snippet_id, kp_id, kp_ids, request_type, prompt_tokens, completion_tokens, latency_ms)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                (user_id, snippet_id, kp_id, kp_ids_json, request_type, prompt_tokens, completion_tokens, latency_ms)
             )
         except Exception as e:
             log.error(f"[ExplainService] Failed to log request: {e}")

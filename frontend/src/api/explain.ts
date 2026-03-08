@@ -13,12 +13,14 @@ export type UserLevel = 'beginner' | 'intermediate' | 'advanced';
 export interface ExplainRequest {
   snippet_id: number;
   kp_id: number;
+  kp_ids?: number[];  // 多知识点支持（组合匹配模式）
   user_level?: UserLevel;
 }
 
 export interface ChatRequest {
   snippet_id: number;
   kp_id: number;
+  kp_ids?: number[];  // 多知识点支持
   question: string;
   session_id?: string;
 }

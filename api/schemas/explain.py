@@ -22,7 +22,11 @@ class UserLevel(str, Enum):
 class ExplainRequest(BaseModel):
     """Request for AI code explanation"""
     snippet_id: int = Field(..., description="Code snippet ID")
-    kp_id: int = Field(..., description="Knowledge point ID")
+    kp_id: int = Field(..., description="Primary knowledge point ID")
+    kp_ids: Optional[List[int]] = Field(
+        None,
+        description="Multiple knowledge point IDs (for composite matching). If provided, kp_id is ignored."
+    )
     user_level: UserLevel = Field(
         default=UserLevel.beginner,
         description="User expertise level"
@@ -32,7 +36,11 @@ class ExplainRequest(BaseModel):
 class ChatRequest(BaseModel):
     """Request for multi-turn conversation"""
     snippet_id: int = Field(..., description="Code snippet ID")
-    kp_id: int = Field(..., description="Knowledge point ID")
+    kp_id: int = Field(..., description="Primary knowledge point ID")
+    kp_ids: Optional[List[int]] = Field(
+        None,
+        description="Multiple knowledge point IDs (for composite matching)"
+    )
     question: str = Field(
         ...,
         min_length=1,

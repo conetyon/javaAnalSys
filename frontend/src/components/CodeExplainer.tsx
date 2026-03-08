@@ -93,7 +93,7 @@ const markdownStyles = `
 
 /**
  * 清理不完整的 Markdown（流式输出时可能截断）
- * 更加保守的策略：宁可少显示也不要显示乱码
+ * 策略：添加闭合标记而不是截断，保证内容完整显示
  */
 function sanitizeMarkdown(text: string): string {
   if (!text) return '';
@@ -101,53 +101,33 @@ function sanitizeMarkdown(text: string): string {
   let result = text;
 
   // 1. 处理未闭合的代码块（```）
-  // 找到所有代码块开始/结束标记
   const codeBlockPattern = /```/g;
   const matches = [...result.matchAll(codeBlockPattern)];
 
   if (matches.length % 2 !== 0) {
-    // 有未闭合的代码块
-    const lastOpenIndex = matches[matches.length - 1].index!;
-    // 截断到最后一个未闭合代码块之前，或者保留但添加闭合标记
-    // 为了更好的用户体验，截断到最后一个完整代码块
-    result = result.slice(0, lastOpenIndex);
+    // 有未闭合的代码块，添加闭合标记（而不是截断）
+    result = result + '\n```';
   }
 
   // 2. 处理未闭合的行内代码（`）
-  // 需要排除代码块内的 ``` 情况
-  // 简化处理：统计不在 ``` 中的单独 ` 数量
   let inCodeBlock = false;
   let singleBacktickCount = 0;
-  let lastSingleBacktickIndex = -1;
 
   for (let i = 0; i < result.length; i++) {
     if (result.slice(i, i + 3) === '```') {
       inCodeBlock = !inCodeBlock;
-      i += 2; // 跳过 ```
+      i += 2;
     } else if (result[i] === '`' && !inCodeBlock) {
       singleBacktickCount++;
-      lastSingleBacktickIndex = i;
     }
   }
 
   // 如果有奇数个行内代码标记，添加闭合
-  if (singleBacktickCount % 2 !== 0 && lastSingleBacktickIndex >= 0) {
+  if (singleBacktickCount % 2 !== 0) {
     result = result + '`';
   }
 
-  // 3. 移除末尾不完整的内容
-  // 移除末尾不完整的列表项
-  result = result.replace(/\n[-*]\s*$/, '');
-  result = result.replace(/\n\d+\.\s*$/, '');
-
-  // 移除末尾不完整的标题
-  result = result.replace(/\n#{1,6}\s*$/, '');
-
-  // 移除末尾不完整的粗体/斜体
-  result = result.replace(/\*{1,2}$/, '');
-  result = result.replace(/_{1,2}$/, '');
-
-  // 4. 移除末尾的换行和空格
+  // 3. 移除末尾的换行和空格
   result = result.trimEnd();
 
   return result;
@@ -156,6 +136,7 @@ function sanitizeMarkdown(text: string): string {
 interface CodeExplainerProps {
   snippetId: number;
   kpId: number;
+  kpIds?: number[];  // 多知识点 ID（组合匹配模式）
   kpName?: string;
   code: string;  // 代码内容
   highlightRanges?: HighlightRange[];  // 高亮范围
@@ -170,6 +151,7 @@ interface Message {
 export default function CodeExplainer({
   snippetId,
   kpId,
+  kpIds,
   kpName,
   code,
   highlightRanges,
@@ -223,7 +205,12 @@ export default function CodeExplainer({
     setTokenUsage(null);
 
     const { abort } = streamExplain(
-      { snippet_id: snippetId, kp_id: kpId, user_level: userLevel },
+      {
+        snippet_id: snippetId,
+        kp_id: kpId,
+        kp_ids: kpIds,  // 多知识点支持
+        user_level: userLevel
+      },
       {
         onChunk: (content) => {
           setExplanation((prev) => prev + content);
@@ -240,7 +227,7 @@ export default function CodeExplainer({
     );
 
     abortRef.current = abort;
-  }, [snippetId, kpId, userLevel]);
+  }, [snippetId, kpId, kpIds, userLevel]);
 
   // Send follow-up question
   const sendQuestion = useCallback(() => {
@@ -258,6 +245,7 @@ export default function CodeExplainer({
       {
         snippet_id: snippetId,
         kp_id: kpId,
+        kp_ids: kpIds,  // 多知识点支持
         question: question.trim(),
         session_id: sessionId
       },
@@ -298,7 +286,7 @@ export default function CodeExplainer({
     );
 
     abortRef.current = abort;
-  }, [snippetId, kpId, question, sessionId, loading]);
+  }, [snippetId, kpId, kpIds, question, sessionId, loading]);
 
   // Stop generation
   const handleStop = useCallback(() => {
@@ -308,7 +296,6 @@ export default function CodeExplainer({
 
   // Retry on error
   const handleRetry = useCallback(() => {
-    requestMadeRef.current = false;  // Allow retry
     requestExplanation();
   }, [requestExplanation]);
 
@@ -388,82 +375,109 @@ export default function CodeExplainer({
               />
             )}
 
-            {/* Loading state */}
-            {loading && !explanation && (
-              <div style={{
-                textAlign: 'center',
-                padding: '40px 0',
-                background: '#f6f8fa',
-                borderRadius: 6,
-              }}>
-                <Spin tip="正在生成解释..." />
-              </div>
-            )}
-
-            {/* Explanation content */}
-            {(explanation || (!loading && !error)) && (
-              <div
-                className="markdown-body"
-                style={{
+            {/* 解释 + 对话共享滚动区域 */}
+            <div style={{
+              maxHeight: 400,
+              overflow: 'auto',
+              border: '1px solid #f0f0f0',
+              borderRadius: 6,
+              background: '#fafafa',
+            }}>
+              {/* Loading state */}
+              {loading && !explanation && (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '40px 0',
                   background: '#f6f8fa',
-                  padding: '12px 16px',
-                  borderRadius: 6,
-                  maxHeight: 300,
-                  overflow: 'auto',
-                  minHeight: 100,
-                }}
-              >
-                {explanation ? (
-                  <>
+                }}>
+                  <Spin tip="正在生成解释..." />
+                </div>
+              )}
+
+              {/* Explanation content */}
+              {(explanation || (!loading && !error)) && (
+                <div
+                  className="markdown-body"
+                  style={{
+                    background: '#f6f8fa',
+                    padding: '12px 16px',
+                    minHeight: 80,
+                  }}
+                >
+                  {explanation ? (
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {sanitizeMarkdown(explanation)}
                     </ReactMarkdown>
-                    {loading && <Spin size="small" style={{ marginLeft: 8 }} />}
-                  </>
-                ) : (
-                  <Paragraph type="secondary" style={{ margin: 0 }}>
-                    正在加载 AI 解释...
-                  </Paragraph>
-                )}
-              </div>
-            )}
+                  ) : (
+                    <Paragraph type="secondary" style={{ margin: 0 }}>
+                      正在加载 AI 解释...
+                    </Paragraph>
+                  )}
+                </div>
+              )}
 
-            {/* Chat messages */}
-            {messages.length > 0 && (
-              <div style={{ marginTop: 12, maxHeight: 200, overflow: 'auto' }}>
-                {messages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      marginBottom: 8,
-                      textAlign: msg.role === 'user' ? 'right' : 'left'
-                    }}
-                  >
+              {/* Chat messages */}
+              {(messages.length > 0 || (loading && explanation)) && (
+                <div style={{
+                  padding: '12px 16px',
+                  borderTop: '1px dashed #d9d9d9',
+                  background: '#fff',
+                }}>
+                  <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
+                    追问对话
+                  </Text>
+                  {messages.map((msg, idx) => (
                     <div
+                      key={idx}
                       style={{
-                        display: 'inline-block',
-                        maxWidth: '90%',
-                        padding: '8px 12px',
-                        borderRadius: 8,
-                        background: msg.role === 'user' ? '#1890ff' : '#f0f0f0',
-                        color: msg.role === 'user' ? '#fff' : 'inherit',
-                        fontSize: 13,
+                        marginBottom: 8,
+                        textAlign: msg.role === 'user' ? 'right' : 'left'
                       }}
                     >
-                      {msg.role === 'assistant' ? (
-                        <div className="markdown-body">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {sanitizeMarkdown(msg.content)}
-                          </ReactMarkdown>
-                        </div>
-                      ) : (
-                        msg.content
-                      )}
+                      <div
+                        style={{
+                          display: 'inline-block',
+                          maxWidth: '90%',
+                          padding: '8px 12px',
+                          borderRadius: 8,
+                          background: msg.role === 'user' ? '#1890ff' : '#f0f0f0',
+                          color: msg.role === 'user' ? '#fff' : 'inherit',
+                          fontSize: 13,
+                        }}
+                      >
+                        {msg.role === 'assistant' ? (
+                          <div className="markdown-body">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {sanitizeMarkdown(msg.content)}
+                            </ReactMarkdown>
+                          </div>
+                        ) : (
+                          msg.content
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                  {/* Chat loading indicator */}
+                  {loading && explanation && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
+                    <div style={{ textAlign: 'left', marginBottom: 8 }}>
+                      <div
+                        style={{
+                          display: 'inline-block',
+                          padding: '8px 12px',
+                          borderRadius: 8,
+                          background: '#f0f0f0',
+                        }}
+                      >
+                        <Spin size="small" />
+                        <Text type="secondary" style={{ marginLeft: 8, fontSize: 13 }}>
+                          正在生成回复...
+                        </Text>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Question input */}
             {explanation && (

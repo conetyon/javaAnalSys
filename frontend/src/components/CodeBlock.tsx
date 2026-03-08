@@ -101,6 +101,7 @@ export default function CodeBlock({
           borderLeft: '3px solid #ffc107',
           marginLeft: '-3px',
           display: 'block',
+          minWidth: 'fit-content',  // 确保背景覆盖整行（含滚动区域）
         }
       };
     }

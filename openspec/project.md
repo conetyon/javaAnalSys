@@ -3,7 +3,7 @@
 ## Purpose
 Java knowledge point matching system for educational purposes. The system analyzes Java code using AST (Abstract Syntax Tree) parsing and matches code snippets to specific programming concepts through a hybrid scoring algorithm. Built as a graduation project for BUPT (2026).
 
-**Core Value Proposition**: Automatically identify which Java programming concepts (e.g., loops, exception handling, collections) are demonstrated in code snippets with 98.0% accuracy.
+**Core Value Proposition**: Automatically identify which Java programming concepts (e.g., loops, exception handling, collections) are demonstrated in code snippets with 98.0% accuracy. Additionally provides AI-powered code explanations with knowledge point highlighting.
 
 ## Tech Stack
 - **Language**: Python 3.8+
@@ -13,6 +13,7 @@ Java knowledge point matching system for educational purposes. The system analyz
 - **Validation**: Pydantic (request/response schemas)
 - **Configuration**: PyYAML (YAML-based config)
 - **Logging**: concurrent-log-handler (thread-safe file logging)
+- **LLM Integration**: OpenAI-compatible API with SSE streaming
 - **Platform**: Cross-platform (Windows/Linux/macOS)
 
 ## Project Conventions
@@ -101,6 +102,48 @@ Java knowledge point matching system for educational purposes. The system analyz
 - **Use Case**: Find code examples demonstrating specific programming concepts
 - **Composite Matching**: Find code involving multiple concepts (e.g., loops + exception handling)
 - **Difficulty Personalization**: Match code complexity to learner skill level
+
+### AI Code Explanation (v1.6.0+)
+
+**Architecture Overview**:
+```
+Frontend (CodeExplainer) → SSE Stream → Flask API → ExplainService → LLMClient → OpenAI API
+                                                  ↓
+                                           HighlightService (AST-based line marking)
+```
+
+**Key Components**:
+1. **LLMClient** (`lib/client/llm.py`):
+   - OpenAI-compatible API wrapper with SSE streaming
+   - Primary/Fallback dual-endpoint support
+   - Automatic failover on primary failure
+   - Token usage tracking (prompt + completion)
+
+2. **HighlightService** (`src/services/highlight_service.py`):
+   - AST-based code line highlighting
+   - Matches KP templates and keywords to code lines
+   - Returns `[{start_line, end_line, type, label}]` format
+   - Supports multiple KP highlighting (composite mode)
+
+3. **ExplainService** (`src/services/explain_service.py`):
+   - Builds contextual prompts with code + KP info + highlights
+   - Supports multi-turn conversation with session cache
+   - Logs requests to `explain_logs` table for auditing
+
+4. **QuotaService** (`src/services/quota_service.py`):
+   - Daily quota management (50/day for users, unlimited for admins)
+   - Automatic reset at midnight Beijing time
+   - Quota consumed only on successful LLM response
+
+5. **RateLimiterService** (`src/services/rate_limiter.py`):
+   - Sliding window rate limiting (10 req/min/user)
+   - In-memory implementation
+
+**Multi-KP Support** (v1.6.1):
+- Composite matching passes `kp_ids[]` to explain endpoints
+- ExplainService merges keywords and highlights from all KPs
+- Prompt displays combined KP names: "For loop + ArrayList"
+- Database logs `kp_ids` JSON array for multi-KP requests
 
 ## Important Constraints
 

@@ -584,6 +584,15 @@ results = search_service.search(
 
 ## Recent Major Changes
 
+**v1.6.1** (2026-03-08):
+- **多知识点 AI 解释**：`/api/explain` 和 `/api/explain/chat` 支持 `kp_ids[]` 参数
+- **Prompt 优化**：合并多 KP 的 keywords 和 highlights，组合显示知识点名称
+- **配额修复**：仅在 LLM 成功返回时消耗配额（失败不扣）
+- **SSE 修复**：空 choices 数组处理、null usage 处理、fallback 模型配置
+- **前端修复**：重试按钮、高亮横向滚动、Markdown 闭合、对话渲染布局
+- **数据库扩展**：`explain_logs.kp_ids` 字段记录多知识点
+- **OpenSpec 归档**：`2026-03-08-improve-ai-explanation`
+
 **v1.6.0** (2026-03-07):
 - **AI 代码解释功能**：新增关键行标注 + LLM 按需解释
 - **SSE 流式响应**：`/api/explain` 和 `/api/explain/chat` 端点支持 SSE

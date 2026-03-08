@@ -23,6 +23,7 @@ interface MatchResultCardProps {
   item: MatchResultItem;
   rank: number;
   kpId?: number;           // 知识点 ID（用于 AI 解释）
+  kpIds?: number[];        // 多知识点 ID（组合匹配模式）
   kpName?: string;         // 知识点名称（用于 AI 解释）
   extra?: React.ReactNode;  // 额外内容（如组合匹配的知识点列表）
   isFavorite?: boolean;     // 是否已收藏
@@ -50,6 +51,7 @@ export default function MatchResultCard({
   item,
   rank,
   kpId,
+  kpIds,
   kpName,
   extra,
   isFavorite = false,
@@ -213,6 +215,7 @@ export default function MatchResultCard({
         <CodeExplainer
           snippetId={item.id}
           kpId={kpId}
+          kpIds={kpIds}
           kpName={kpName}
           code={item.content}
           highlightRanges={item.highlight_ranges}
